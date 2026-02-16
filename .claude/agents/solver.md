@@ -104,3 +104,27 @@ First agent to produce correct output wins. Other is terminated.
 - **Binary verification mandatory** — Python-only 순환 검증 금지
 - `knowledge/techniques/gdb_oracle_reverse.md` 참조 (GDB Oracle 패턴)
 - `knowledge/techniques/efficient_solving.md` 참조 (문제 유형 분류)
+
+## Code Discipline (반드시 준수)
+
+### Simplicity First
+- **solve.py는 최소한의 코드로.** 50줄이면 될 걸 200줄로 쓰지 마라
+- 한번만 쓰는 역연산에 클래스/추상화 금지. flat script로 충분
+- 불필요한 import, logging, argparse 금지. `from pwn import *` + 핵심 로직만
+
+### Assumptions 명시 (solver_report.md 필수)
+```markdown
+## Assumptions
+- Algorithm: Feistel cipher, 16 rounds (reversal_map.md에서 확인)
+- Constants: round keys = [0x1234, ...] (GDB 메모리 덤프에서 추출)
+- Input format: 32 bytes hex string (main 함수 분석)
+```
+**가정이 틀리면 역연산 전체가 틀린다. 명시해야 critic이 검증 가능.**
+
+### Step → Verify 루프
+```
+1. 역연산 알고리즘 구현 → 테스트 벡터로 검증 (encrypt→decrypt == original)
+2. solve.py 작성 → 로컬 바이너리에 입력 → "Correct" 출력 확인
+3. 실패 시 → 가정 재검토 (상수? 라운드 수? 바이트 순서?)
+```
+**성공 기준을 코드 작성 전에 한 줄로 정의.** "Correct 출력" 또는 "flag format 매칭"

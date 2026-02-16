@@ -379,13 +379,26 @@ Skill("sentry-skills:find-bugs")
 8. Manual Steps C-E                     → dependency + bundle strategy
 ```
 
-## Gemini CLI Integration (Token-Saving + Deep Analysis Modes)
+## Gemini CLI Integration (Token-Saving + Deep Analysis)
 
-### 1st Pass: Bulk Triage (MANDATORY for codebases > 5K lines)
+### MANDATORY Triggers (반드시 Gemini 먼저)
+
+| 조건 | Gemini 명령 | 이유 |
+|------|------------|------|
+| 코드베이스 **5K줄+** | `summarize-dir` + `triage` | Claude가 100개 파일 읽는 대신 Gemini 요약만 읽음. **토큰 50%+ 절약** |
+| Solidity 프로젝트 | `solidity` 모드 | DeFi 특화 triage (reentrancy, flash loan, slippage, oracle 등) |
+| **단일 파일 1K줄+** | `triage` | P1/P2만 골라서 Claude가 심층 분석 |
+
+**위 조건에 해당하면 Gemini를 스킵하지 말 것.** Gemini = 무료, Claude = 비쌈.
+
+### 1st Pass: Bulk Triage
 ```bash
 # Quick vulnerability triage per file (P1/P2/P3 classification)
 ./tools/gemini_query.sh triage src/auth/handler.ts > /tmp/triage_auth.md
 ./tools/gemini_query.sh triage src/api/routes.ts > /tmp/triage_api.md
+
+# Solidity-specific triage (DeFi/Smart Contract)
+./tools/gemini_query.sh solidity src/contracts/Vault.sol > /tmp/triage_vault.md
 
 # Bulk summarize a directory (security-focused overview)
 ./tools/gemini_query.sh summarize-dir ./src "*.ts" > /tmp/codebase_summary.md
@@ -418,7 +431,7 @@ Step 3: Claude manual verification (Vulnhuntr 3-pass) → confirmed findings onl
 - Gemini results are **candidates only** — you MUST verify with source→sink tracing (Vulnhuntr 3-pass)
 - Default model: `gemini-3-pro-preview` (fixed)
 - Do NOT trust Gemini's severity ratings blindly — apply your own Confidence Questionnaire
-- If Gemini CLI fails, proceed with Semgrep + manual scanning (Gemini is optional, not blocking)
+- If Gemini CLI fails, proceed with Semgrep + manual scanning (Gemini is optional fallback, not blocking)
 
 ## Deep Analysis Framework (MANDATORY — goes beyond grep patterns)
 

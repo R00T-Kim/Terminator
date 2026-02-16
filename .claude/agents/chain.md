@@ -193,3 +193,30 @@ python3 solve.py  # process('./binary')로 로컬 테스트
 - **Local flag files are FAKE** — real flags only from remote server
 - solve.py must output `FLAG_FOUND: <flag>`
 - Save results as `chain_report.md` + `solve.py`
+
+## Code Discipline (반드시 준수)
+
+### Simplicity First
+- **50줄이면 될 걸 200줄로 쓰지 마라.** 매 Phase 작성 후 "이걸 절반으로 줄일 수 있나?" 자문
+- 한번만 쓰는 코드에 클래스/추상화 금지. 함수 3개 이하면 flat script로 충분
+- 불가능한 시나리오에 대한 에러 핸들링 금지 (예: "만약 libc가 없으면" — 없으면 exploit 자체가 불가)
+- 요청되지 않은 기능 추가 금지 (pretty-print, logging framework, argparse 등)
+
+### Assumptions 명시 (산출물 필수 섹션)
+chain_report.md에 반드시 `## Assumptions` 섹션을 포함:
+```markdown
+## Assumptions
+- libc version: 2.31 (Dockerfile에서 확인)
+- Stack canary: enabled (checksec 결과)
+- ASLR: enabled but libc base leaked via printf
+- Offset: 0x48 (GDB에서 `cyclic -l` 확인)
+```
+**가정을 숨기면 critic/verifier가 잡지 못하고, 원격에서 실패한다.**
+
+### Step → Verify 루프 (Phase별 강제)
+```
+Phase 1 작성 → python3 solve.py 실행 → leak 값 출력 확인 → Phase 2 진행
+Phase 2 작성 → python3 solve.py 실행 → RIP 제어 확인 → Phase 3 진행
+Phase 3 작성 → python3 solve.py 실행 → shell 획득 확인 → remote 전환
+```
+**각 Phase의 성공 기준을 코드 작성 전에 한 줄로 정의하라.** 성공 기준 없이 코드부터 쓰면 방향을 잃는다.

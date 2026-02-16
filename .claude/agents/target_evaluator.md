@@ -102,6 +102,47 @@ cat knowledge/index.md  # past attempts
 # What was our success rate on this type?
 ```
 
+## DeFi/Smart Contract Pre-Screen (MANDATORY for Immunefi/Web3 targets)
+
+Before scoring, run these on-chain checks. Any RED FLAG = score -2 per flag.
+
+### Step A: TVL & Liquidity Reality Check
+```bash
+# 1. Check protocol TVL (DeFiLlama or on-chain)
+# If TVL < $500K → RED FLAG (low impact ceiling)
+
+# 2. Check target token total supply & distribution
+cast call <token_addr> "totalSupply()(uint256)" --rpc-url <rpc>
+cast call <token_addr> "balanceOf(address)(uint256)" <pool_addr> --rpc-url <rpc>
+# If >90% of supply locked in one pool → RED FLAG (no external liquidity for attacks)
+
+# 3. Check flash loan availability on target chain
+# Aave V3: cast call <aave_pool> "getReservesList()(address[])" --rpc-url <rpc>
+# Balancer: cast call <token> "balanceOf(address)(uint256)" <balancer_vault> --rpc-url <rpc>
+# If target token not on any lending protocol → flash loan attacks impossible
+
+# 4. Check DEX depth (is there liquidity outside target pool?)
+# Query Balancer, Uniswap, SushiSwap for token pairs
+# If 0 liquidity outside target pool → attacker can't source tokens externally
+```
+
+### Step B: Audit Coverage Gap Analysis
+```bash
+# Check which contracts are audited vs unaudited
+# Peripheral contracts (distributors, receivers, bridges) are often unaudited
+# Core contracts (staking, vault, pool) are usually audited
+# Priority: unaudited peripheral code that handles value
+```
+
+### Step C: DeFi-Specific Scoring Adjustments
+| Factor | Adjustment | Condition |
+|--------|-----------|-----------|
+| Token illiquidity | -2 | >90% supply locked, no flash loan |
+| Low TVL | -1 | TVL < $1M |
+| Unaudited peripherals | +2 | Value-handling code never audited |
+| Cross-chain components | +1 | CCIP/bridge = timing attack surface |
+| AMM pool imbalance | +1 | >60:40 imbalance = exploitable asymmetry |
+
 ## Scoring Rubric (10-point)
 
 | # | Factor | +1 Condition | -1 Condition |

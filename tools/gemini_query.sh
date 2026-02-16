@@ -13,7 +13,7 @@
 #   gemini_query.sh summarize-dir <dir> <glob>  # Summarize all matching files in dir
 #
 # Options:
-#   GEMINI_MODEL=gemini-2.5-flash (default for speed) or gemini-3-pro-preview (deep analysis)
+#   GEMINI_MODEL=gemini-3-pro-preview (fixed, do not change)
 #   GEMINI_MAX_LINES=5000 (default) - max lines to read from file
 
 set -euo pipefail
@@ -93,6 +93,48 @@ PROMPT_PROTOCOL="You are a protocol security analyst. Analyze this code for prot
 
 Focus on exploitable logic flaws, not code quality. For each finding, describe the attack sequence step-by-step."
 
+PROMPT_SOLIDITY="You are a smart contract security auditor specializing in DeFi protocols. Analyze this Solidity code for:
+
+1. **Reentrancy**: External calls before state updates, cross-function reentrancy, read-only reentrancy
+2. **Flash Loan Attacks**: Price manipulation via flash loans, oracle manipulation, sandwich attacks
+3. **Slippage/MEV**: Missing slippage protection (minAmount=0), hardcoded zero parameters, sandwich-vulnerable functions
+4. **Access Control**: Missing onlyOwner/onlyRole, unprotected initializers, privilege escalation
+5. **Oracle Manipulation**: Spot price as oracle, TWAP bypass, stale price data
+6. **Integer Issues**: Unsafe casting, precision loss in division, fee calculation rounding
+7. **Token Handling**: Missing return value checks, fee-on-transfer tokens, rebasing tokens
+8. **Cross-Chain**: CCIP/bridge message validation, replay attacks, finality assumptions
+9. **Upgradability**: Storage collision, uninitialized proxy, selfdestruct in implementation
+10. **Economic Exploits**: Donation attacks, first depositor advantage, reward distribution manipulation
+
+For each finding:
+- **Location**: contract:function:line
+- **Type**: CWE ID + DeFi-specific category
+- **Severity**: CRITICAL/HIGH/MEDIUM/LOW
+- **Confidence**: HIGH (clear exploit path) / MEDIUM (needs verification) / LOW (theoretical)
+- **Attack Steps**: Numbered step-by-step exploit flow
+- **Capital Required**: Flash loan available? How much? From where?
+
+Only report CRITICAL/HIGH/MEDIUM findings. Skip informational and gas optimizations."
+
+PROMPT_CROSSVAL="You are a hostile bug bounty triager reviewing a vulnerability report for rejection. Your job is to find EVERY weakness in this report.
+
+Attack these aspects:
+1. **PoC Validity**: Does the PoC actually prove what it claims? Are deal()/mock() hiding infeasibility?
+2. **Severity Inflation**: Is the claimed severity justified? Check CVSS vector components individually
+3. **Liquidity Reality**: Can the attacker actually source the required tokens? Flash loans? DEX depth?
+4. **State Dependency**: Is the attack only profitable under specific conditions? How likely are those conditions?
+5. **Economic Viability**: After gas + slippage + fees, is net profit still positive?
+6. **Duplicate Risk**: Does this overlap with known CVEs or common knowledge?
+7. **Root Cause Accuracy**: Is the identified root cause actually the root cause, or a symptom?
+8. **Fix Correctness**: Does the proposed fix actually prevent the attack? Any bypass?
+
+Output format:
+- SUBMIT: Report is solid, triager would accept
+- STRENGTHEN: List specific weaknesses to fix before submission
+- KILL: Report would be rejected, explain why
+
+Be maximally adversarial. The goal is to find problems BEFORE the real triager does."
+
 PROMPT_BIZLOGIC="You are a business logic security expert. Analyze this code for logic flaws that bypass intended behavior:
 
 1. **Access Control**: Can users access resources/actions beyond their privilege level?
@@ -129,6 +171,12 @@ case "$MODE" in
     bizlogic)
         SYSTEM_PROMPT="$PROMPT_BIZLOGIC"
         ;;
+    solidity)
+        SYSTEM_PROMPT="$PROMPT_SOLIDITY"
+        ;;
+    crossval)
+        SYSTEM_PROMPT="$PROMPT_CROSSVAL"
+        ;;
     summarize-dir)
         # Special mode: summarize all matching files in a directory
         DIR="${1:-}"
@@ -156,7 +204,7 @@ $FILE_CONTENT
         exit 0
         ;;
     *)
-        echo "Usage: gemini_query.sh {reverse|analyze|review|ask|summarize|triage|protocol|bizlogic|summarize-dir} [file|question] [file|glob]"
+        echo "Usage: gemini_query.sh {reverse|analyze|review|ask|summarize|triage|protocol|bizlogic|solidity|crossval|summarize-dir} [file|question] [file|glob]"
         exit 1
         ;;
 esac

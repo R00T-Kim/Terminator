@@ -35,6 +35,10 @@ Track challenges you haven't started yet.
 | Bug Bounty report quality guidelines | [techniques/bug_bounty_report_quality.md](techniques/bug_bounty_report_quality.md) |
 | Installed tools reference | [techniques/installed_tools_reference.md](techniques/installed_tools_reference.md) |
 | Offensive MCP servers research | [techniques/offensive_mcp_servers.md](techniques/offensive_mcp_servers.md) |
+| Web3: Immunefi top payouts & strategy | [techniques/web3_immunefi_top_payouts.md](techniques/web3_immunefi_top_payouts.md) |
+| Web3: DeFi attack taxonomy (60+ vectors) | [techniques/web3_defi_attack_taxonomy.md](techniques/web3_defi_attack_taxonomy.md) |
+| Web3: Smart contract audit methodology | [techniques/web3_audit_methodology.md](techniques/web3_audit_methodology.md) |
+| Web3: Foundry fork PoC methodology | [techniques/web3_foundry_fork_poc.md](techniques/web3_foundry_fork_poc.md) |
 
 ## Bug Bounty Programs
 
@@ -42,6 +46,11 @@ Track your bug bounty findings here. **All actual findings are kept in private f
 
 | Program | Platform | Focus | Status | Notes |
 |---------|----------|-------|--------|-------|
+| USX Protocol | Immunefi | Smart Contract (Scroll L2) | B Submitted, A Ready | Report B submitted 2/16, Report A pending cooldown. Deep analysis: 13 leads, 1 High borderline (Finding C). Details: [immunefi_usx.md](challenges/immunefi_usx.md) |
+| Symbiotic Protocol | Immunefi | Smart Contract ($500K max) | ABANDONED | 0 Critical findings. Well-audited by 4 firms, restrictive permissions model. Details: [bugbounty/symbiotic_analysis.md](bugbounty/symbiotic_analysis.md) |
+| Superform | Immunefi | Smart Contract ($250K max) | ABANDONED | 1 Medium finding (previewDepositTo misuse), not Critical-worthy. Details: [bugbounty/superform_analysis.md](bugbounty/superform_analysis.md) |
+| stake.link | Immunefi | Smart Contract ($100K max) | 1 MEDIUM READY (제출 대기) | CCIP zero slippage sandwich on Curve Gauge distribution. Foundry fork PoC confirmed profit-positive (Direction A). 유동성 제약: wstPOL 98.7% locked, 541 free float, flash loan 불가 → Medium ceiling. "Growing risk" 프레이밍. 제출물: `targets/stakelink/submission/` (4 files). Details: [targets/stakelink/submission/immunefi_report.md](../targets/stakelink/submission/immunefi_report.md) |
+| YieldNest | Immunefi | Smart Contract ($200K max) | ABANDONED | 3 findings all mitigated on-chain. Donation attack bootstrap complete (3842 ynETH TVL), dead shares exist. Zokyo audit pre-launch. Details: [targets/yieldnest/vulnerability_analysis.md](../targets/yieldnest/vulnerability_analysis.md) |
 | Example VDP | HackerOne | Web Application | Active | Example entry |
 | Example BBP | HackerOne | API Security | Completed | Example entry |
 

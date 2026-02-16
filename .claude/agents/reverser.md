@@ -76,13 +76,16 @@ gdb -batch -ex "set pagination off" \
 - `WebSearch` (CTF writeups, technique references)
 - Source code review when available (most efficient)
 
-### Gemini CLI (Token-Saving Analysis — USE for large files)
-When decompiled output or source code is **large (500+ lines)**, delegate 1st-pass analysis to Gemini to save Claude tokens:
+### Gemini CLI (Token-Saving Analysis)
+
+**MANDATORY trigger**: 디컴파일 출력 또는 소스코드가 **500줄 이상**이면 반드시 Gemini 먼저 실행.
+Gemini = 무료, Claude = 비쌈. 대형 파일을 Claude가 직접 읽는 건 토큰 낭비.
+
 ```bash
 # 1. Dump decompiled output to file
 r2 -q -e scr.color=0 -c "aaa; s main; pdd" ./binary > /tmp/decompiled.c
 
-# 2. Send to Gemini for initial analysis (fast + free/cheap)
+# 2. MANDATORY if 500+ lines: Send to Gemini for initial analysis
 ./tools/gemini_query.sh reverse /tmp/decompiled.c > /tmp/gemini_analysis.md
 
 # 3. Read Gemini's analysis, then refine with your own expertise
@@ -90,9 +93,10 @@ cat /tmp/gemini_analysis.md
 ```
 **Rules**:
 - Gemini's output is a **starting point**, not gospel. Verify critical findings (addresses, offsets) yourself via GDB
-- Default model: `gemini-3-pro-preview`. 빠른 스캔 필요 시: `GEMINI_MODEL=gemini-3-flash-preview`
+- Model: `gemini-3-pro-preview` 고정 (변경 금지)
 - Do NOT send the entire binary — only decompiled text/source code
-- If Gemini CLI fails or times out, proceed without it (it's optional, not blocking)
+- If Gemini CLI fails or times out, proceed without it (fallback, not blocking)
+- **500줄 미만**이면 Gemini 스킵하고 직접 분석 (오버헤드 > 절약)
 
 ### Plugin Skills (available, use when beneficial)
 ```
@@ -166,3 +170,16 @@ Skill("yara-authoring:yara-rule-authoring")
 - Read `knowledge/techniques/efficient_solving.md` for problem type classification guide
 - Save results to `reversal_map.md` in working directory
 - **Scope 제한**: 분석 + 공격 지도 생성까지만. solver 개발에 착수하지 마라
+
+## Assumptions 명시 (reversal_map.md 필수)
+reversal_map.md에 반드시 `## Assumptions & Verification` 섹션 포함:
+```markdown
+## Assumptions & Verification
+| 가정 | 근거 | 검증 방법 |
+|------|------|----------|
+| main에서 scanf로 입력 | r2 disasm 확인 | ✅ GDB 실행 확인 |
+| XOR key = 0xdeadbeef | r2 strings에서 추출 | ⚠️ GDB 메모리 덤프 필요 |
+| 버퍼 크기 0x40 | r2 stack frame 분석 | ⚠️ cyclic으로 검증 필요 |
+```
+**✅ = 검증 완료, ⚠️ = 미검증 (solver/chain이 반드시 검증해야 함)**
+가정을 숨기면 다음 에이전트가 잘못된 전제 위에 exploit을 쌓는다.
