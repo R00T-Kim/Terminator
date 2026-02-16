@@ -1,0 +1,93 @@
+# ============================================
+# Terminator - Public Repository .gitignore
+# ============================================
+
+# --- Secrets & Auth ---
+.env
+.env.*
+!.env.example
+.claude_auth/
+
+# --- Personal / Session data ---
+.terminator.history
+.terminator.log
+.terminator.pid
+nohup.out
+
+# --- Local tool configs (contain hardcoded paths) ---
+.mcp.json
+.gemini/
+.playwright-mcp/
+
+# --- Virtual environment ---
+venv/
+.venv/
+
+# --- Python cache ---
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+
+# --- Challenge binaries & wargame data ---
+tests/wargames/*.zip
+tests/wargames/extracted/
+tests/wargames/hunter/
+
+# --- Bug bounty targets (sensitive data + large cloned repos) ---
+targets/
+
+# --- Knowledge: sensitive operational data ---
+knowledge/bugbounty/
+knowledge/challenges/
+knowledge/contracts/
+
+# --- Challenge artifacts (temporary, overwritten per challenge) ---
+challenges/
+solve.py
+reversal_map.md
+trigger_report.md
+trigger_poc.py
+chain_report.md
+critic_review.md
+
+# --- Legacy code (not part of v3 architecture) ---
+agent/
+bridge/
+rag_system/
+aiedge_handoff_adapter.py
+
+# --- OMC state ---
+.omc/
+
+# --- Reports (auto-generated) ---
+reports/
+
+# --- OS files ---
+.DS_Store
+*.swp
+*.swo
+Thumbs.db
+
+# --- Database ---
+db/
+
+# --- Agent logs ---
+agent_logs/
+
+# --- Temp files ---
+*.tmp
+/tmp/
+
+# --- Build artifacts ---
+BUILD_VALIDATION_REPORT.md
+
+# --- Research: target-specific analysis ---
+research/doordash_*.md
+research/FINDINGS.md
+
+# --- Misc ---
+ref.md
+research/vpn_client_attack_techniques.md
+.claude_auth/
