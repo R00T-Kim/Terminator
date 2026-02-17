@@ -1,0 +1,201 @@
+{
+  "generated_at": "2026-02-17T01:16:01.877260Z",
+  "total_challenges": 20,
+  "pass": 19,
+  "fail": 0,
+  "skip": 1,
+  "accuracy_pct": 95.0,
+  "avg_solve_time_sec": null,
+  "avg_token_estimate": null,
+  "avg_agent_count": 4.3,
+  "by_type": {
+    "reversing": {
+      "total": 4,
+      "pass": 3
+    },
+    "crypto": {
+      "total": 1,
+      "pass": 1
+    },
+    "pwn": {
+      "total": 15,
+      "pass": 15
+    }
+  },
+  "by_difficulty": {
+    "medium": {
+      "total": 8,
+      "pass": 7
+    },
+    "hard": {
+      "total": 2,
+      "pass": 2
+    },
+    "easy": {
+      "total": 10,
+      "pass": 10
+    }
+  },
+  "solved_challenges": [
+    {
+      "name": "dhcc",
+      "status": "SKIP",
+      "type": "reversing",
+      "difficulty": "medium",
+      "agents": 5,
+      "pipeline": "reverser\u2192solver\u2192critic\u2192verifier\u2192reporter"
+    },
+    {
+      "name": "too_many_questions",
+      "status": "PASS",
+      "type": "crypto",
+      "difficulty": "medium",
+      "agents": 5,
+      "pipeline": "reverser\u2192solver\u2192critic\u2192verifier\u2192reporter"
+    },
+    {
+      "name": "damnida",
+      "status": "PASS",
+      "type": "reversing",
+      "difficulty": "hard",
+      "agents": 5,
+      "pipeline": "reverser\u2192solver\u2192critic\u2192verifier\u2192reporter"
+    },
+    {
+      "name": "conquergent",
+      "status": "PASS",
+      "type": "reversing",
+      "difficulty": "hard",
+      "agents": 5,
+      "pipeline": "reverser\u2192solver\u2192critic\u2192verifier\u2192reporter"
+    },
+    {
+      "name": "pwnablekr_fd",
+      "status": "PASS",
+      "type": "pwn",
+      "difficulty": "easy",
+      "agents": 4,
+      "pipeline": "reverser\u2192trigger\u2192chain\u2192critic\u2192verifier\u2192reporter"
+    },
+    {
+      "name": "pwnablekr_col",
+      "status": "PASS",
+      "type": "pwn",
+      "difficulty": "easy",
+      "agents": 4,
+      "pipeline": "reverser\u2192trigger\u2192chain\u2192critic\u2192verifier\u2192reporter"
+    },
+    {
+      "name": "pwnablekr_horcruxes",
+      "status": "PASS",
+      "type": "pwn",
+      "difficulty": "medium",
+      "agents": 6,
+      "pipeline": "reverser\u2192trigger\u2192chain\u2192critic\u2192verifier\u2192reporter"
+    },
+    {
+      "name": "pwnablekr_asm",
+      "status": "PASS",
+      "type": "pwn",
+      "difficulty": "medium",
+      "agents": 4,
+      "pipeline": "reverser\u2192trigger\u2192chain\u2192critic\u2192verifier\u2192reporter"
+    },
+    {
+      "name": "pwnablekr_memcpy",
+      "status": "PASS",
+      "type": "pwn",
+      "difficulty": "easy",
+      "agents": 4,
+      "pipeline": "reverser\u2192trigger\u2192chain\u2192critic\u2192verifier\u2192reporter"
+    },
+    {
+      "name": "pwnablekr_passcode",
+      "status": "PASS",
+      "type": "pwn",
+      "difficulty": "medium",
+      "agents": 4,
+      "pipeline": "reverser\u2192trigger\u2192chain\u2192critic\u2192verifier\u2192reporter"
+    },
+    {
+      "name": "pwnablekr_cmd1",
+      "status": "PASS",
+      "type": "pwn",
+      "difficulty": "easy",
+      "agents": 4,
+      "pipeline": "reverser\u2192trigger\u2192chain\u2192critic\u2192verifier\u2192reporter"
+    },
+    {
+      "name": "pwnablekr_cmd2",
+      "status": "PASS",
+      "type": "pwn",
+      "difficulty": "medium",
+      "agents": 4,
+      "pipeline": "reverser\u2192trigger\u2192chain\u2192critic\u2192verifier\u2192reporter"
+    },
+    {
+      "name": "pwnablekr_random",
+      "status": "PASS",
+      "type": "pwn",
+      "difficulty": "easy",
+      "agents": 4,
+      "pipeline": "reverser\u2192trigger\u2192chain\u2192critic\u2192verifier\u2192reporter"
+    },
+    {
+      "name": "pwnablekr_input",
+      "status": "PASS",
+      "type": "pwn",
+      "difficulty": "medium",
+      "agents": 4,
+      "pipeline": "reverser\u2192trigger\u2192chain\u2192critic\u2192verifier\u2192reporter"
+    },
+    {
+      "name": "pwnablekr_leg",
+      "status": "PASS",
+      "type": "reversing",
+      "difficulty": "easy",
+      "agents": 4,
+      "pipeline": "reverser\u2192solver\u2192critic\u2192verifier\u2192reporter"
+    },
+    {
+      "name": "pwnablekr_lotto",
+      "status": "PASS",
+      "type": "pwn",
+      "difficulty": "easy",
+      "agents": 4,
+      "pipeline": "reverser\u2192trigger\u2192chain\u2192critic\u2192verifier\u2192reporter"
+    },
+    {
+      "name": "pwnablekr_mistake",
+      "status": "PASS",
+      "type": "pwn",
+      "difficulty": "easy",
+      "agents": 4,
+      "pipeline": "reverser\u2192trigger\u2192chain\u2192critic\u2192verifier\u2192reporter"
+    },
+    {
+      "name": "pwnablekr_coin1",
+      "status": "PASS",
+      "type": "pwn",
+      "difficulty": "easy",
+      "agents": 4,
+      "pipeline": "reverser\u2192trigger\u2192chain\u2192critic\u2192verifier\u2192reporter"
+    },
+    {
+      "name": "pwnablekr_blackjack",
+      "status": "PASS",
+      "type": "pwn",
+      "difficulty": "easy",
+      "agents": 4,
+      "pipeline": "reverser\u2192trigger\u2192chain\u2192critic\u2192verifier\u2192reporter"
+    },
+    {
+      "name": "pwnablekr_input2",
+      "status": "PASS",
+      "type": "pwn",
+      "difficulty": "medium",
+      "agents": 4,
+      "pipeline": "reverser\u2192trigger\u2192chain\u2192critic\u2192verifier\u2192reporter"
+    }
+  ]
+}

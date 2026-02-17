@@ -1,0 +1,212 @@
+name: Security Scan
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Scan target (URL, IP, or path)'
+        required: true
+        default: '.'
+      scan_type:
+        description: 'Scan type: semgrep / nuclei / codeql / all'
+        required: false
+        default: 'semgrep'
+      severity:
+        description: 'Minimum severity: critical / high / medium / low'
+        required: false
+        default: 'high'
+  push:
+    branches: [main]
+    paths:
+      - '**.py'
+      - '**.js'
+      - '**.ts'
+      - '**.go'
+  pull_request:
+    branches: [main]
+
+jobs:
+  semgrep-scan:
+    name: Semgrep Static Analysis
+    runs-on: self-hosted
+    timeout-minutes: 20
+    if: >
+      github.event_name == 'push' ||
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'workflow_dispatch' &&
+       (github.event.inputs.scan_type == 'semgrep' || github.event.inputs.scan_type == 'all'))
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Semgrep
+        run: pip install semgrep --quiet
+
+      - name: Run Semgrep security audit
+        run: |
+          semgrep \
+            --config p/security-audit \
+            --config p/owasp-top-ten \
+            --json \
+            --quiet \
+            . 2>/dev/null | tee semgrep_results.json || true
+
+          python3 -c "
+          import json
+          try:
+              d = json.load(open('semgrep_results.json'))
+              findings = d.get('results', [])
+              print(f'Semgrep: {len(findings)} findings')
+              for f in findings[:10]:
+                  sev = f.get('extra',{}).get('severity','?')
+                  path = f.get('path','?')
+                  line = f.get('start',{}).get('line',0)
+                  rule = f.get('check_id','?')
+                  print(f'  [{sev}] {path}:{line} -- {rule}')
+          except Exception as e:
+              print(f'Parse error: {e}')
+          "
+
+      - name: Upload Semgrep results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: semgrep-results-${{ github.run_number }}
+          path: semgrep_results.json
+          retention-days: 30
+
+  nuclei-scan:
+    name: Nuclei Vulnerability Scan
+    runs-on: self-hosted
+    timeout-minutes: 30
+    if: >
+      github.event_name == 'workflow_dispatch' &&
+      (github.event.inputs.scan_type == 'nuclei' || github.event.inputs.scan_type == 'all')
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Nuclei scan
+        env:
+          SCAN_TARGET: ${{ github.event.inputs.target }}
+          SCAN_SEVERITY: ${{ github.event.inputs.severity }}
+        run: |
+          ~/gopath/bin/nuclei \
+            -u "$SCAN_TARGET" \
+            -severity "$SCAN_SEVERITY" \
+            -t ~/nuclei-templates/ \
+            -json -silent \
+            -o nuclei_results.json 2>/dev/null || true
+
+          python3 -c "
+          import json
+          findings = []
+          try:
+              for line in open('nuclei_results.json'):
+                  try: findings.append(json.loads(line))
+                  except: pass
+          except FileNotFoundError:
+              pass
+          print(f'Total: {len(findings)} findings')
+          for f in findings[:20]:
+              sev = f.get('info',{}).get('severity','?')
+              name = f.get('info',{}).get('name','?')
+              matched = f.get('matched-at','?')
+              print(f'  [{sev.upper()}] {name} @ {matched}')
+          " 2>/dev/null || true
+
+      - name: MITRE Enrichment
+        run: |
+          CVE_LIST=$(python3 -c "
+          import json, re
+          cves = set()
+          try:
+              for line in open('nuclei_results.json'):
+                  try:
+                      d = json.loads(line)
+                      tid = d.get('template-id','')
+                      for m in re.findall(r'CVE-\d{4}-\d+', tid, re.IGNORECASE):
+                          cves.add(m.upper())
+                  except: pass
+          except FileNotFoundError:
+              pass
+          print(' '.join(sorted(cves)))
+          " 2>/dev/null)
+          if [ -n "$CVE_LIST" ]; then
+            echo "Enriching CVEs: $CVE_LIST"
+            python3 tools/mitre_mapper.py $CVE_LIST --json --offline \
+              > mitre_enrichment.json 2>/dev/null || true
+          else
+            echo '{"results":[]}' > mitre_enrichment.json
+          fi
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nuclei-results-${{ github.run_number }}
+          path: |
+            nuclei_results.json
+            mitre_enrichment.json
+          retention-days: 30
+
+  codeql-scan:
+    name: CodeQL Analysis
+    runs-on: self-hosted
+    timeout-minutes: 60
+    if: >
+      github.event_name == 'workflow_dispatch' &&
+      (github.event.inputs.scan_type == 'codeql' || github.event.inputs.scan_type == 'all')
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create CodeQL database
+        env:
+          SCAN_TARGET: ${{ github.event.inputs.target }}
+        run: |
+          TARGET_PATH="${SCAN_TARGET:-.}"
+          ~/tools/codeql/codeql database create /tmp/codeql_db \
+            --language=python \
+            --source-root="$TARGET_PATH" \
+            --overwrite 2>&1 | tail -5 || true
+
+      - name: Run CodeQL security analysis
+        run: |
+          ~/tools/codeql/codeql database analyze /tmp/codeql_db \
+            python-security \
+            --format=sarif-latest \
+            --output=codeql_results.sarif \
+            --no-print-metrics 2>&1 | tail -10 || true
+
+          python3 -c "
+          import json
+          try:
+              d = json.load(open('codeql_results.sarif'))
+              findings = []
+              for run in d.get('runs',[]):
+                  findings.extend(run.get('results',[]))
+              print(f'CodeQL findings: {len(findings)}')
+              for f in findings[:10]:
+                  rule = f.get('ruleId','?')
+                  msg = f.get('message',{}).get('text','?')[:80]
+                  print(f'  {rule}: {msg}')
+          except Exception as e:
+              print(f'Parse error: {e}')
+          " 2>/dev/null || true
+
+      - name: Upload CodeQL SARIF
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: codeql-sarif-${{ github.run_number }}
+          path: codeql_results.sarif
+          retention-days: 30

@@ -1,0 +1,85 @@
+name: Terminator Pipeline Benchmark
+
+on:
+  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      challenge:
+        description: 'Specific challenge name (leave empty for all)'
+        required: false
+        default: ''
+  # Weekly auto-run: every Monday at 09:00 UTC
+  schedule:
+    - cron: '0 9 * * 1'
+
+jobs:
+  benchmark:
+    name: Run Pipeline Benchmark
+    runs-on: self-hosted
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install --quiet mcp semgrep 2>/dev/null || true
+
+      - name: Run benchmark (all challenges)
+        if: ${{ github.event.inputs.challenge == '' || github.event_name == 'schedule' }}
+        run: |
+          python3 tests/benchmarks/benchmark.py --all 2>&1 | tee benchmark_output.txt
+
+      - name: Run benchmark (single challenge)
+        if: ${{ github.event.inputs.challenge != '' && github.event_name == 'workflow_dispatch' }}
+        env:
+          CHALLENGE_NAME: ${{ github.event.inputs.challenge }}
+        run: |
+          python3 tests/benchmarks/benchmark.py \
+            --challenge "$CHALLENGE_NAME" \
+            --report 2>&1 | tee benchmark_output.txt
+
+      - name: Generate summary report
+        run: |
+          python3 tests/benchmarks/benchmark.py --report 2>&1 | tee summary_output.txt
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: benchmark-results-${{ github.run_number }}
+          path: |
+            tests/benchmarks/results.jsonl
+            tests/benchmarks/summary.json
+            benchmark_output.txt
+            summary_output.txt
+          retention-days: 90
+
+      - name: Post summary to job output
+        if: always()
+        run: |
+          echo "## Benchmark Results" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          cat summary_output.txt >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Check accuracy threshold
+        run: |
+          python3 -c "
+          import json
+          try:
+              d = json.load(open('tests/benchmarks/summary.json'))
+              acc = float(d.get('accuracy_pct', 0))
+              print(f'Pipeline accuracy: {acc}%')
+              if acc < 80.0:
+                  raise SystemExit(f'Accuracy {acc}% below 80% threshold!')
+              print('Accuracy OK')
+          except FileNotFoundError:
+              print('No summary.json — skipping threshold check')
+          "
