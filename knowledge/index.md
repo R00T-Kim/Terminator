@@ -1,29 +1,42 @@
 # Challenge Index
 
-> Template for tracking CTF challenges and Bug Bounty findings. Update dates and stats as you solve challenges.
+> Terminator Knowledge Base. CTF challenges, Bug Bounty findings, techniques.
 
-## Solved CTF Challenges
+## Solved CTF Challenges (20)
 
 | Challenge | Type | Flag | File |
 |-----------|------|------|------|
-| Example Challenge 1 | Reversing | `[FLAG]` | [example1.md](challenges/example1.md) |
-| Example Challenge 2 | Pwn | `[FLAG]` | [example2.md](challenges/example2.md) |
+| dhcc (Level10_1) | Reversing (flex/bison) | `REDACTED` | [level10_1_dhcc.md](challenges/level10_1_dhcc.md) |
+| Too Many Questions | Crypto (AES-ECB) | `REDACTED` | [too_many_questions.md](challenges/too_many_questions.md) |
+| Damnida | Reversing (Custom VM) | `REDACTED` | [damnida.md](challenges/damnida.md) |
+| Conquergent | Reversing (retf VM) | `REDACTED` | [conquergent.md](challenges/conquergent.md) |
+| pwnable.kr fd | Pwn | Solved | [pwnablekr_fd.md](challenges/pwnablekr_fd.md) |
+| pwnable.kr collision | Pwn | Solved | [pwnablekr_col.md](challenges/pwnablekr_col.md) |
+| pwnable.kr horcruxes | Pwn | Solved | [pwnablekr_horcruxes.md](challenges/pwnablekr_horcruxes.md) |
+| pwnable.kr asm | Pwn (shellcode) | Solved | [pwnablekr_asm.md](challenges/pwnablekr_asm.md) |
+| pwnable.kr memcpy | Pwn | Solved | [pwnablekr_memcpy.md](challenges/pwnablekr_memcpy.md) |
+| pwnable.kr passcode | Pwn (GOT overwrite) | Solved | [pwnablekr_passcode.md](challenges/pwnablekr_passcode.md) |
+| pwnable.kr cmd1 | Misc (filter bypass) | Solved | [pwnablekr_cmd1.md](challenges/pwnablekr_cmd1.md) |
+| pwnable.kr cmd2 | Misc (filter bypass) | Solved | [pwnablekr_cmd2.md](challenges/pwnablekr_cmd2.md) |
+| pwnable.kr random | Pwn (PRNG) | Solved | [pwnablekr_random.md](challenges/pwnablekr_random.md) |
+| pwnable.kr input | Pwn (I/O) | Solved | [pwnablekr_input.md](challenges/pwnablekr_input.md) |
+| pwnable.kr input2 | Pwn (I/O) | Solved | [pwnablekr_input2.md](challenges/pwnablekr_input2.md) |
+| pwnable.kr leg | Reversing (ARM) | Solved | [pwnablekr_leg.md](challenges/pwnablekr_leg.md) |
+| pwnable.kr lotto | Misc (logic) | Solved | [pwnablekr_lotto.md](challenges/pwnablekr_lotto.md) |
+| pwnable.kr mistake | Misc (operator precedence) | Solved | [pwnablekr_mistake.md](challenges/pwnablekr_mistake.md) |
+| pwnable.kr coin1 | Misc (binary search) | Solved | [pwnablekr_coin1.md](challenges/pwnablekr_coin1.md) |
+| pwnable.kr blackjack | Misc (logic) | Solved | [pwnablekr_blackjack.md](challenges/pwnablekr_blackjack.md) |
 
-## In Progress
+## In Progress / Failed / Paused
 
 | Challenge | Type | Status | Blocker | File |
 |-----------|------|--------|---------|------|
-| Example WIP | Pwn | Analysis complete | Exploit development | [example_wip.md](challenges/example_wip.md) |
-
-## Failed / Paused
-
-| Challenge | Type | Attempts | Reason | File |
-|-----------|------|----------|--------|------|
-| Example Failed | WASM Reversing | 15+ | Flag output path not found | [example_failed.md](challenges/example_failed.md) |
-
-## Not Attempted
-
-Track challenges you haven't started yet.
+| pwnable.kr hunter | Pwn (Heap UAF) | In Progress | Custom allocator exploit dev | [pwnablekr_hunter.md](challenges/pwnablekr_hunter.md) |
+| unibitmap | Pwn (OOB Read+ROP) | Failed | reversal_map done, solve.py scrapped | [unibitmap.md](challenges/unibitmap.md) |
+| Sand_Message | Pwn (Custom Heap) | Paused | trigger done, chain not started | [sand_message.md](challenges/sand_message.md) |
+| ultrushawasm | Reversing (WASM) | Paused | WASI sh spawn failed | [ultrushawasm.md](challenges/ultrushawasm.md) |
+| Level9_(8) | Pwn (stripped) | Failed | 4 attempts failed, interactive retry needed | [level9_8.md](challenges/level9_8.md) |
+| M | Reversing | Not Started | 379MB binary, analysis pending | [m.md](challenges/m.md) |
 
 ## Techniques Learned
 
@@ -35,46 +48,83 @@ Track challenges you haven't started yet.
 | Bug Bounty report quality guidelines | [techniques/bug_bounty_report_quality.md](techniques/bug_bounty_report_quality.md) |
 | Installed tools reference | [techniques/installed_tools_reference.md](techniques/installed_tools_reference.md) |
 | Offensive MCP servers research | [techniques/offensive_mcp_servers.md](techniques/offensive_mcp_servers.md) |
+| Exploit references (format strings, heap) | [techniques/exploit_references.md](techniques/exploit_references.md) |
+| WASM challenge lessons | [techniques/wasm_challenge_lessons.md](techniques/wasm_challenge_lessons.md) |
+| pwnable.kr Toddler's Bottle lessons | [techniques/toddlers_bottle_lessons.md](techniques/toddlers_bottle_lessons.md) |
 | Web3: Immunefi top payouts & strategy | [techniques/web3_immunefi_top_payouts.md](techniques/web3_immunefi_top_payouts.md) |
 | Web3: DeFi attack taxonomy (60+ vectors) | [techniques/web3_defi_attack_taxonomy.md](techniques/web3_defi_attack_taxonomy.md) |
 | Web3: Smart contract audit methodology | [techniques/web3_audit_methodology.md](techniques/web3_audit_methodology.md) |
 | Web3: Foundry fork PoC methodology | [techniques/web3_foundry_fork_poc.md](techniques/web3_foundry_fork_poc.md) |
+| AI Security Agent Research (Anthropic, kritt.ai) | [techniques/ai_security_agents_research.md](techniques/ai_security_agents_research.md) |
+| Competitor Analysis (CAI, RedAmon, Strix) | [techniques/competitor_analysis.md](techniques/competitor_analysis.md) |
 
 ## Bug Bounty Programs
 
-Track your bug bounty findings here. **All actual findings are kept in private files outside this repository.**
+| Program | Platform | Focus | Status | File |
+|---------|----------|-------|--------|------|
+| USX Protocol | Immunefi | Smart Contract (Scroll L2) | 2 reports ready, pending submission | [immunefi_usx.md](challenges/immunefi_usx.md) |
+| stake.link | Immunefi | Smart Contract (Curve/CCIP) | 1 MEDIUM ready, pending cooldown | `targets/stakelink/submission/` |
+| Vercel AI SDK | HackerOne | AI/MCP/OAuth | CLOSED (2 Dup, 3 Info, $0) | - |
+| NordSecurity | HackerOne | VPN (Linux) | 1 report ready, H1 API blocked | [nordvpn_kill_switch_bypass.md](challenges/nordvpn_kill_switch_bypass.md) |
+| Ubiquiti | HackerOne | EdgeRouter X | 1 report ready, H1 API blocked | [ubiquiti_edgerouter_x.md](challenges/ubiquiti_edgerouter_x.md) |
+| Lovable VDP | HackerOne | Web App | Report strengthened, H1 API blocked | `targets/lovable/submission/` |
+| OPPO | HackerOne | Mobile | Informative (closed) | - |
+| MCP SDK/OAuth | HackerOne | SDK | 2 Informative (closed) | - |
+| Symbiotic | Immunefi | Smart Contract | ABANDONED (0 Critical) | `knowledge/bugbounty/` |
+| Superform | Immunefi | Smart Contract | ABANDONED (1 Medium, not Critical) | `knowledge/bugbounty/` |
+| YieldNest | Immunefi | Smart Contract | ABANDONED (mitigated on-chain) | - |
+| Parallel Protocol | Immunefi | Smart Contract (Angle Transmuter fork) | ABANDONED (V3 clean, all C4 fixes applied) | [parallel_protocol.md](challenges/parallel_protocol.md) |
+| Veda Protocol | Immunefi | Smart Contract (DeFi vault) | KILLED (triager_sim: missing capacity restore not exploitable, theoretical only) | - |
 
-| Program | Platform | Focus | Status | Notes |
-|---------|----------|-------|--------|-------|
-| USX Protocol | Immunefi | Smart Contract (Scroll L2) | B Submitted, A Ready | Report B submitted 2/16, Report A pending cooldown. Deep analysis: 13 leads, 1 High borderline (Finding C). Details: [immunefi_usx.md](challenges/immunefi_usx.md) |
-| Symbiotic Protocol | Immunefi | Smart Contract ($500K max) | ABANDONED | 0 Critical findings. Well-audited by 4 firms, restrictive permissions model. Details: [bugbounty/symbiotic_analysis.md](bugbounty/symbiotic_analysis.md) |
-| Superform | Immunefi | Smart Contract ($250K max) | ABANDONED | 1 Medium finding (previewDepositTo misuse), not Critical-worthy. Details: [bugbounty/superform_analysis.md](bugbounty/superform_analysis.md) |
-| stake.link | Immunefi | Smart Contract ($100K max) | 1 MEDIUM READY (제출 대기) | CCIP zero slippage sandwich on Curve Gauge distribution. Foundry fork PoC confirmed profit-positive (Direction A). 유동성 제약: wstPOL 98.7% locked, 541 free float, flash loan 불가 → Medium ceiling. "Growing risk" 프레이밍. 제출물: `targets/stakelink/submission/` (4 files). Details: [targets/stakelink/submission/immunefi_report.md](../targets/stakelink/submission/immunefi_report.md) |
-| YieldNest | Immunefi | Smart Contract ($200K max) | ABANDONED | 3 findings all mitigated on-chain. Donation attack bootstrap complete (3842 ynETH TVL), dead shares exist. Zokyo audit pre-launch. Details: [targets/yieldnest/vulnerability_analysis.md](../targets/yieldnest/vulnerability_analysis.md) |
-| Example VDP | HackerOne | Web Application | Active | Example entry |
-| Example BBP | HackerOne | API Security | Completed | Example entry |
+### H1 Account Status (2026-02-17)
+- **API 제출 차단**: 계정 레벨 403 (모든 프로그램)
+- **원인**: signal_test 스팸 3건 + informative 6건 + 0 resolved
+- **복구**: H1 support 연락 필요 또는 웹 수동 제출
 
-### Finding Template
+## Pipeline Enhancement Tools (Sprint 2026-02-17)
 
-When you discover a vulnerability:
-- Create detailed notes in `challenges/<target>_<finding>.md`
-- Record analysis process, PoC development, review feedback
-- Track: CWE, CVSS, PoC quality tier, duplicate risk, triager feedback
-- Keep actual reports, target details, and submission materials **private**
+| Tool | Command | Purpose |
+|------|---------|---------|
+| **MITRE Mapper** | `python3 tools/mitre_mapper.py CVE-2024-XXXXX --json` | CVE→CWE→CAPEC→ATT&CK 자동 매핑 |
+| **Attack Graph** | `python3 tools/attack_graph/cli.py ingest\|query\|export` | Neo4j 공격 표면 그래프 (15 노드, 23 관계) |
+| **DAG Orchestrator** | `python3 tools/dag_orchestrator/cli.py run\|visualize <pipeline>` | DAG 기반 에이전트 오케스트레이션 |
+| **Recon Pipeline** | `python3 tools/recon_pipeline.py --target <domain>` | 6-phase 자동 정찰 |
+| **Model Router** | `python3 tools/model_router.py --mode <mode> --question <q>` | LiteLLM 멀티모델 라우팅 |
+| **SARIF Generator** | `python3 tools/sarif_generator.py --input <json> --output <sarif>` | GitHub Code Scanning 호환 SARIF 2.1.0 |
+| **PDF Generator** | `python3 tools/pdf_generator.py --input <md> --output <pdf>` | 보고서 PDF 생성 |
+| **Benchmark** | `python3 tests/benchmarks/benchmark.py --run-all` | 20-CTF 파이프라인 성능 측정 |
 
-### Key Learnings from Bug Bounty Research
+### Docker Infrastructure (`docker compose up -d`)
 
-- Integration test is critical evidence (not just unit PoC)
-- CVSS version varies by program (check policy: 3.1 vs 4.0)
-- Modern V8 prototype pollution is dead (use specific attack scenarios instead)
-- External review cycles prevent submission failures
-- Observational language increases report acceptance
-- PoC quality tiers: only Tier 1-2 should be submitted
-- Duplicate pre-screening is mandatory
-- Target intelligence (GO/NO-GO) prevents wasted effort
+| Service | Port | Purpose |
+|---------|------|---------|
+| db (pgvector) | 5433 | RAG 벡터 DB (호스트 PG와 충돌 방지) |
+| ollama | 11434 | 로컬 임베딩 모델 |
+| rag-api | 8100 | ExploitDB/PoC 지식 검색 API |
+| neo4j | 7474/7687 | 공격 표면 그래프 DB |
+| litellm | 4000 | 멀티모델 프록시 (Claude/Gemini/DeepSeek/Ollama) |
+| web-ui | 3000 | 실시간 대시보드 (`http://100.127.216.114:3000` via Tailscale) |
 
-See [techniques/bug_bounty_report_quality.md](techniques/bug_bounty_report_quality.md) for complete guidelines.
+### MCP Servers (10개)
 
-## Reports Archive
+| MCP | Purpose |
+|-----|---------|
+| mcp-gdb | GDB 디버깅 |
+| radare2-mcp | 바이너리 분석/디컴파일 |
+| pentest-mcp | nmap/gobuster/nikto/john/hashcat |
+| frida-mcp | 동적 계측 |
+| ghidra-mcp | 디컴파일 |
+| context7 | 라이브러리 문서 조회 |
+| playwright | 브라우저 자동화 |
+| nuclei-mcp | 12K+ 취약점 템플릿 스캔 |
+| codeql-mcp | 시맨틱 코드 분석 |
+| semgrep-mcp | 패턴 기반 정적 분석 |
 
-Automated pipeline logs and session reports are kept locally and excluded from git.
+## Key Learnings Summary
+
+- **PoC/Exploit 없으면 절대 제출 금지** (IRON RULE)
+- **로컬 flag 파일은 FAKE** — remote(host, port)에서만 진짜 플래그
+- **Foundry fork > Python simulation** (DeFi)
+- **3라운드 리뷰 필수**: V1(팩트) → V2(프레이밍) → V3(기술약점)
+- **Phase 0 Target Intelligence**: GO/NO-GO 게이트 필수
+- See [techniques/bug_bounty_report_quality.md](techniques/bug_bounty_report_quality.md) for complete guidelines.
