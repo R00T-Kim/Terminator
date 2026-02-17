@@ -250,7 +250,63 @@ p.interactive()  # 또는 flag = p.recvline()
 - API 에러 반복되면 **즉시 OCR 방식으로 전환** (무한 재시도 금지)
 - `broken data stream` 에러 = PNG 구조 깨짐 → PIL로 청크 분석
 
-## Analysis Depth Guidelines (v3.1)
+## ⚠️ Quality-First Analysis Rules (v4 — Olympus DAO 교훈 반영)
+
+### Orchestrator 직접 분석 금지 (Bug Bounty)
+**Orchestrator(Team Lead)가 소스코드를 직접 읽고 분석하는 것은 금지.**
+- Orchestrator는 에이전트를 스폰하고 산출물을 전달하는 역할만 수행
+- 컨트랙트 코드 읽기, 취약점 탐색, 함수 분석 = 반드시 @analyst 또는 @scout에게 위임
+- Orchestrator가 "빠르게 확인"이라는 명목으로 컨트랙트를 직접 읽기 시작하면 **컨텍스트 윈도우를 소비하고 도구를 사용하지 않게 되는 악순환**에 빠짐
+- **예외**: Orchestrator가 에이전트 산출물(reversal_map.md, vulnerability_candidates.md 등)을 읽는 것은 OK
+- **위반 시 결과**: Olympus DAO에서 16개 컨트랙트를 직접 읽고 22개 리드를 발견했으나 전부 LOW — 4시간/$0 낭비
+
+### Quality-over-Quantity 원칙 (IRON RULE)
+```
+❌ 잘못된 접근: 16개 컨트랙트를 Level 0-1로 스킴
+✅ 올바른 접근: 3개 컨트랙트를 Level 2-4로 심층 분석
+```
+- **수동 코드 리뷰 최대 3개 컨트랙트** — 나머지는 자동화 도구(Slither, CodeQL, Semgrep)로 커버
+- 도구 결과에서 HIGH+ 시그널이 나온 컨트랙트만 수동 심층 분석
+- 도구 없이 "눈으로 코드 읽기"만으로는 HIGH/CRITICAL 발견 확률 극히 낮음 (Olympus DAO 증명)
+
+### Tool-First Analysis Gate (DeFi/Smart Contract — MANDATORY)
+analyst/scout에게 위임 시, 다음 도구들이 **코드 수동 리뷰 전에** 실행되어야 함:
+```
+Step 1: Slither (100+ detectors) → 자동 취약점 탐지 결과 수집
+Step 2: Mythril (symbolic execution) → EVM 레벨 경로 탐색
+Step 3: Foundry fork → 온체인 상태 검증 (TVL, 유동성, 풀 밸런스)
+Step 4: Semgrep/CodeQL → 크로스파일 taint tracking
+Step 5: 위 도구 결과에서 HIGH+ 시그널만 수동 심층 분석
+```
+**도구 실행 없이 코드만 읽는 것은 Level 0에 불과.** 에이전트에게 "도구 먼저, 코드 나중" 원칙을 강제.
+
+### ABANDON 방지 체크리스트 (MANDATORY — ABANDON 전 반드시 확인)
+**다음 항목 중 하나라도 미완료면 ABANDON 결정 불가:**
+```
+□ Slither/Mythril 실행 완료? (Smart Contract)
+□ CodeQL/Semgrep 실행 완료? (All targets)
+□ Foundry fork으로 온체인 상태 검증? (DeFi)
+□ Gemini triage 완료? (5K+ LOC)
+□ 최소 Level 2 분석 깊이 도달?
+□ analyst에게 최소 1시간 이상 위임?
+□ 수동 리뷰 대상 ≤ 3개 컨트랙트로 제한?
+```
+**위 체크리스트가 전부 체크되어야만 ABANDON 가능.** Olympus DAO에서는 0개 체크 상태에서 ABANDON → 잘못된 판단.
+
+### 타겟 선택 전략 (DeFi Bug Bounty)
+```
+❌ 잘못된 전략: 가장 큰 바운티 + 가장 유명한 프로토콜 (OHM $3.3M, GMX 등)
+  → 수년간 audited, 수십명의 보안 연구자가 이미 분석, LOW만 남음
+✅ 올바른 전략: 아래 조건 우선
+  1. 최근 출시 (< 6개월) 또는 최근 스코프 확장
+  2. 감사 횟수 ≤ 1회 (미감사 or 1회만)
+  3. 바운티 ≥ $50K (HIGH 이상)
+  4. 새로운 코드가 포함된 fork (원본 감사 범위 밖)
+  5. peripheral/bridge/distributor 등 unaudited 컴포넌트 존재
+```
+**target_evaluator에게 이 기준을 적용하도록 강제.** Audit Count가 3+ 이고 Reports Resolved 100+ 이면 자동 score -3.
+
+## Analysis Depth Guidelines (v4.0 — Quality-First)
 
 ### Gemini CLI 통합 (모든 에이전트 공통)
 - **모델**: `gemini-3-pro-preview` 고정 (변경 금지)
@@ -271,10 +327,12 @@ Level 0: grep 패턴 매칭 (최소 — 단독으로는 불충분)
 Level 1: Gemini triage + Semgrep 자동 스캔 (기본)
 Level 2: CodeQL taint tracking + 3-pass source→sink 역추적 (표준)
 Level 3: Protocol/business logic 분석 + Gemini deep modes (심층)
-Level 4: Smart contract 분석 (Slither/Mythril/Foundry) (Web3 전용)
+Level 4: Smart contract 분석 — Slither + Mythril + Foundry fork (Web3 전용)
 ```
-- **Level 0만으로 "0 findings" 선언 금지** — 최소 Level 2까지 도달해야 ABANDON 결정 가능
+- **⚠️ Level 0-1만으로 "0 findings" 선언 절대 금지** — 최소 Level 2까지 도달해야 ABANDON 결정 가능
+- **⚠️ DeFi 타겟은 Level 4 필수** — Slither/Mythril 없이 ABANDON 불가
 - CodeQL DB 생성 실패 시에도 Semgrep + Gemini triage는 반드시 실행
+- **도구 결과가 clean이어도** 최소 3개 핵심 컨트랙트는 수동 3-pass 역추적 필수
 
 ## Interactive Bug Bounty 파이프라인 (v3 — 리서치 기반 강화)
 
@@ -286,10 +344,18 @@ Level 4: Smart contract 분석 (Slither/Mythril/Foundry) (Web3 전용)
    - **NO-GO** (0-4점): **즉시 중단. 다른 타겟 검토.**
    - Kill Signal 감지 시 즉시 NO-GO (deprecated, OOS, ghost program 등)
 
+### Phase 0.5: Automated Tool Scan (NEW — Quality-First Gate)
+1.5. **scout**가 Slither/Semgrep 자동 스캔 실행 (DeFi 타겟 시):
+   - `slither . --detect reentrancy-eth,arbitrary-send-eth,...` → `slither_results.json`
+   - `myth analyze` → `mythril_results.json`
+   - `semgrep --config auto` → `semgrep_results.json`
+   - **이 결과를 analyst에게 전달** — analyst는 도구 결과부터 분석 시작
+   - 도구 결과 없이 analyst가 코드 읽기 시작하는 것은 금지
+
 ### Phase 1: Discovery (target_evaluator GO 후에만 진행)
 2. 병렬 spawn (Task tool, mode=bypassPermissions):
-   - `scout` → **Phase 0: Duplicate Pre-Screen** + nmap/ffuf + Program Context(MANDATORY) → `recon_report.json` + `program_context.md`
-   - `analyst` → searchsploit, PoC-in-GitHub, 소스코드 분석 → `vulnerability_candidates.md` (각 finding에 **Duplicate Risk** 플래그 포함)
+   - `scout` → **Phase 0: Duplicate Pre-Screen** + nmap/ffuf + Program Context(MANDATORY) + **Automated Tool Scan** → `recon_report.json` + `program_context.md` + `tool_scan_results/`
+   - `analyst` → **도구 결과 먼저 분석** → searchsploit, PoC-in-GitHub, 소스코드 심층 분석 → `vulnerability_candidates.md` (각 finding에 **Duplicate Risk** 플래그 포함)
 
 ### Phase 1.5: Parallel Vulnerability Hunting (Shannon Pattern — 대형 코드베이스 전용)
 선택적 단계. 코드베이스 10K줄+ 또는 monorepo일 때 Orchestrator가 활성화:

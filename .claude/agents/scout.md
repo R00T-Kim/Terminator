@@ -735,6 +735,70 @@ cast call <address> "facets()((address,bytes4[])[])" --rpc-url $RPC_URL 2>/dev/n
 # For on-chain state queries, you need the proxy address.
 ```
 
+### Phase SC-C2: Automated Security Tool Scan (MANDATORY — Quality-First Gate)
+
+**⚠️ 이 Phase는 코드 수동 리뷰 전에 반드시 실행. analyst에게 도구 결과를 전달해야 함.**
+
+```bash
+export PATH="/home/rootk1m/.foundry/bin:$PATH"
+
+# 1. Slither — 100+ automated Solidity detectors
+echo "[SC-C2] Running Slither..."
+slither . --detect reentrancy-eth,reentrancy-no-eth,arbitrary-send-eth,\
+controlled-delegatecall,suicidal,unprotected-upgrade,\
+incorrect-equality,unchecked-transfer,locked-ether,\
+divide-before-multiply,weak-prng,tx-origin \
+--json slither_results.json 2>slither_errors.log || true
+
+# Count findings
+python3 -c "
+import json
+try:
+    data = json.load(open('slither_results.json'))
+    detectors = data.get('results', {}).get('detectors', [])
+    high = sum(1 for d in detectors if d.get('impact') in ['High','Medium'])
+    print(f'[Slither] {len(detectors)} findings ({high} HIGH/MEDIUM)')
+except: print('[Slither] Parse failed — check slither_errors.log')
+" 2>/dev/null
+
+# If Slither fails on imports:
+# slither . --solc-remaps "@openzeppelin=node_modules/@openzeppelin" --json slither_results.json
+# slither . --solc-remaps "@openzeppelin=lib/openzeppelin-contracts/contracts" --json slither_results.json
+
+# 2. Mythril — EVM symbolic execution
+echo "[SC-C2] Running Mythril..."
+# Find main contracts (skip interfaces/libraries)
+find contracts/ src/ -name "*.sol" -not -path "*/interfaces/*" -not -path "*/lib/*" | head -5 | while read sol; do
+    echo "  Analyzing: $sol"
+    myth analyze "$sol" --execution-timeout 120 2>&1 | tee -a mythril_results.txt || true
+done
+
+# 3. Semgrep Solidity rules
+echo "[SC-C2] Running Semgrep..."
+semgrep --config "p/solidity" contracts/ src/ --json > semgrep_sol_results.json 2>/dev/null || true
+python3 -c "
+import json
+try:
+    data = json.load(open('semgrep_sol_results.json'))
+    results = data.get('results', [])
+    print(f'[Semgrep] {len(results)} findings')
+except: print('[Semgrep] No results')
+" 2>/dev/null
+
+# 4. Package results for analyst
+mkdir -p tool_scan_results/
+cp slither_results.json mythril_results.txt semgrep_sol_results.json tool_scan_results/ 2>/dev/null || true
+echo "[SC-C2] Tool scan complete. Results in tool_scan_results/"
+```
+
+**Output**: `tool_scan_results/` directory with:
+- `slither_results.json` — Slither detector findings
+- `mythril_results.txt` — Mythril symbolic execution results
+- `semgrep_sol_results.json` — Semgrep Solidity findings
+
+**HANDOFF to analyst**: analyst는 이 도구 결과를 먼저 분석한 후 수동 코드 리뷰 시작.
+**실패 시**: 도구가 실행 실패해도 에러 로그를 포함하여 analyst에게 전달. analyst가 대안 결정.
+
 ### Phase SC-D: Audit History Discovery (CRITICAL — saves hours)
 ```bash
 # 1. Check if protocol is a FORK of a known protocol

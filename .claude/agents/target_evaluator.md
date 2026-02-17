@@ -202,7 +202,31 @@ cast call <token_addr> "balanceOf(address)(uint256)" <pool_addr> --rpc-url <rpc>
 | Cross-chain components | +1 | CCIP/bridge = timing attack surface |
 | AMM pool imbalance | +1 | >60:40 imbalance = exploitable asymmetry |
 
-## Scoring Rubric (10-point)
+## ⚠️ Target Selection Strategy (v4 — Olympus DAO 교훈)
+
+**잘못된 전략**: 가장 큰 바운티 + 가장 유명한 프로토콜을 선택
+- Olympus DAO ($3.3M Critical): 수년 audited, 16+ contracts, 22 leads → ALL LOW → 4hr/$0
+- GMX V2: 600+ files, heavy audit history → ALL leads dead → 2hr/$0
+
+**올바른 전략**: 아래 "Sweet Spot" 조건을 우선 검색
+```
+SWEET SPOT (highest ROI):
+  ✅ 최근 출시 < 6개월 OR 최근 스코프 확장
+  ✅ 감사 횟수 ≤ 1회
+  ✅ 바운티 ≥ $50K (HIGH 이상)
+  ✅ Fork이면: 새로운 코드 포함 + 원본 감사 범위 밖
+  ✅ Peripheral/bridge/distributor 등 unaudited 컴포넌트 존재
+  ✅ Reports Resolved < 50 (competition 낮음)
+
+AVOID (lowest ROI):
+  ❌ 3+ 감사 완료 (C4 + Sherlock + OZ 등)
+  ❌ Reports Resolved 100+ (이미 picked clean)
+  ❌ 3년+ 운영 프로토콜 (mature codebase)
+  ❌ TVL > $1B (최고 연구자들이 이미 분석)
+  ❌ 전용 보안팀 + 내부 감사 (hardened target)
+```
+
+## Scoring Rubric (10-point — v4 updated)
 
 | # | Factor | +1 Condition | -1 Condition |
 |---|--------|-------------|--------------|
@@ -217,11 +241,24 @@ cast call <token_addr> "balanceOf(address)(uint256)" <pool_addr> --rpc-url <rpc>
 | 9 | Scope Breadth | Multiple repos/assets in scope | Single hardened endpoint |
 | 10 | Past Success | Similar targets yielded bounties | Similar targets yielded $0 |
 
-**Score interpretation**:
+### Audit Density Penalty (NEW — DeFi targets)
+| Condition | Score Adjustment |
+|-----------|-----------------|
+| 0 audits | +2 (unaudited = gold) |
+| 1 audit | +0 (standard) |
+| 2 audits | -1 (well-covered) |
+| 3+ audits | **-3** (heavily picked) |
+| Reports Resolved 100+ | **-2** (crowded) |
+| Reports Resolved 500+ | **-3** (avoid) |
+| Dedicated security team | -1 |
+| Recent scope expansion (< 3 months) | +2 (fresh code!) |
+
+**Score interpretation (adjusted)**:
 - **8-10**: STRONG GO — high-value target, allocate full pipeline
 - **5-7**: CONDITIONAL GO — proceed with limited scope, set token budget
 - **3-4**: WEAK — only proceed if no better targets available
 - **0-2**: NO-GO — do not waste resources
+- **Negative scores possible** after Audit Density Penalty → auto NO-GO
 
 ## Kill Signals (Instant NO-GO)
 
@@ -232,6 +269,8 @@ Any ONE of these = immediate NO-GO:
 - **Ghost Program**: No Hacktivity, no responses, program appears dead
 - **Already Picked Clean**: 500+ resolved reports, top researchers active, low-hanging fruit gone
 - **Our Past Failure**: We tried this exact target before and got $0
+- **Audit Fortress**: 3+ audits (C4+Sherlock+OZ 등) + dedicated security team + 100+ reports resolved (Olympus DAO pattern)
+- **Fork Fully Patched**: Fork of known protocol where ALL audit fixes are applied + no new code added (Parallel Protocol pattern)
 
 ## Caution Signals (CONDITIONAL GO — 사용자 확인 필요)
 
@@ -269,6 +308,17 @@ Save to `target_assessment.md`:
 - [ ] Ghost Program: No
 - [ ] Already Picked Clean: No
 - [ ] Past Failure: No
+- [ ] Audit Fortress: No
+- [ ] Fork Fully Patched: No
+
+## Audit Density Analysis (DeFi targets)
+- **Audit count**: N
+- **Audit firms**: [list]
+- **Reports Resolved**: N
+- **Dedicated security team**: Yes/No
+- **Recent scope expansion**: Yes/No (date)
+- **Audit Density Penalty**: X points
+- **Is fork**: Yes/No → Original: [name] → Fixes applied: All/Some/None
 
 ## Program Details
 - **Platform**: HackerOne / Bugcrowd / Custom
