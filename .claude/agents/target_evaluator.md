@@ -314,3 +314,22 @@ Save to `target_assessment.md`:
 - **No sunk cost** — if it's NO-GO, it's NO-GO. Don't rationalize continuing
 - **Update knowledge** — save assessment for future reference regardless of decision
 - **Err toward NO-GO** — a missed opportunity costs $0, a wasted analysis costs tokens + time
+
+## Infrastructure Integration (Auto-hooks)
+
+### Assessment Start — Past Finding Check
+```bash
+# Check if we've assessed this target before
+python3 tools/infra_client.py db search-findings "$TARGET" 2>/dev/null || true
+# Check past failure patterns for this target type
+python3 tools/infra_client.py db check-failures "$TARGET_TYPE" 2>/dev/null || true
+```
+
+### Assessment Complete — Record Decision
+```bash
+# Log assessment as agent run
+python3 tools/infra_client.py db log-run \
+  --session "$SESSION_ID" --agent target_evaluator \
+  --target "$TARGET" --status "$DECISION" \
+  --summary "Score: $SCORE/10, Decision: $DECISION" 2>/dev/null || true
+```
