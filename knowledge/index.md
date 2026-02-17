@@ -75,6 +75,8 @@
 | YieldNest | Immunefi | Smart Contract | ABANDONED (mitigated on-chain) | - |
 | Parallel Protocol | Immunefi | Smart Contract (Angle Transmuter fork) | ABANDONED (V3 clean, all C4 fixes applied) | [parallel_protocol.md](challenges/parallel_protocol.md) |
 | Veda Protocol | Immunefi | Smart Contract (DeFi vault) | KILLED (triager_sim: missing capacity restore not exploitable, theoretical only) | - |
+| Olympus DAO | Immunefi | Smart Contract (OHM/gOHM) | ABANDONED (16 contracts, 22 leads, 0 HIGH/CRITICAL. Mature codebase.) | - |
+| GMX V2 | Immunefi | Smart Contract (Perp DEX) | ABANDONED (all leads dead) | - |
 
 ### H1 Account Status (2026-02-17)
 - **API 제출 차단**: 계정 레벨 403 (모든 프로그램)
