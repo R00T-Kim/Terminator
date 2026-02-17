@@ -4,8 +4,9 @@
 
 1. **CTF 문제를 풀 때 반드시 Agent Teams를 사용하라.**
    - 직접 풀지 말고 TeamCreate → @reverser → @trigger → @chain → @verifier → @reporter 순서로 에이전트를 spawn하라.
-   - 각 에이전트는 subagent_type="general-purpose", mode="bypassPermissions", name="<역할명>"으로 spawn.
-   - **스폰 전 반드시 `.claude/agents/<역할명>.md`를 Read로 읽어서 에이전트 정의를 프롬프트에 포함하라.**
+   - 각 에이전트는 `.claude/agents/<역할명>.md`에 정의된 커스텀 에이전트를 사용하여 spawn.
+   - **스폰 방법**: `Task(subagent_type="<역할명>", mode="bypassPermissions", name="<역할명>", team_name="<팀이름>")` — 예: `subagent_type="reverser"`, `subagent_type="exploiter"` 등
+   - **general-purpose 사용 금지** — 반드시 `.claude/agents/`에 정의된 커스텀 에이전트 타입을 사용할 것
    - 절대 혼자서 r2, gdb, python 등을 직접 돌리며 풀이하지 마라.
    - **예외: Trivial 문제는 직접 풀어도 된다.** 아래 조건을 **모두** 만족하면 Agent Teams 없이 직접 풀이:
      - 소스코드가 제공되고 취약점이 1줄~3줄 내에 보임
@@ -160,32 +161,32 @@ TeamCreate("ctf-<challenge_name>")
 - 에이전트 산출물을 한 문단 요약으로 받아서 다음 에이전트에게 전달
 - 충돌/실패 시 해당 단계를 재실행하거나 이전 단계로 피드백
 
-**① @reverser** (subagent_type=general-purpose, mode=bypassPermissions):
+**① @reverser** (subagent_type="reverser", mode=bypassPermissions):
 - 바이너리 구조, 입력 경로, 보호기법, 핵심 함수, 관측 포인트 분석
 - 산출물: `reversal_map.md` (익스플로이터가 바로 쓸 수 있는 공격 지도)
 
-**② @trigger** (subagent_type=general-purpose, mode=bypassPermissions):
+**② @trigger** (subagent_type="trigger", mode=bypassPermissions):
 - reversal_map.md를 읽고 크래시/이상동작 탐색
 - 최소 재현 입력 생성, 조건 고정, raw 프리미티브 식별
 - 산출물: `trigger_report.md` + `trigger_poc.py`
 
-**③ @chain** (subagent_type=general-purpose, mode=bypassPermissions):
+**③ @chain** (subagent_type="chain", mode=bypassPermissions):
 - trigger_report.md를 읽고 프리미티브 확장
 - leak → overwrite → shell/flag 체인 조립
 - 산출물: `chain_report.md` + `solve.py`
 
-**④ @critic** (subagent_type=general-purpose, mode=bypassPermissions):
+**④ @critic** (subagent_type="critic", mode=bypassPermissions):
 - solve.py + reversal_map.md + chain_report.md 등 전체 산출물 교차 검증
 - 주소/오프셋/상수를 r2/gdb로 독립 검증, 논리 오류/누락 탐지
 - APPROVED → verifier 진행 / REJECTED → 구체적 수정사항과 함께 chain/solver에게 피드백
 - 산출물: `critic_review.md`
 
-**⑤ @verifier** (subagent_type=general-purpose, mode=bypassPermissions):
+**⑤ @verifier** (subagent_type="verifier", mode=bypassPermissions):
 - critic APPROVED 후 solve.py를 로컬 3회 재현 검증 (PASS/RETRY/FAIL)
 - PASS → remote(host, port)로 원격 실행 → `FLAG_FOUND: <flag>`
 - FAIL → 실패 원인 분석, Orchestrator가 ②나 ③을 재실행
 
-**⑥ @reporter** (subagent_type=general-purpose, mode=bypassPermissions):
+**⑥ @reporter** (subagent_type="reporter", mode=bypassPermissions):
 - 검증 통과 후 knowledge/challenges/<name>.md 작성
 - 재현 단계, 핵심 기법, 실패한 시도 포함
 

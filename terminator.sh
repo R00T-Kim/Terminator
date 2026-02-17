@@ -3,23 +3,45 @@
 # Uses Claude Code with bypassPermissions for fully autonomous operation
 #
 # Usage:
-#   ./terminator.sh ctf /path/to/challenge.zip    (zip or directory)
-#   ./terminator.sh bounty https://target.com "*.target.com"
+#   ./terminator.sh [--json] [--timeout N] [--dry-run] ctf /path/to/challenge.zip
+#   ./terminator.sh [--json] [--timeout N] [--dry-run] bounty https://target.com "*.target.com"
 #   ./terminator.sh firmware /path/to/firmware.bin
 #   ./terminator.sh status                         (check running sessions)
 #   ./terminator.sh logs                           (tail latest session log)
 
 set -euo pipefail
 
+# Exit codes
+EXIT_CLEAN=0
+EXIT_CRITICAL=1
+EXIT_HIGH=2
+EXIT_MEDIUM=3
+EXIT_ERROR=10
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-MODE="${1:-help}"
-TARGET="${2:-}"
-SCOPE="${3:-}"
 MODEL="${TERMINATOR_MODEL:-sonnet}"
 TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
 REPORT_DIR="$SCRIPT_DIR/reports/$TIMESTAMP"
 PID_FILE="$SCRIPT_DIR/.terminator.pid"
 LOG_FILE="$SCRIPT_DIR/.terminator.log"
+
+# --- Parse global flags ---
+JSON_OUTPUT=false
+TIMEOUT=0
+DRY_RUN=false
+
+while [[ "${1:-}" == --* ]]; do
+  case "$1" in
+    --json) JSON_OUTPUT=true; shift ;;
+    --timeout) TIMEOUT="$2"; shift 2 ;;
+    --dry-run) DRY_RUN=true; shift ;;
+    *) break ;;
+  esac
+done
+
+MODE="${1:-help}"
+TARGET="${2:-}"
+SCOPE="${3:-}"
 
 # --- Helper functions ---
 
@@ -44,36 +66,177 @@ extract_if_zip() {
   fi
 }
 
+generate_summary() {
+  local report_dir="$1"
+  local mode="$2"
+  local target="$3"
+  local start_ts="$4"
+  local exit_code="$5"
+  local status="$6"
+
+  local end_ts
+  end_ts="$(date +%s)"
+  local duration=$(( end_ts - start_ts ))
+
+  local iso_ts
+  iso_ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+  # Count flags
+  local flags_json="[]"
+  if [ -f "$report_dir/flags.txt" ]; then
+    flags_json="$(python3 -c "
+import json, sys
+lines = open('$report_dir/flags.txt').read().strip().splitlines()
+flags = [l.strip() for l in lines if l.strip()]
+print(json.dumps(flags))
+" 2>/dev/null || echo '[]')"
+  fi
+
+  # Count findings by severity from session.log
+  local cnt_critical=0 cnt_high=0 cnt_medium=0 cnt_low=0 cnt_info=0
+  if [ -f "$report_dir/session.log" ]; then
+    cnt_critical=$(grep -c '\[CRITICAL\]' "$report_dir/session.log" 2>/dev/null || true)
+    cnt_high=$(grep -c '\[HIGH\]' "$report_dir/session.log" 2>/dev/null || true)
+    cnt_medium=$(grep -c '\[MEDIUM\]' "$report_dir/session.log" 2>/dev/null || true)
+    cnt_low=$(grep -c '\[LOW\]' "$report_dir/session.log" 2>/dev/null || true)
+    cnt_info=$(grep -c '\[INFO\]' "$report_dir/session.log" 2>/dev/null || true)
+  fi
+
+  # List generated files
+  local files_json
+  files_json="$(python3 -c "
+import json, os
+files = []
+report_dir = '$report_dir'
+try:
+    for f in os.listdir(report_dir):
+        fpath = os.path.join(report_dir, f)
+        if os.path.isfile(fpath):
+            files.append(f)
+except Exception:
+    pass
+print(json.dumps(sorted(files)))
+" 2>/dev/null || echo '[]')"
+
+  python3 -c "
+import json
+summary = {
+    'timestamp': '$iso_ts',
+    'mode': '$mode',
+    'target': '$target',
+    'duration_seconds': $duration,
+    'exit_code': $exit_code,
+    'flags_found': $flags_json,
+    'findings': {
+        'critical': $cnt_critical,
+        'high': $cnt_high,
+        'medium': $cnt_medium,
+        'low': $cnt_low,
+        'info': $cnt_info
+    },
+    'files_generated': $files_json,
+    'status': '$status'
+}
+print(json.dumps(summary, indent=2))
+" > "$report_dir/summary.json" 2>/dev/null || true
+
+  # Auto-generate SARIF + PDF reports
+  python3 "$SCRIPT_DIR/tools/report_generator.py" \
+    --report-dir "$report_dir" --all 2>/dev/null || true
+}
+
+determine_exit_code() {
+  local report_dir="$1"
+  local exit_code=$EXIT_CLEAN
+
+  if [ -f "$report_dir/session.log" ]; then
+    if grep -q '\[CRITICAL\]' "$report_dir/session.log" 2>/dev/null; then
+      exit_code=$EXIT_CRITICAL
+    elif grep -q '\[HIGH\]' "$report_dir/session.log" 2>/dev/null; then
+      exit_code=$EXIT_HIGH
+    elif grep -q '\[MEDIUM\]' "$report_dir/session.log" 2>/dev/null; then
+      exit_code=$EXIT_MEDIUM
+    fi
+  fi
+
+  echo "$exit_code"
+}
+
 # --- Main ---
 
 case "$MODE" in
   ctf)
     if [ -z "$TARGET" ]; then
       echo "Usage: ./terminator.sh ctf /path/to/challenge[.zip]"
-      exit 1
+      exit $EXIT_ERROR
     fi
 
     CHALLENGE_DIR="$(extract_if_zip "$(realpath "$TARGET")")"
     FILES=$(ls -1 "$CHALLENGE_DIR" 2>/dev/null | head -30)
     mkdir -p "$REPORT_DIR"
 
-    echo "╔══════════════════════════════════════════╗"
-    echo "║        TERMINATOR - CTF Mode             ║"
-    echo "╠══════════════════════════════════════════╣"
-    echo "║ Challenge: $(basename "$CHALLENGE_DIR")"
-    echo "║ Files:     $FILES"
-    echo "║ Model:     $MODEL"
-    echo "║ Report:    $REPORT_DIR"
-    echo "║ Log:       $REPORT_DIR/session.log"
-    echo "╠══════════════════════════════════════════╣"
-    echo "║ Running in background...                 ║"
-    echo "║ Monitor:  tail -f $REPORT_DIR/session.log"
-    echo "║ Status:   ./terminator.sh status         ║"
-    echo "╚══════════════════════════════════════════╝"
+    if [ "$DRY_RUN" = true ]; then
+      if [ "$JSON_OUTPUT" = true ]; then
+        python3 -c "
+import json
+plan = {
+    'dry_run': True,
+    'mode': 'ctf',
+    'target': '$CHALLENGE_DIR',
+    'model': '$MODEL',
+    'report_dir': '$REPORT_DIR',
+    'timeout': $TIMEOUT,
+    'steps': [
+        'extract_if_zip',
+        'spawn_reverser_agent',
+        'spawn_chain_agent',
+        'spawn_verifier_agent',
+        'spawn_reporter_agent',
+        'generate_summary'
+    ]
+}
+print(json.dumps(plan, indent=2))
+"
+      else
+        echo "[DRY-RUN] CTF mode"
+        echo "  Challenge: $CHALLENGE_DIR"
+        echo "  Files:     $FILES"
+        echo "  Model:     $MODEL"
+        echo "  Report:    $REPORT_DIR"
+        echo "  Timeout:   ${TIMEOUT}s (0=none)"
+        echo "  Would run: claude -p <prompt> --permission-mode bypassPermissions --model $MODEL"
+      fi
+      exit $EXIT_CLEAN
+    fi
+
+    if [ "$JSON_OUTPUT" = false ]; then
+      echo "╔══════════════════════════════════════════╗"
+      echo "║        TERMINATOR - CTF Mode             ║"
+      echo "╠══════════════════════════════════════════╣"
+      echo "║ Challenge: $(basename "$CHALLENGE_DIR")"
+      echo "║ Files:     $FILES"
+      echo "║ Model:     $MODEL"
+      echo "║ Report:    $REPORT_DIR"
+      echo "║ Log:       $REPORT_DIR/session.log"
+      echo "╠══════════════════════════════════════════╣"
+      echo "║ Running in background...                 ║"
+      echo "║ Monitor:  tail -f $REPORT_DIR/session.log"
+      echo "║ Status:   ./terminator.sh status         ║"
+      echo "╚══════════════════════════════════════════╝"
+    fi
+
+    START_TS="$(date +%s)"
+
+    # Build claude command (with optional timeout wrapper)
+    CLAUDE_CMD="claude -p"
+    if [ "$TIMEOUT" -gt 0 ] 2>/dev/null; then
+      CLAUDE_CMD="timeout $TIMEOUT claude -p"
+    fi
 
     # Run in background with nohup
     nohup bash -c "
-      claude -p \"$(cat <<PROMPT
+      START_TS=$START_TS
+      $CLAUDE_CMD \"$(cat <<PROMPT
 You are Terminator Team Lead. Use Claude Code Agent Teams to solve this CTF challenge.
 
 Challenge directory: $CHALLENGE_DIR
@@ -110,6 +273,7 @@ STEP 4: Collect results
 Flag formats: DH{...}, FLAG{...}, flag{...}, CTF{...}, GoN{...}, CYAI{...}
 PROMPT
 )\" --permission-mode bypassPermissions --model \"$MODEL\" 2>&1 | tee \"$REPORT_DIR/session.log\"
+      CLAUDE_EXIT=\${PIPESTATUS[0]}
 
       # Post-processing
       echo '' >> \"$REPORT_DIR/session.log\"
@@ -126,40 +290,106 @@ PROMPT
         echo 'NO FLAGS FOUND' >> \"$REPORT_DIR/session.log\"
       fi
 
+      # Determine exit code based on findings
+      FINAL_EXIT=\$(bash $SCRIPT_DIR/terminator.sh _exit_code $REPORT_DIR 2>/dev/null || echo 0)
+      echo \"\$FINAL_EXIT\" > \"$REPORT_DIR/exit_code\"
+
+      # Determine status
+      SESSION_STATUS='completed'
+      if [ \"\$CLAUDE_EXIT\" -eq 124 ] 2>/dev/null; then
+        SESSION_STATUS='timeout'
+      elif [ \"\$CLAUDE_EXIT\" -ne 0 ] 2>/dev/null; then
+        SESSION_STATUS='failed'
+      fi
+
+      # Generate summary.json
+      bash $SCRIPT_DIR/terminator.sh _summary $REPORT_DIR ctf '$CHALLENGE_DIR' \$START_TS \$FINAL_EXIT \$SESSION_STATUS 2>/dev/null || true
+
       rm -f \"$PID_FILE\"
     " > "$LOG_FILE" 2>&1 &
 
     BGPID=$!
     echo "$BGPID" > "$PID_FILE"
     echo "$BGPID $REPORT_DIR $TIMESTAMP ctf" >> "$SCRIPT_DIR/.terminator.history"
-    echo ""
-    echo "[*] PID: $BGPID"
-    echo "[*] To monitor: tail -f $REPORT_DIR/session.log"
+
+    if [ "$JSON_OUTPUT" = true ]; then
+      echo "$REPORT_DIR/summary.json"
+    else
+      echo ""
+      echo "[*] PID: $BGPID"
+      echo "[*] To monitor: tail -f $REPORT_DIR/session.log"
+    fi
     ;;
 
   bounty)
     if [ -z "$TARGET" ]; then
       echo "Usage: ./terminator.sh bounty https://target.com [scope]"
-      exit 1
+      exit $EXIT_ERROR
     fi
 
     SCOPE="${SCOPE:-$TARGET}"
     mkdir -p "$REPORT_DIR"
 
-    echo "╔══════════════════════════════════════════╗"
-    echo "║     TERMINATOR - Bug Bounty Mode         ║"
-    echo "╠══════════════════════════════════════════╣"
-    echo "║ Target:  $TARGET"
-    echo "║ Scope:   $SCOPE"
-    echo "║ Model:   $MODEL"
-    echo "║ Report:  $REPORT_DIR"
-    echo "╠══════════════════════════════════════════╣"
-    echo "║ Running in background...                 ║"
-    echo "║ Monitor:  tail -f $REPORT_DIR/session.log"
-    echo "╚══════════════════════════════════════════╝"
+    if [ "$DRY_RUN" = true ]; then
+      if [ "$JSON_OUTPUT" = true ]; then
+        python3 -c "
+import json
+plan = {
+    'dry_run': True,
+    'mode': 'bounty',
+    'target': '$TARGET',
+    'scope': '$SCOPE',
+    'model': '$MODEL',
+    'report_dir': '$REPORT_DIR',
+    'timeout': $TIMEOUT,
+    'steps': [
+        'spawn_target_evaluator',
+        'spawn_scout_analyst_parallel',
+        'spawn_exploiter',
+        'spawn_reporter',
+        'spawn_critic_architect',
+        'spawn_triager_sim',
+        'generate_summary'
+    ]
+}
+print(json.dumps(plan, indent=2))
+"
+      else
+        echo "[DRY-RUN] Bug Bounty mode"
+        echo "  Target:  $TARGET"
+        echo "  Scope:   $SCOPE"
+        echo "  Model:   $MODEL"
+        echo "  Report:  $REPORT_DIR"
+        echo "  Timeout: ${TIMEOUT}s (0=none)"
+        echo "  Would run: claude -p <prompt> --permission-mode bypassPermissions --model $MODEL"
+      fi
+      exit $EXIT_CLEAN
+    fi
+
+    if [ "$JSON_OUTPUT" = false ]; then
+      echo "╔══════════════════════════════════════════╗"
+      echo "║     TERMINATOR - Bug Bounty Mode         ║"
+      echo "╠══════════════════════════════════════════╣"
+      echo "║ Target:  $TARGET"
+      echo "║ Scope:   $SCOPE"
+      echo "║ Model:   $MODEL"
+      echo "║ Report:  $REPORT_DIR"
+      echo "╠══════════════════════════════════════════╣"
+      echo "║ Running in background...                 ║"
+      echo "║ Monitor:  tail -f $REPORT_DIR/session.log"
+      echo "╚══════════════════════════════════════════╝"
+    fi
+
+    START_TS="$(date +%s)"
+
+    CLAUDE_CMD="claude -p"
+    if [ "$TIMEOUT" -gt 0 ] 2>/dev/null; then
+      CLAUDE_CMD="timeout $TIMEOUT claude -p"
+    fi
 
     nohup bash -c "
-      claude -p \"$(cat <<PROMPT
+      START_TS=$START_TS
+      $CLAUDE_CMD \"$(cat <<PROMPT
 You are Terminator Team Lead. Use Claude Code Agent Teams for this security assessment.
 
 Target: $TARGET
@@ -205,17 +435,39 @@ STEP 4: Collect results, verify all tasks completed, shutdown team.
 SAFETY: Authorized target only. Benign payloads. No destructive actions.
 PROMPT
 )\" --permission-mode bypassPermissions --model \"$MODEL\" 2>&1 | tee \"$REPORT_DIR/session.log\"
+      CLAUDE_EXIT=\${PIPESTATUS[0]}
 
       echo '=== SESSION COMPLETE ===' >> \"$REPORT_DIR/session.log\"
+
+      # Determine exit code based on findings
+      FINAL_EXIT=\$(bash $SCRIPT_DIR/terminator.sh _exit_code $REPORT_DIR 2>/dev/null || echo 0)
+      echo \"\$FINAL_EXIT\" > \"$REPORT_DIR/exit_code\"
+
+      # Determine status
+      SESSION_STATUS='completed'
+      if [ \"\$CLAUDE_EXIT\" -eq 124 ] 2>/dev/null; then
+        SESSION_STATUS='timeout'
+      elif [ \"\$CLAUDE_EXIT\" -ne 0 ] 2>/dev/null; then
+        SESSION_STATUS='failed'
+      fi
+
+      # Generate summary.json
+      bash $SCRIPT_DIR/terminator.sh _summary $REPORT_DIR bounty '$TARGET' \$START_TS \$FINAL_EXIT \$SESSION_STATUS 2>/dev/null || true
+
       rm -f \"$PID_FILE\"
     " > "$LOG_FILE" 2>&1 &
 
     BGPID=$!
     echo "$BGPID" > "$PID_FILE"
     echo "$BGPID $REPORT_DIR $TIMESTAMP bounty" >> "$SCRIPT_DIR/.terminator.history"
-    echo ""
-    echo "[*] PID: $BGPID"
-    echo "[*] To monitor: tail -f $REPORT_DIR/session.log"
+
+    if [ "$JSON_OUTPUT" = true ]; then
+      echo "$REPORT_DIR/summary.json"
+    else
+      echo ""
+      echo "[*] PID: $BGPID"
+      echo "[*] To monitor: tail -f $REPORT_DIR/session.log"
+    fi
     ;;
 
   firmware)
@@ -575,6 +827,35 @@ PROMPT
     echo "[*] To monitor: tail -f $REPORT_DIR/session.log"
     ;;
 
+  # Internal subcommands (used by nohup post-processing blocks)
+  _exit_code)
+    REPORT_DIR_ARG="${2:-}"
+    if [ -n "$REPORT_DIR_ARG" ] && [ -f "$REPORT_DIR_ARG/session.log" ]; then
+      if grep -q '\[CRITICAL\]' "$REPORT_DIR_ARG/session.log" 2>/dev/null; then
+        echo $EXIT_CRITICAL
+      elif grep -q '\[HIGH\]' "$REPORT_DIR_ARG/session.log" 2>/dev/null; then
+        echo $EXIT_HIGH
+      elif grep -q '\[MEDIUM\]' "$REPORT_DIR_ARG/session.log" 2>/dev/null; then
+        echo $EXIT_MEDIUM
+      else
+        echo $EXIT_CLEAN
+      fi
+    else
+      echo $EXIT_CLEAN
+    fi
+    ;;
+
+  _summary)
+    # Internal: _summary <report_dir> <mode> <target> <start_ts> <exit_code> <status>
+    S_REPORT_DIR="${2:-}"
+    S_MODE="${3:-unknown}"
+    S_TARGET="${4:-}"
+    S_START_TS="${5:-0}"
+    S_EXIT_CODE="${6:-0}"
+    S_STATUS="${7:-completed}"
+    generate_summary "$S_REPORT_DIR" "$S_MODE" "$S_TARGET" "$S_START_TS" "$S_EXIT_CODE" "$S_STATUS"
+    ;;
+
   status)
     if [ -f "$PID_FILE" ]; then
       PID=$(cat "$PID_FILE")
@@ -610,20 +891,34 @@ PROMPT
     echo "Terminator - Autonomous Security Agent"
     echo ""
     echo "Usage:"
-    echo "  ./terminator.sh ctf /path/to/challenge[.zip]   Solve a CTF challenge"
-    echo "  ./terminator.sh bounty <url> [scope]            Bug bounty assessment"
-    echo "  ./terminator.sh firmware /path/to/firmware.bin  Firmware pipeline"
-    echo "  ./terminator.sh status                          Check running session"
-    echo "  ./terminator.sh logs                            Tail latest session log"
+    echo "  ./terminator.sh [OPTIONS] ctf /path/to/challenge[.zip]   Solve a CTF challenge"
+    echo "  ./terminator.sh [OPTIONS] bounty <url> [scope]            Bug bounty assessment"
+    echo "  ./terminator.sh firmware /path/to/firmware.bin            Firmware pipeline"
+    echo "  ./terminator.sh status                                     Check running session"
+    echo "  ./terminator.sh logs                                       Tail latest session log"
+    echo ""
+    echo "Options:"
+    echo "  --json         Suppress banner; print summary.json path on completion"
+    echo "  --timeout N    Abort session after N seconds (0 = no limit)"
+    echo "  --dry-run      Print execution plan without running claude"
     echo ""
     echo "Environment:"
     echo "  TERMINATOR_MODEL   Model to use (default: sonnet)"
     echo ""
+    echo "Exit Codes:"
+    echo "  0   Clean (no findings or CTF solved)"
+    echo "  1   Critical severity finding"
+    echo "  2   High severity finding"
+    echo "  3   Medium severity finding"
+    echo "  10  Script error"
+    echo ""
     echo "Reports: ./reports/<timestamp>/"
-    echo "  session.log    Full session transcript"
+    echo "  session.log            Full session transcript"
+    echo "  summary.json           Machine-readable session summary"
+    echo "  exit_code              Numeric exit code based on findings"
     echo "  firmware_handoff.json  Firmware machine-readable handoff"
     echo "  firmware_summary.md    Firmware analysis summary"
-    echo "  writeup.md     Challenge writeup"
-    echo "  flags.txt      Extracted flags (if found)"
+    echo "  writeup.md             Challenge writeup"
+    echo "  flags.txt              Extracted flags (if found)"
     ;;
 esac

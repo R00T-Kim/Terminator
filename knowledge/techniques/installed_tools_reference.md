@@ -209,6 +209,9 @@ nuclei -u https://target.com -t ~/custom-templates/ -jsonl-export results.jsonl
 | **ghidra-mcp** | list_functions, get_pseudocode | Decompilation |
 | **context7** | resolve-library-id, query-docs | Documentation lookup |
 | **playwright** | browser automation | Web app testing |
+| **nuclei-mcp** | nuclei_scan, template_search | 12K+ 취약점 템플릿 스캔 |
+| **codeql-mcp** | create_db, analyze, run_query | 시맨틱 taint tracking |
+| **semgrep-mcp** | scan, rule_search | 패턴 기반 정적 분석 |
 
 ---
 
@@ -327,6 +330,114 @@ myth analyze contracts/Target.sol --execution-timeout 600 --max-depth 50
 # From bytecode (on-chain)
 myth analyze -a 0xContractAddress --rpc infura_url
 ```
+
+## Pipeline Enhancement Tools (Sprint 2026-02-17)
+
+### MITRE CVE→ATT&CK Mapper
+```bash
+# CVE 조회 → CWE → CAPEC → ATT&CK 기법 매핑
+python3 tools/mitre_mapper.py CVE-2021-44228 --json
+python3 tools/mitre_mapper.py CVE-2024-XXXXX          # 텍스트 출력
+# 오프라인 캐시 23개 주요 CVE 내장, NVD API 2.0 fallback
+```
+
+### Neo4j Attack Surface Graph
+```bash
+# Neo4j 필요: docker compose up -d neo4j
+# 정찰 결과 밀어넣기
+python3 tools/attack_graph/cli.py ingest recon_report.json
+# 공격 경로 쿼리
+python3 tools/attack_graph/cli.py query attack-chains --target example.com
+# 크로스세션 지식
+python3 tools/attack_graph/cli.py query cross-session
+# JSON 내보내기/가져오기
+python3 tools/attack_graph/cli.py export --output graph_backup.json
+python3 tools/attack_graph/cli.py import --input graph_backup.json
+```
+노드 15종: Target, Domain, Subdomain, IPAddress, Port, Service, Technology, Endpoint, Vulnerability, CAPEC, Exploit, Finding, Credential, Certificate, Agent
+관계 23종: HAS_DOMAIN, RESOLVES_TO, RUNS_SERVICE, HAS_VULNERABILITY 등
+
+### DAG Agent Orchestrator
+```bash
+# 파이프라인 시각화
+python3 tools/dag_orchestrator/cli.py visualize ctf_pwn
+python3 tools/dag_orchestrator/cli.py visualize bounty
+# 사전 정의 파이프라인: ctf_pwn(6), ctf_rev(5), bounty(9), firmware(6)
+# dry-run
+python3 tools/dag_orchestrator/cli.py run ctf_pwn --dry-run
+```
+
+### 6-Phase Recon Pipeline
+```bash
+# 풀 스캔
+python3 tools/recon_pipeline.py --target example.com --output /tmp/recon
+# 특정 phase만
+python3 tools/recon_pipeline.py --target example.com --phases 1,2,3
+# OSS 모드 (네트워크 스캔 스킵)
+python3 tools/recon_pipeline.py --target example.com --oss
+# Phase: 1(Domain) → 2(Port) → 3(HTTP) → 4(Enum) → 5(Vuln) → 6(MITRE)
+```
+
+### LiteLLM Model Router
+```bash
+# LiteLLM 프록시 필요: docker compose up -d litellm
+python3 tools/model_router.py --mode analyze --question "Is this SQL injectable?" --file src/api.py
+python3 tools/model_router.py --mode triage --question "Rate severity" --role analyst
+python3 tools/model_router.py --mode summarize-dir --dir ./src
+# 모드: reverse, analyze, triage, summarize, protocol, bizlogic, summarize-dir, review, ask
+```
+
+### SARIF Generator (GitHub Code Scanning)
+```bash
+python3 tools/sarif_generator.py --input findings.json --output results.sarif
+# findings.json 형식: [{"id":"...", "name":"...", "severity":"high", ...}]
+# GitHub Actions에서: gh api repos/{owner}/{repo}/code-scanning/sarifs -X POST
+```
+
+### PDF Report Generator
+```bash
+# weasyprint 설치 시
+python3 tools/pdf_generator.py --input report.md --output report.pdf
+# HTML fallback (weasyprint 없을 때)
+python3 tools/pdf_generator.py --input report.md --output report.html --html-only
+# 템플릿: full (Executive Summary 포함), minimal (findings만)
+python3 tools/pdf_generator.py --input report.md --output report.pdf --template minimal
+```
+
+### Benchmark Framework
+```bash
+# 전체 벤치마크 (20 CTF)
+python3 tests/benchmarks/benchmark.py --run-all
+# 특정 챌린지
+python3 tests/benchmarks/benchmark.py --challenge dhcc
+# 결과: metrics JSON + 정확도 리포트
+```
+
+### Docker Infrastructure
+```bash
+# 전체 기동
+cd /home/rootk1m/01_CYAI_Lab/01_Projects/Terminator
+docker compose up -d
+
+# 개별 서비스
+docker compose up -d db neo4j     # DB만
+docker compose up -d web-ui       # 대시보드만
+
+# Health check
+curl localhost:3000               # Web UI
+curl localhost:8100/health        # RAG API
+curl localhost:7474               # Neo4j Browser
+curl localhost:4000/health        # LiteLLM
+
+# 원격 접속 (Tailscale VPN 경유)
+# http://100.127.216.114:3000      # Web Dashboard
+# http://100.127.216.114:7474      # Neo4j Browser (neo4j / terminator)
+# http://100.127.216.114:8100      # RAG API
+# http://100.127.216.114:11434     # Ollama
+# DB: 100.127.216.114:5433 (호스트 PG 충돌 방지로 5433)
+```
+
+---
 
 ## Needs sudo
 
