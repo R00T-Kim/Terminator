@@ -281,13 +281,12 @@ docker compose up -d
 
 ### CTF Challenges — 20 Solved
 
-| Challenge | Type | Technique |
-|:----------|:-----|:----------|
-| dhcc | Reversing (flex/bison) | DFA table extraction + BFS |
-| Too Many Questions | Crypto (AES-ECB) | z3 constraint solving |
-| Damnida | Reversing (Custom VM) | GDB Oracle — memory patch + trace |
-| Conquergent | Reversing (retf VM) | 3-stage cipher, x86 mode switching |
-| pwnable.kr (16) | Pwn / Misc | fd, collision, passcode, asm, leg, input, ... |
+| Category | Count | Techniques Used |
+|:---------|:-----:|:----------------|
+| Pwn (heap, stack, ROP) | 10 | pwntools, ROP chains, GOT overwrite, shellcode |
+| Reversing (VM, obfuscation) | 6 | GDB Oracle, DFA extraction, z3, custom VM analysis |
+| Crypto | 2 | AES-ECB, z3 constraint solving |
+| Misc (logic, filter bypass) | 2 | Operator precedence, binary search |
 
 ### Bug Bounty — 12+ Programs Assessed
 
