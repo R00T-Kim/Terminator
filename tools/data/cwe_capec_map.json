@@ -1,0 +1,361 @@
+{
+  "meta": {
+    "version": "1.0.0",
+    "description": "CWE→CAPEC→ATT&CK mapping for Terminator MITRE enrichment",
+    "sources": ["MITRE CWE", "MITRE CAPEC", "MITRE ATT&CK"],
+    "last_updated": "2026-02-17"
+  },
+  "cwe_to_capec": {
+    "CWE-79": [
+      {"capec_id": "CAPEC-86", "name": "XSS via HTTP Headers"},
+      {"capec_id": "CAPEC-91", "name": "XSS Targeting HTML Attributes"},
+      {"capec_id": "CAPEC-198", "name": "XSS Targeting Error Pages"},
+      {"capec_id": "CAPEC-32", "name": "XSS via HTTP Query Strings"},
+      {"capec_id": "CAPEC-588", "name": "DOM-Based XSS"}
+    ],
+    "CWE-89": [
+      {"capec_id": "CAPEC-66", "name": "SQL Injection"},
+      {"capec_id": "CAPEC-7", "name": "Blind SQL Injection"},
+      {"capec_id": "CAPEC-110", "name": "SQL Injection through SOAP Parameter Tampering"},
+      {"capec_id": "CAPEC-470", "name": "Expanding Control over the Operating System from the Database"}
+    ],
+    "CWE-78": [
+      {"capec_id": "CAPEC-88", "name": "OS Command Injection"},
+      {"capec_id": "CAPEC-108", "name": "Command Line Execution through SQL Injection"},
+      {"capec_id": "CAPEC-15", "name": "Command Delimiters"},
+      {"capec_id": "CAPEC-183", "name": "IMAP/SMTP Command Injection"}
+    ],
+    "CWE-20": [
+      {"capec_id": "CAPEC-10", "name": "Buffer Overflow via Environment Variables"},
+      {"capec_id": "CAPEC-24", "name": "Filter Failure through Buffer Overflow"},
+      {"capec_id": "CAPEC-153", "name": "Input Data Manipulation"},
+      {"capec_id": "CAPEC-3", "name": "Using Leading 'Ghost' Character Sequences to Bypass Input Filters"}
+    ],
+    "CWE-22": [
+      {"capec_id": "CAPEC-126", "name": "Path Traversal"},
+      {"capec_id": "CAPEC-64", "name": "Using Slashes and URL Encoding Combined to Bypass Validation Logic"},
+      {"capec_id": "CAPEC-76", "name": "Manipulating Web Input to File System Calls"},
+      {"capec_id": "CAPEC-139", "name": "Relative Path Traversal"}
+    ],
+    "CWE-77": [
+      {"capec_id": "CAPEC-88", "name": "OS Command Injection"},
+      {"capec_id": "CAPEC-15", "name": "Command Delimiters"},
+      {"capec_id": "CAPEC-183", "name": "IMAP/SMTP Command Injection"}
+    ],
+    "CWE-119": [
+      {"capec_id": "CAPEC-10", "name": "Buffer Overflow via Environment Variables"},
+      {"capec_id": "CAPEC-14", "name": "Client-side Injection-induced Buffer Overflow"},
+      {"capec_id": "CAPEC-24", "name": "Filter Failure through Buffer Overflow"},
+      {"capec_id": "CAPEC-100", "name": "Overflow Buffers"}
+    ],
+    "CWE-125": [
+      {"capec_id": "CAPEC-540", "name": "Overread Buffers"},
+      {"capec_id": "CAPEC-100", "name": "Overflow Buffers"}
+    ],
+    "CWE-200": [
+      {"capec_id": "CAPEC-116", "name": "Excavation"},
+      {"capec_id": "CAPEC-118", "name": "Collect and Analyze Information"},
+      {"capec_id": "CAPEC-169", "name": "Footprinting"},
+      {"capec_id": "CAPEC-224", "name": "Fingerprinting"},
+      {"capec_id": "CAPEC-497", "name": "File Discovery"}
+    ],
+    "CWE-269": [
+      {"capec_id": "CAPEC-122", "name": "Privilege Abuse"},
+      {"capec_id": "CAPEC-1", "name": "Accessing Functionality Not Properly Constrained by ACLs"},
+      {"capec_id": "CAPEC-17", "name": "Using Malicious Files"}
+    ],
+    "CWE-287": [
+      {"capec_id": "CAPEC-114", "name": "Authentication Abuse"},
+      {"capec_id": "CAPEC-115", "name": "Authentication Bypass"},
+      {"capec_id": "CAPEC-196", "name": "Session Fixation"},
+      {"capec_id": "CAPEC-194", "name": "Fake the Source of Data"}
+    ],
+    "CWE-306": [
+      {"capec_id": "CAPEC-115", "name": "Authentication Bypass"},
+      {"capec_id": "CAPEC-36", "name": "Using Unpublished Interfaces or Functionality"},
+      {"capec_id": "CAPEC-1", "name": "Accessing Functionality Not Properly Constrained by ACLs"}
+    ],
+    "CWE-352": [
+      {"capec_id": "CAPEC-62", "name": "Cross Site Request Forgery"},
+      {"capec_id": "CAPEC-111", "name": "JSON Hijacking"},
+      {"capec_id": "CAPEC-467", "name": "Cross-Site Flashing"}
+    ],
+    "CWE-416": [
+      {"capec_id": "CAPEC-232", "name": "Exploitation of Privilege/Trust"},
+      {"capec_id": "CAPEC-100", "name": "Overflow Buffers"}
+    ],
+    "CWE-434": [
+      {"capec_id": "CAPEC-1", "name": "Accessing Functionality Not Properly Constrained by ACLs"},
+      {"capec_id": "CAPEC-17", "name": "Using Malicious Files"},
+      {"capec_id": "CAPEC-23", "name": "File Content Injection"}
+    ],
+    "CWE-502": [
+      {"capec_id": "CAPEC-586", "name": "Object Injection"},
+      {"capec_id": "CAPEC-198", "name": "XSS Targeting Error Pages"},
+      {"capec_id": "CAPEC-242", "name": "Code Injection"}
+    ],
+    "CWE-611": [
+      {"capec_id": "CAPEC-221", "name": "Data Serialization External Entities Blowup"},
+      {"capec_id": "CAPEC-201", "name": "XML Entity Linking"},
+      {"capec_id": "CAPEC-228", "name": "DTD Injection"}
+    ],
+    "CWE-787": [
+      {"capec_id": "CAPEC-100", "name": "Overflow Buffers"},
+      {"capec_id": "CAPEC-10", "name": "Buffer Overflow via Environment Variables"},
+      {"capec_id": "CAPEC-14", "name": "Client-side Injection-induced Buffer Overflow"},
+      {"capec_id": "CAPEC-540", "name": "Overread Buffers"}
+    ],
+    "CWE-798": [
+      {"capec_id": "CAPEC-191", "name": "Read Sensitive Constants Within an Executable"},
+      {"capec_id": "CAPEC-37", "name": "Retrieve Embedded Sensitive Data"},
+      {"capec_id": "CAPEC-70", "name": "Try Common or Default Usernames and Passwords"}
+    ],
+    "CWE-862": [
+      {"capec_id": "CAPEC-1", "name": "Accessing Functionality Not Properly Constrained by ACLs"},
+      {"capec_id": "CAPEC-122", "name": "Privilege Abuse"},
+      {"capec_id": "CAPEC-36", "name": "Using Unpublished Interfaces or Functionality"}
+    ],
+    "CWE-863": [
+      {"capec_id": "CAPEC-1", "name": "Accessing Functionality Not Properly Constrained by ACLs"},
+      {"capec_id": "CAPEC-122", "name": "Privilege Abuse"},
+      {"capec_id": "CAPEC-212", "name": "Functionality Misuse"}
+    ],
+    "CWE-917": [
+      {"capec_id": "CAPEC-242", "name": "Code Injection"},
+      {"capec_id": "CAPEC-35", "name": "Leverage Executable Code in Non-Executable Files"},
+      {"capec_id": "CAPEC-41", "name": "Using Meta-characters in E-mail Headers to Inject Malicious Payloads"}
+    ],
+    "CWE-918": [
+      {"capec_id": "CAPEC-664", "name": "Server Side Request Forgery"},
+      {"capec_id": "CAPEC-115", "name": "Authentication Bypass"},
+      {"capec_id": "CAPEC-169", "name": "Footprinting"}
+    ],
+    "CWE-94": [
+      {"capec_id": "CAPEC-242", "name": "Code Injection"},
+      {"capec_id": "CAPEC-35", "name": "Leverage Executable Code in Non-Executable Files"},
+      {"capec_id": "CAPEC-253", "name": "Remote Code Inclusion"}
+    ],
+    "CWE-400": [
+      {"capec_id": "CAPEC-469", "name": "HTTP DoS"},
+      {"capec_id": "CAPEC-82", "name": "Violating Implicit Assumptions Regarding XML Content (aka XML Attribute Blowup)"},
+      {"capec_id": "CAPEC-147", "name": "XML Ping of the Death"}
+    ],
+    "CWE-476": [
+      {"capec_id": "CAPEC-100", "name": "Overflow Buffers"}
+    ],
+    "CWE-190": [
+      {"capec_id": "CAPEC-92", "name": "Forced Integer Overflow"},
+      {"capec_id": "CAPEC-100", "name": "Overflow Buffers"}
+    ]
+  },
+  "capec_to_attack": {
+    "CAPEC-86": [
+      {"technique_id": "T1059.007", "name": "Command and Scripting Interpreter: JavaScript"},
+      {"technique_id": "T1189", "name": "Drive-by Compromise"}
+    ],
+    "CAPEC-91": [
+      {"technique_id": "T1059.007", "name": "Command and Scripting Interpreter: JavaScript"},
+      {"technique_id": "T1189", "name": "Drive-by Compromise"}
+    ],
+    "CAPEC-198": [
+      {"technique_id": "T1059.007", "name": "Command and Scripting Interpreter: JavaScript"},
+      {"technique_id": "T1189", "name": "Drive-by Compromise"}
+    ],
+    "CAPEC-32": [
+      {"technique_id": "T1059.007", "name": "Command and Scripting Interpreter: JavaScript"},
+      {"technique_id": "T1189", "name": "Drive-by Compromise"}
+    ],
+    "CAPEC-588": [
+      {"technique_id": "T1059.007", "name": "Command and Scripting Interpreter: JavaScript"},
+      {"technique_id": "T1189", "name": "Drive-by Compromise"}
+    ],
+    "CAPEC-66": [
+      {"technique_id": "T1190", "name": "Exploit Public-Facing Application"},
+      {"technique_id": "T1059.001", "name": "Command and Scripting Interpreter: PowerShell"}
+    ],
+    "CAPEC-7": [
+      {"technique_id": "T1190", "name": "Exploit Public-Facing Application"}
+    ],
+    "CAPEC-110": [
+      {"technique_id": "T1190", "name": "Exploit Public-Facing Application"}
+    ],
+    "CAPEC-470": [
+      {"technique_id": "T1190", "name": "Exploit Public-Facing Application"},
+      {"technique_id": "T1059.003", "name": "Command and Scripting Interpreter: Windows Command Shell"}
+    ],
+    "CAPEC-88": [
+      {"technique_id": "T1059", "name": "Command and Scripting Interpreter"},
+      {"technique_id": "T1190", "name": "Exploit Public-Facing Application"}
+    ],
+    "CAPEC-108": [
+      {"technique_id": "T1059", "name": "Command and Scripting Interpreter"},
+      {"technique_id": "T1190", "name": "Exploit Public-Facing Application"}
+    ],
+    "CAPEC-15": [
+      {"technique_id": "T1059", "name": "Command and Scripting Interpreter"}
+    ],
+    "CAPEC-183": [
+      {"technique_id": "T1566.002", "name": "Phishing: Spearphishing Link"}
+    ],
+    "CAPEC-10": [
+      {"technique_id": "T1203", "name": "Exploitation for Client Execution"},
+      {"technique_id": "T1190", "name": "Exploit Public-Facing Application"}
+    ],
+    "CAPEC-24": [
+      {"technique_id": "T1203", "name": "Exploitation for Client Execution"}
+    ],
+    "CAPEC-153": [
+      {"technique_id": "T1565", "name": "Data Manipulation"}
+    ],
+    "CAPEC-3": [
+      {"technique_id": "T1027", "name": "Obfuscated Files or Information"}
+    ],
+    "CAPEC-126": [
+      {"technique_id": "T1083", "name": "File and Directory Discovery"},
+      {"technique_id": "T1005", "name": "Data from Local System"}
+    ],
+    "CAPEC-64": [
+      {"technique_id": "T1027", "name": "Obfuscated Files or Information"}
+    ],
+    "CAPEC-76": [
+      {"technique_id": "T1083", "name": "File and Directory Discovery"},
+      {"technique_id": "T1005", "name": "Data from Local System"}
+    ],
+    "CAPEC-139": [
+      {"technique_id": "T1083", "name": "File and Directory Discovery"}
+    ],
+    "CAPEC-14": [
+      {"technique_id": "T1203", "name": "Exploitation for Client Execution"}
+    ],
+    "CAPEC-100": [
+      {"technique_id": "T1203", "name": "Exploitation for Client Execution"},
+      {"technique_id": "T1190", "name": "Exploit Public-Facing Application"},
+      {"technique_id": "T1068", "name": "Exploitation for Privilege Escalation"}
+    ],
+    "CAPEC-540": [
+      {"technique_id": "T1005", "name": "Data from Local System"},
+      {"technique_id": "T1203", "name": "Exploitation for Client Execution"}
+    ],
+    "CAPEC-116": [
+      {"technique_id": "T1592", "name": "Gather Victim Host Information"},
+      {"technique_id": "T1589", "name": "Gather Victim Identity Information"}
+    ],
+    "CAPEC-118": [
+      {"technique_id": "T1592", "name": "Gather Victim Host Information"}
+    ],
+    "CAPEC-169": [
+      {"technique_id": "T1590", "name": "Gather Victim Network Information"},
+      {"technique_id": "T1595", "name": "Active Scanning"}
+    ],
+    "CAPEC-224": [
+      {"technique_id": "T1595.001", "name": "Active Scanning: Scanning IP Blocks"}
+    ],
+    "CAPEC-497": [
+      {"technique_id": "T1083", "name": "File and Directory Discovery"}
+    ],
+    "CAPEC-122": [
+      {"technique_id": "T1078", "name": "Valid Accounts"},
+      {"technique_id": "T1548", "name": "Abuse Elevation Control Mechanism"}
+    ],
+    "CAPEC-1": [
+      {"technique_id": "T1078", "name": "Valid Accounts"},
+      {"technique_id": "T1548", "name": "Abuse Elevation Control Mechanism"}
+    ],
+    "CAPEC-17": [
+      {"technique_id": "T1204.002", "name": "User Execution: Malicious File"}
+    ],
+    "CAPEC-114": [
+      {"technique_id": "T1078", "name": "Valid Accounts"},
+      {"technique_id": "T1556", "name": "Modify Authentication Process"}
+    ],
+    "CAPEC-115": [
+      {"technique_id": "T1078", "name": "Valid Accounts"},
+      {"technique_id": "T1556", "name": "Modify Authentication Process"}
+    ],
+    "CAPEC-196": [
+      {"technique_id": "T1563", "name": "Remote Service Session Hijacking"}
+    ],
+    "CAPEC-194": [
+      {"technique_id": "T1036", "name": "Masquerading"}
+    ],
+    "CAPEC-36": [
+      {"technique_id": "T1083", "name": "File and Directory Discovery"}
+    ],
+    "CAPEC-62": [
+      {"technique_id": "T1185", "name": "Browser Session Hijacking"},
+      {"technique_id": "T1539", "name": "Steal Web Session Cookie"}
+    ],
+    "CAPEC-111": [
+      {"technique_id": "T1539", "name": "Steal Web Session Cookie"}
+    ],
+    "CAPEC-467": [
+      {"technique_id": "T1059.007", "name": "Command and Scripting Interpreter: JavaScript"}
+    ],
+    "CAPEC-232": [
+      {"technique_id": "T1078", "name": "Valid Accounts"},
+      {"technique_id": "T1068", "name": "Exploitation for Privilege Escalation"}
+    ],
+    "CAPEC-23": [
+      {"technique_id": "T1204.002", "name": "User Execution: Malicious File"}
+    ],
+    "CAPEC-586": [
+      {"technique_id": "T1059", "name": "Command and Scripting Interpreter"},
+      {"technique_id": "T1203", "name": "Exploitation for Client Execution"}
+    ],
+    "CAPEC-242": [
+      {"technique_id": "T1059", "name": "Command and Scripting Interpreter"},
+      {"technique_id": "T1190", "name": "Exploit Public-Facing Application"}
+    ],
+    "CAPEC-221": [
+      {"technique_id": "T1190", "name": "Exploit Public-Facing Application"}
+    ],
+    "CAPEC-201": [
+      {"technique_id": "T1005", "name": "Data from Local System"},
+      {"technique_id": "T1190", "name": "Exploit Public-Facing Application"}
+    ],
+    "CAPEC-228": [
+      {"technique_id": "T1190", "name": "Exploit Public-Facing Application"}
+    ],
+    "CAPEC-191": [
+      {"technique_id": "T1552", "name": "Unsecured Credentials"},
+      {"technique_id": "T1083", "name": "File and Directory Discovery"}
+    ],
+    "CAPEC-37": [
+      {"technique_id": "T1552", "name": "Unsecured Credentials"}
+    ],
+    "CAPEC-70": [
+      {"technique_id": "T1110", "name": "Brute Force"},
+      {"technique_id": "T1078.001", "name": "Valid Accounts: Default Accounts"}
+    ],
+    "CAPEC-212": [
+      {"technique_id": "T1078", "name": "Valid Accounts"}
+    ],
+    "CAPEC-35": [
+      {"technique_id": "T1059", "name": "Command and Scripting Interpreter"}
+    ],
+    "CAPEC-41": [
+      {"technique_id": "T1566.001", "name": "Phishing: Spearphishing Attachment"}
+    ],
+    "CAPEC-664": [
+      {"technique_id": "T1090", "name": "Proxy"},
+      {"technique_id": "T1071", "name": "Application Layer Protocol"}
+    ],
+    "CAPEC-253": [
+      {"technique_id": "T1059", "name": "Command and Scripting Interpreter"},
+      {"technique_id": "T1190", "name": "Exploit Public-Facing Application"}
+    ],
+    "CAPEC-469": [
+      {"technique_id": "T1499", "name": "Endpoint Denial of Service"}
+    ],
+    "CAPEC-82": [
+      {"technique_id": "T1499", "name": "Endpoint Denial of Service"}
+    ],
+    "CAPEC-147": [
+      {"technique_id": "T1499", "name": "Endpoint Denial of Service"}
+    ],
+    "CAPEC-92": [
+      {"technique_id": "T1203", "name": "Exploitation for Client Execution"},
+      {"technique_id": "T1068", "name": "Exploitation for Privilege Escalation"}
+    ]
+  }
+}

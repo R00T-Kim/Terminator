@@ -1,0 +1,162 @@
+{
+  "meta": {
+    "version": "1.0.0",
+    "description": "Recon Pipeline configuration for Terminator",
+    "last_updated": "2026-02-17"
+  },
+  "pipeline": {
+    "phases": {
+      "phase0": {
+        "name": "Duplicate Pre-Screen",
+        "enabled": true,
+        "timeout_seconds": 60
+      },
+      "phase1": {
+        "name": "Domain & Subdomain Discovery",
+        "enabled": true,
+        "timeout_seconds": 120,
+        "tools": {
+          "subfinder": {"binary": "subfinder", "args": ["-silent"]},
+          "httpx": {"binary": "httpx", "args": ["-silent", "-title", "-tech-detect", "-status-code"]},
+          "gau": {"binary": "gau", "args": ["--threads", "5"]},
+          "waybackurls": {"binary": "waybackurls", "args": []}
+        }
+      },
+      "phase2": {
+        "name": "Port Scanning",
+        "enabled": true,
+        "timeout_seconds": 300,
+        "parallel": true,
+        "tools": {
+          "nmap_fast": {
+            "binary": "nmap",
+            "args": ["-sS", "-T4", "--top-ports", "1000", "--min-rate", "1000", "-oN", "nmap_fast.txt"]
+          },
+          "nmap_full": {
+            "binary": "nmap",
+            "args": ["-sS", "-p-", "-T4", "--min-rate", "2000", "-oN", "nmap_full.txt"],
+            "condition": "run_full_scan"
+          }
+        }
+      },
+      "phase3": {
+        "name": "HTTP Probing",
+        "enabled": true,
+        "timeout_seconds": 120,
+        "parallel": true,
+        "tools": {
+          "httpx_probe": {
+            "binary": "httpx",
+            "args": ["-silent", "-title", "-tech-detect", "-status-code", "-content-length", "-web-server", "-o", "httpx_probe.txt"]
+          },
+          "whatweb": {
+            "binary": "whatweb",
+            "args": ["--no-errors", "-a", "3"]
+          }
+        }
+      },
+      "phase4": {
+        "name": "Resource Enumeration",
+        "enabled": true,
+        "timeout_seconds": 300,
+        "tools": {
+          "gobuster": {
+            "binary": "gobuster",
+            "args": ["dir", "-q", "-t", "20"],
+            "wordlist": "/usr/share/wordlists/dirb/common.txt"
+          },
+          "ffuf": {
+            "binary": "ffuf",
+            "args": ["-mc", "200,301,302,403", "-c", "-t", "40", "-ac"],
+            "wordlist": "/usr/share/wordlists/dirb/common.txt"
+          },
+          "katana": {
+            "binary": "katana",
+            "args": ["-d", "3", "-silent", "-o", "katana_urls.txt"]
+          },
+          "nikto": {
+            "binary": "nikto",
+            "args": ["-Tuning", "123", "-nointeractive"]
+          }
+        }
+      },
+      "phase5": {
+        "name": "Vuln Scanning",
+        "enabled": true,
+        "timeout_seconds": 600,
+        "tools": {
+          "nuclei_cve": {
+            "binary": "nuclei",
+            "args": ["-tags", "cve", "-severity", "critical,high", "-silent", "-o", "nuclei_cve.txt"]
+          },
+          "nuclei_misconfig": {
+            "binary": "nuclei",
+            "args": ["-tags", "misconfig,exposure", "-severity", "critical,high", "-silent", "-o", "nuclei_misconfig.txt"]
+          },
+          "trufflehog": {
+            "binary": "trufflehog",
+            "args": ["filesystem", "--only-verified"],
+            "oss_only": true
+          },
+          "dalfox": {
+            "binary": "dalfox",
+            "args": ["url", "--silence", "-o", "dalfox_xss.txt"],
+            "web_only": true
+          }
+        }
+      },
+      "phase6": {
+        "name": "MITRE Enrichment",
+        "enabled": true,
+        "timeout_seconds": 120,
+        "script": "tools/mitre_mapper.py",
+        "input_file": "cve_ids_found.txt",
+        "output_file": "mitre_enrichment.json",
+        "offline_fallback": true
+      }
+    }
+  },
+  "modes": {
+    "network": {
+      "description": "Standard network target scanning",
+      "phases": ["phase0", "phase1", "phase2", "phase3", "phase4", "phase5", "phase6"]
+    },
+    "oss": {
+      "description": "Open-source repository scanning (no network scans)",
+      "phases": ["phase0", "phase1_oss", "phase4_oss", "phase5", "phase6"],
+      "skip_phases": ["phase2", "phase3"]
+    },
+    "quick": {
+      "description": "Fast scan: port scan + HTTP probe + nuclei CVE only",
+      "phases": ["phase0", "phase2", "phase3", "phase5", "phase6"]
+    }
+  },
+  "output": {
+    "base_dir": "recon_output",
+    "files": {
+      "report_json": "recon_report.json",
+      "notes_md": "recon_notes.md",
+      "mitre_json": "mitre_enrichment.json",
+      "cve_list": "cve_ids_found.txt"
+    }
+  },
+  "rate_limits": {
+    "max_requests_per_second": 10,
+    "waf_detected_max_rps": 2,
+    "nmap_min_rate": 1000
+  },
+  "tools": {
+    "subfinder": "~/gopath/bin/subfinder",
+    "httpx": "~/gopath/bin/httpx",
+    "gau": "~/gopath/bin/gau",
+    "waybackurls": "~/gopath/bin/waybackurls",
+    "katana": "~/gopath/bin/katana",
+    "dalfox": "~/gopath/bin/dalfox",
+    "ffuf": "~/gopath/bin/ffuf",
+    "nuclei": "nuclei",
+    "nmap": "nmap",
+    "gobuster": "gobuster",
+    "nikto": "nikto",
+    "trufflehog": "trufflehog"
+  }
+}

