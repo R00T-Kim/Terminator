@@ -291,16 +291,15 @@ docker compose up -d
 
 ### Bug Bounty — 12+ Programs Assessed
 
-| Program | Platform | Result |
-|:--------|:---------|:-------|
-| USX Protocol | Immunefi | 2 reports ready (TOCTOU + ERC4626) |
-| stake.link | Immunefi | 1 MEDIUM (Curve sandwich, Foundry PoC) |
-| Olympus DAO | Immunefi | ABANDONED — 16 contracts, 22 leads, 0 HIGH |
-| GMX V2 | Immunefi | ABANDONED — all leads dead |
-| Vercel AI SDK | HackerOne | 5 reports (2 Dup, 3 Info) |
-| NordSecurity | HackerOne | 1 report ready (Kill Switch Bypass) |
-| Ubiquiti | HackerOne | 1 report ready (tarfile RCE) |
-| + 5 more | Various | ABANDONED after Phase 0/1 assessment |
+| Metric | Count |
+|:-------|:-----:|
+| Programs assessed | 12+ |
+| Platforms | Immunefi, HackerOne |
+| Categories | Smart Contract (DeFi), Web App, VPN, IoT, AI/SDK |
+| Smart contracts analyzed | 50+ |
+| Vulnerability leads investigated | 100+ |
+
+> Specific targets and findings are kept private until disclosure is complete.
 
 ---
 
