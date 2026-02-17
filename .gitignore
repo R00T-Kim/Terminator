@@ -91,3 +91,4 @@ research/FINDINGS.md
 ref.md
 research/vpn_client_attack_techniques.md
 .claude_auth/
+.env

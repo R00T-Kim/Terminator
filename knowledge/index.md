@@ -57,6 +57,7 @@
 | Web3: Foundry fork PoC methodology | [techniques/web3_foundry_fork_poc.md](techniques/web3_foundry_fork_poc.md) |
 | AI Security Agent Research (Anthropic, kritt.ai) | [techniques/ai_security_agents_research.md](techniques/ai_security_agents_research.md) |
 | Competitor Analysis (CAI, RedAmon, Strix) | [techniques/competitor_analysis.md](techniques/competitor_analysis.md) |
+| Firmware diff analysis (NETGEAR Orbi) | [techniques/firmware_diff_analysis.md](techniques/firmware_diff_analysis.md) |
 
 ## Bug Bounty Programs
 
@@ -77,6 +78,7 @@
 | Veda Protocol | Immunefi | Smart Contract (DeFi vault) | KILLED (triager_sim: missing capacity restore not exploitable, theoretical only) | - |
 | Olympus DAO | Immunefi | Smart Contract (OHM/gOHM) | ABANDONED (16 contracts, 22 leads, 0 HIGH/CRITICAL. Mature codebase.) | - |
 | GMX V2 | Immunefi | Smart Contract (Perp DEX) | ABANDONED (all leads dead) | - |
+| NETGEAR Orbi RBR750 | Bugcrowd | Firmware (ARM, httpd) | 2 reports ready for Bugcrowd submission | `targets/netgear/` |
 
 ### H1 Account Status (2026-02-17)
 - **API 제출 차단**: 계정 레벨 403 (모든 프로그램)
