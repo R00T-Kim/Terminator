@@ -30,11 +30,30 @@ curl -s "https://markdown.new/<target_url>" | head -500
 - **GitHub**: gh CLI (PRs, issues, API, repo analysis)
 - **Reference**: ExploitDB at ~/exploitdb, PoC-in-GitHub at ~/PoC-in-GitHub, PayloadsAllTheThings at ~/PayloadsAllTheThings, trickest-cve at ~/trickest-cve
 
+## Pipeline Execution Order
+
+```
+Phase 1: Domain & Subdomain Discovery (sequential — must complete first)
+Phase 2 + Phase 3: Port Scanning + HTTP Probing (PARALLEL — run simultaneously)
+Phase 4: Resource Enumeration (after Phase 2+3 complete)
+Phase 5: Vulnerability Scanning (after Phase 4)
+Phase 6: MITRE Enrichment (after Phase 5)
+```
+
+Each phase produces a structured JSON artifact: `phase{N}_{name}.json`
+Final combined output: `recon_report.json` + `recon_notes.md`
+
+Do NOT skip phases. Phase 6 runs AFTER nuclei/nikto identify CVEs — enrich each CVE with full MITRE chain.
+
 ## Methodology
 
-### Phase 0: Duplicate Pre-Screen (MANDATORY — before ANY scanning)
+### Phase 1: Domain & Subdomain Discovery
 
-**This phase prevents the #1 revenue killer: duplicate reports (40-50% of all submissions).**
+Phase 1 combines Duplicate Pre-Screen (mandatory sub-step), Passive Recon, Subdomain Discovery, URL collection, and H1 Program Context gathering. Complete ALL sub-steps before moving to Phase 2+3.
+
+#### Phase 1A: Duplicate Pre-Screen (MANDATORY — before ANY scanning)
+
+**This sub-step prevents the #1 revenue killer: duplicate reports (40-50% of all submissions).**
 Vercel 경험: 5건 중 2건 Duplicate = $0. 사전 검사했으면 방지 가능했음.
 
 ```bash
@@ -56,7 +75,7 @@ git log --all --oneline --grep="CVE-\|security\|fix\|patch" --since="6 months ag
 # If our finding is in the SAME file with the SAME root cause → HIGH duplicate risk
 ```
 
-**Output**: Add `duplicate_risk` section to `recon_notes.md`:
+**Output section in `recon_notes.md`**:
 ```markdown
 ## Duplicate Risk Assessment
 - Known CVEs in scope: [list with dates]
@@ -68,7 +87,7 @@ git log --all --oneline --grep="CVE-\|security\|fix\|patch" --since="6 months ag
 
 **Rule**: If Duplicate Risk = HIGH for ALL areas → **STOP and report to Orchestrator before proceeding.** Do not waste tokens scanning a picked-clean target.
 
-### Phase 1: Passive Recon (NO direct contact)
+#### Phase 1B: Passive Recon (NO direct contact)
 ```bash
 # DNS records
 dig ANY <domain> +noall +answer
@@ -85,7 +104,7 @@ for c in json.load(sys.stdin):
 " 2>/dev/null | sort -u
 ```
 
-### Phase 1.5: Subdomain & URL Discovery
+#### Phase 1C: Subdomain & URL Discovery
 ```bash
 # Subdomain enumeration (passive, fast)
 ~/gopath/bin/subfinder -d <domain> -o subs.txt
@@ -102,51 +121,136 @@ sort -u urls.txt -o urls.txt
 arjun -u https://<target>/api/endpoint
 ```
 
-### Phase 2: Active Recon (light touch)
+#### Phase 1D: H1 Program Context (MANDATORY — not optional)
+
+**This sub-step is MANDATORY. Skipping it caused CVSS version errors (Vercel: used 3.1, program required 4.0).**
+
+```bash
+# 1. Program page (WebFetch REQUIRED)
+# MUST capture ALL of these:
+# - In-scope assets and versions (EXACT list)
+# - Excluded vulnerability types (EXACT list — check before reporting!)
+# - CVSS version: 3.1 vs 4.0 (CRITICAL — wrong version = credibility damage)
+# - Bounty table (per severity)
+# - Response SLA times
+# - Special rules (e.g., "no automated scanning", "source code review only")
+
+# 2. Hacktivity analysis (MANDATORY)
+# - Count of disclosed reports (program maturity)
+# - Types of vulns rewarded (what triagers accept)
+# - Types of vulns rejected (what to AVOID)
+# - Average time to triage
+# - Top researchers active (competition level)
+
+# 3. Program policy file
+# Check for safe harbor, testing restrictions, reporting requirements
+```
+
+**Output**: `program_context.md` with ALL fields above filled. If any field is "unknown", flag it.
+
+**HARD RULE**: Reporter agent MUST receive `program_context.md`. No report submission without confirmed CVSS version and scope.
+
+**Phase 1 Output**: `phase1_domains.json`
+```json
+{
+  "subdomains": [],
+  "live_hosts": [],
+  "urls_collected": [],
+  "duplicate_risk": "HIGH/MEDIUM/LOW",
+  "duplicate_risk_details": {},
+  "program_context_file": "program_context.md"
+}
+```
+
+---
+
+### Phase 2: Port Scanning (PARALLELIZABLE with Phase 3)
+
+**Run simultaneously with Phase 3 after Phase 1 completes.**
+
 ```bash
 # Fast port scan (top 1000)
 nmap -sS -T4 --top-ports 1000 --min-rate 1000 <target>
 
 # Full port scan (if time allows)
 nmap -sS -p- -T4 --min-rate 2000 <target>
-```
 
-### Phase 3: Service Detection
-```bash
 # Version detection on open ports
 nmap -sV -sC -p <open_ports> <target>
-
-# Web tech fingerprinting
-curl -sI <url> | grep -iE "server|x-powered|x-aspnet|x-generator"
 ```
 
-### Phase 4: Web Enumeration (if web service found)
+**Phase 2 Output**: `phase2_ports.json`
+```json
+{
+  "open_ports": [
+    { "port": 80, "state": "open", "service": "http", "version": "nginx 1.18.0" }
+  ],
+  "interesting_ports": [],
+  "total_scanned": 1000
+}
+```
+
+---
+
+### Phase 3: HTTP Probing & Tech Detection (PARALLELIZABLE with Phase 2)
+
+**Run simultaneously with Phase 2 after Phase 1 completes.**
+
 ```bash
-# Directory discovery
+# HTTP probing + tech fingerprinting (bulk)
+cat live.txt | ~/gopath/bin/httpx -tech-detect -status-code -title -o httpx_results.txt
+
+# Web tech fingerprinting per host
+curl -sI <url> | grep -iE "server|x-powered|x-aspnet|x-generator"
+whatweb <url> 2>/dev/null
+
+# WAF detection
+curl -sI <url> -H "X-Scanner: test" | grep -i "cloudflare\|akamai\|incapsula\|sucuri"
+```
+
+**Phase 3 Output**: `phase3_http.json`
+```json
+{
+  "live_hosts": [],
+  "technologies": ["nginx", "PHP 7.4", "WordPress 5.8"],
+  "waf_detected": false,
+  "waf_type": null,
+  "interesting_headers": [],
+  "ssl_info": {}
+}
+```
+
+---
+
+### Phase 4: Resource Enumeration
+
+Combines directory/file enumeration, web crawling, and secret detection. Runs after Phase 2+3.
+
+#### Phase 4A: Directory & Endpoint Discovery
+```bash
+# Directory discovery (gobuster via MCP or ffuf)
 gobuster dir -u <url> -w /usr/share/wordlists/dirb/common.txt -t 20 -q
 
-# Nikto scan
-nikto -h <url> -Tuning 123
-
-# Nuclei vulnerability scan (12K+ templates, fast)
-nuclei -u <url> -severity critical,high -silent
-nuclei -u <url> -tags cve -silent  # CVE-specific templates only
-
-# Extended web enumeration
+# Extended directory fuzzing
 ~/gopath/bin/ffuf -u https://<target>/FUZZ -w ~/SecLists/Discovery/Web-Content/common.txt -mc 200,301,302,403
-~/gopath/bin/katana -u https://<target> -d 3 -silent  # web crawling
-~/gopath/bin/dalfox url "https://<target>/search?q=test" -silence  # XSS scan
+
+# Deeper directory search
 dirsearch -u https://<target> -w ~/SecLists/Discovery/Web-Content/raft-large-directories.txt
 
-# File upload vulnerability scanning
+# Web crawling (follow links automatically)
+~/gopath/bin/katana -u https://<target> -d 3 -silent
+
+# Parameter discovery
+arjun -u https://<target>/api/endpoint
+
+# File upload endpoint discovery
 python3 ~/fuxploider/fuxploider.py -u https://<target>/upload
 
 # Payload references (for manual testing)
 ls ~/PayloadsAllTheThings/  # 70+ vulnerability categories
-cat ~/PayloadsAllTheThings/"SQL Injection"/README.md | head -100  # specific payloads
 ```
 
-### Phase 4.5: Secret Detection (if source code/repo available)
+#### Phase 4B: Secret Detection
 ```bash
 # TruffleHog — 800+ secret types with validation
 trufflehog git file://. --only-verified  # local repo, verified secrets only
@@ -157,17 +261,215 @@ ls ~/trickest-cve/2025/ ~/trickest-cve/2026/ 2>/dev/null | head -20
 cat ~/trickest-cve/<year>/CVE-YYYY-NNNNN.md  # specific CVE details + PoC links
 ```
 
-### Phase 5: SSL/TLS Analysis (if HTTPS)
-```bash
-openssl s_client -connect <host>:443 -servername <host> </dev/null 2>/dev/null | openssl x509 -text -noout | head -30
+**Phase 4 Output**: `phase4_resources.json`
+```json
+{
+  "endpoints": ["/admin", "/api/v1/", "/wp-login.php"],
+  "parameters_discovered": [],
+  "secrets_found": [],
+  "file_upload_vulns": [],
+  "crawled_urls": []
+}
 ```
 
+---
+
+### Phase 5: Vulnerability Scanning
+
+Runs after Phase 4. Uses nuclei, nikto, dalfox, and trufflehog for automated vulnerability detection.
+
+```bash
+# Nuclei — CVE-specific templates (fast, high signal)
+nuclei -u <url> -tags cve -severity critical,high -silent -o nuclei_cve.txt
+nuclei -u <url> -tags tech -silent -o nuclei_tech.txt
+
+# Extended vuln scan (misconfigs, exposures)
+nuclei -u <url> -tags misconfig,exposure -severity critical,high -silent
+
+# Nikto scan
+nikto -h <url> -Tuning 123
+
+# XSS scan on parameterized endpoints
+~/gopath/bin/dalfox url "https://<target>/search?q=test" -silence -o dalfox_xss.txt
+
+# Secret detection (if source repo or JS files accessible)
+trufflehog git file://. --only-verified 2>/dev/null | head -50
+# OR for a live URL with JS:
+trufflehog filesystem /tmp/js_files/ --only-verified 2>/dev/null
+
+# SSL/TLS Analysis (if HTTPS)
+openssl s_client -connect <host>:443 -servername <host> </dev/null 2>/dev/null | openssl x509 -text -noout | head -30
+
+# Collect CVE IDs found by nuclei for Phase 6
+grep -oE "CVE-[0-9]{4}-[0-9]+" nuclei_cve.txt | sort -u > cve_ids_found.txt
+echo "[Phase 5] CVE IDs found: $(wc -l < cve_ids_found.txt)"
+```
+
+**Phase 5 Output**: `phase5_vulns.json`
+```json
+{
+  "cves_found": ["CVE-2021-44228"],
+  "misconfigs": [],
+  "xss_findings": [],
+  "secrets_verified": [],
+  "ssl_issues": [],
+  "cve_ids_file": "cve_ids_found.txt"
+}
+```
+
+---
+
+### Phase 6: MITRE Enrichment (ATT&CK chain mapping)
+
+**MANDATORY when Phase 5 finds any CVE IDs.** Maps each CVE to the full attack taxonomy.
+
+```bash
+# Enrich all found CVEs with MITRE chain (CWE → CAPEC → ATT&CK)
+CVE_LIST=$(cat cve_ids_found.txt | tr '\n' ' ')
+
+if [ -n "$CVE_LIST" ]; then
+    python3 /home/rootk1m/01_CYAI_Lab/01_Projects/Terminator/tools/mitre_mapper.py \
+        $CVE_LIST \
+        --json \
+        --verbose \
+        > mitre_enrichment.json 2>mitre_enrichment.log
+
+    echo "[Phase 6] MITRE enrichment complete."
+    python3 -c "
+import json, sys
+data = json.load(open('mitre_enrichment.json'))
+for r in data['results']:
+    cve = r['cve_id']
+    score = r.get('cvss_score', 'N/A')
+    cwes = [c['cwe_id'] for c in r.get('cwes', [])]
+    attacks = []
+    for cwe in r.get('cwes', []):
+        for capec in cwe.get('capecs', []):
+            for tech in capec.get('attack_techniques', []):
+                attacks.append(tech['technique_id'])
+    attacks = list(set(attacks))
+    print(f'  {cve} (CVSS {score}): CWEs={cwes}, ATT&CK={attacks}')
+"
+else
+    echo "[Phase 6] No CVE IDs found in Phase 5 — skipping MITRE enrichment"
+    echo '{"results": [], "note": "No CVEs found in scan"}' > mitre_enrichment.json
+fi
+```
+
+**Offline fallback** (if NVD API unreachable):
+```bash
+python3 /home/rootk1m/01_CYAI_Lab/01_Projects/Terminator/tools/mitre_mapper.py \
+    $CVE_LIST --json --offline > mitre_enrichment.json
+```
+
+**Phase 6 Output**: `phase6_enriched.json` combined from all phase results + `mitre_enrichment.json`
+
+### Phase 6B: Infrastructure Integration (after Phase 6)
+
+**Push recon results to Neo4j Attack Graph** (if Neo4j is running):
+```bash
+python3 -c "
+from tools.attack_graph.graph import AttackGraph
+import json
+
+g = AttackGraph('bolt://localhost:7687', 'neo4j', 'terminator')
+data = json.load(open('phase6_enriched.json'))
+
+# Ingest target
+g.add_target(data.get('target', 'unknown'), program_url=data.get('program_url'), scope=data.get('scope'))
+
+# Ingest hosts, services, vulns from recon
+for host in data.get('hosts', []):
+    g.add_host(host['ip'], hostname=host.get('hostname'), target_name=data.get('target'))
+    for svc in host.get('services', []):
+        g.add_service(host['ip'], name=svc['name'], port=svc['port'], version=svc.get('version'))
+    for vuln in host.get('vulnerabilities', []):
+        g.add_vulnerability(vuln['cve_id'], vuln.get('description',''), vuln.get('severity','medium'),
+                          service_name=vuln.get('service'))
+
+g.close()
+print('[Phase 6B] Neo4j graph updated')
+"
+```
+
+**Query RAG for known exploits** (enrich vulnerability candidates):
+```bash
+for cve in $(cat cve_ids_found.txt); do
+    curl -sf -X POST http://localhost:8100/query \
+        -H "Content-Type: application/json" \
+        -d "{\"query\": \"$cve exploit PoC\", \"limit\": 3}" >> rag_exploit_matches.json
+done
+echo "[Phase 6B] RAG exploit lookup complete"
+```
+
+```bash
+# Generate combined final output
+python3 -c "
+import json, os
+
+phases = {}
+for i, name in [(1,'domains'),(2,'ports'),(3,'http'),(4,'resources'),(5,'vulns')]:
+    fname = f'phase{i}_{name}.json'
+    if os.path.exists(fname):
+        with open(fname) as f:
+            phases[f'phase{i}'] = json.load(f)
+
+mitre = {}
+if os.path.exists('mitre_enrichment.json'):
+    with open('mitre_enrichment.json') as f:
+        mitre = json.load(f)
+
+combined = {
+    'target': '<domain/ip>',
+    'timestamp': '<ISO8601>',
+    'pipeline_phases_completed': list(phases.keys()) + ['phase6'],
+    'phases': phases,
+    'mitre_enrichment': mitre
+}
+with open('phase6_enriched.json', 'w') as f:
+    json.dump(combined, f, indent=2)
+print('[Phase 6] phase6_enriched.json written')
+"
+```
+
+**`mitre_enrichment.json` structure**:
+```json
+{
+  "results": [
+    {
+      "cve_id": "CVE-2021-44228",
+      "cvss_score": 10.0,
+      "cwes": [
+        {
+          "cwe_id": "CWE-917",
+          "capecs": [
+            {
+              "capec_id": "CAPEC-242",
+              "name": "Code Injection",
+              "attack_techniques": [
+                {"technique_id": "T1190", "name": "Exploit Public-Facing Application"}
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+**How analyst uses this**: Each ATT&CK technique ID maps to known exploit patterns. High CVSS + T1190/T1059 = prioritize for exploiter. Include `phase6_enriched.json` in handoff to analyst.
+
+---
+
 ## Output Format
-Save to `recon_report.json`:
+
+Save to `recon_report.json` (combined final — generated at end of Phase 6):
 ```json
 {
   "target": "<domain/ip>",
   "timestamp": "<ISO8601>",
+  "pipeline_phases_completed": ["P1","P2","P3","P4","P5","P6"],
   "dns": { "A": [], "AAAA": [], "MX": [], "TXT": [], "NS": [] },
   "subdomains": [],
   "ports": [
@@ -177,6 +479,9 @@ Save to `recon_report.json`:
   "endpoints": ["/admin", "/api/v1/", "/wp-login.php"],
   "ssl": { "issuer": "...", "expiry": "...", "grade": "..." },
   "waf_detected": false,
+  "cves_found": ["CVE-2021-44228"],
+  "mitre_enrichment_file": "mitre_enrichment.json",
+  "phase6_enriched_file": "phase6_enriched.json",
   "potential_vectors": ["outdated WordPress", "exposed admin panel", "missing security headers"]
 }
 ```
@@ -217,8 +522,9 @@ When the target codebase is **large (5K+ lines)**, use Gemini for rapid 1st-pass
 
 ## Completion Criteria (MANDATORY)
 - `recon_report.json` + `recon_notes.md` 저장 완료
+- Phase 5에서 CVE 발견 시 `mitre_enrichment.json` + `phase6_enriched.json` 저장 완료
 - 저장 후 **즉시** Orchestrator에게 SendMessage로 완료 보고
-- 보고 내용: open ports 수, 주요 서비스, top-3 attack vectors
+- 보고 내용: open ports 수, 주요 서비스, top-3 attack vectors, CVE count + ATT&CK techniques
 
 ## OSS Source Code Recon Mode (Bug Bounty on open-source targets)
 
@@ -278,14 +584,14 @@ for name, info in pkgs.items():
 # Entry points (API routes, handlers, exports)
 grep -rn "export\|app\.get\|app\.post\|router\.\|handler" --include="*.ts" src/ | head -30
 # Dangerous patterns (quick scan, analyst does deep dive)
-grep -rn "eval\|Function(\|exec\|spawn\|child_process" --include="*.ts" src/ | head -20
+grep -rn "exec\|spawn\|child_process" --include="*.ts" src/ | head -20
 # Data flow: user input → processing
 grep -rn "req\.body\|req\.query\|req\.params\|process\.env\|stdin" --include="*.ts" src/ | head -20
 ```
 
-### Phase E: H1 Program Context (MANDATORY — not optional)
+### Phase E: H1 Program Context (MANDATORY — moved to Phase 1D in network recon mode)
 
-**This phase is MANDATORY. Skipping it caused CVSS version errors (Vercel: used 3.1, program required 4.0).**
+For OSS source code recon mode, Phase E remains here:
 
 ```bash
 # 1. Program page (WebFetch REQUIRED)
@@ -334,7 +640,7 @@ Save to `recon_report.json` (same structure) + `recon_notes.md`:
 | Area | Entry Point | Interesting Because |
 |------|------------|-------------------|
 | API | `src/api/handler.ts` | Accepts user input, no validation |
-| Serialization | `src/core/serialize.ts` | Uses eval(), devalue |
+| Serialization | `src/core/serialize.ts` | Uses devalue library, inspect inputs |
 | Auth | `src/auth/token.ts` | Custom PRNG, no CSPRNG |
 
 ## Key Dependencies (Security-Relevant)
@@ -370,6 +676,143 @@ Skill("burpsuite-project-parser:scripts")
 ```
 **When**: If team has a Burp Suite capture file (.burp), parse it for endpoint discovery and interesting responses.
 
+## Smart Contract / DeFi Recon Mode (Immunefi targets)
+
+When the target is a DeFi protocol on Immunefi, switch from web/OSS scanning to on-chain reconnaissance:
+
+### Phase SC-A: Contract Source Fetching
+```bash
+# 1. Fetch verified source from block explorer (per chain)
+export PATH="/home/rootk1m/.foundry/bin:/usr/bin:$PATH"
+
+# Ethereum
+cast source <address> --chain mainnet --etherscan-api-key $ETHERSCAN_API_KEY -d contracts/eth/
+
+# Other chains (adjust --chain and API key)
+cast source <address> --chain polygon --etherscan-api-key $POLYGONSCAN_API_KEY -d contracts/polygon/
+cast source <address> --chain avalanche -d contracts/avax/
+cast source <address> --chain base -d contracts/base/
+
+# If cast source fails → try curl to explorer API directly
+curl -s "https://api.etherscan.io/api?module=contract&action=getsourcecode&address=<addr>&apikey=$ETHERSCAN_API_KEY" \
+  | python3 -c "import json,sys; d=json.load(sys.stdin)['result'][0]; print(d['ContractName'], len(d['SourceCode']), 'chars')"
+
+# 2. Count LOC per contract
+find contracts/ -name "*.sol" -exec wc -l {} + | sort -n | tail -20
+```
+
+### Phase SC-B: On-Chain State Recon
+```bash
+# TVL & token balances
+cast call <token> "totalSupply()(uint256)" --rpc-url $RPC_URL
+cast call <token> "balanceOf(address)(uint256)" <pool_or_diamond> --rpc-url $RPC_URL
+
+# Pool state (AMM targets)
+cast call <pool> "getReserves()(uint112,uint112,uint32)" --rpc-url $RPC_URL 2>/dev/null
+# Curve-style pools:
+for i in 0 1 2; do
+  cast call <pool> "balances(uint256)(uint256)" $i --rpc-url $RPC_URL 2>/dev/null
+done
+
+# Check if proxy/diamond
+cast call <address> "implementation()(address)" --rpc-url $RPC_URL 2>/dev/null  # EIP-1967
+cast storage <address> 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc --rpc-url $RPC_URL 2>/dev/null  # impl slot
+cast call <address> "facets()((address,bytes4[])[])" --rpc-url $RPC_URL 2>/dev/null  # Diamond
+```
+
+### Phase SC-C: Proxy/Diamond Pattern Detection
+```bash
+# Diamond (EIP-2535): facets() returns facet list
+# If addresses in Immunefi scope are FACET IMPLEMENTATIONS (not proxy):
+#   → facets()/facetAddresses() will REVERT on these addresses
+#   → You need the DIAMOND PROXY address to call these
+#   → Look for proxy address in protocol docs, deployment scripts, or Etherscan "Read as Proxy"
+
+# IMPORTANT LESSON (Parallel Protocol):
+# Immunefi-listed addresses may be IMPLEMENTATION contracts, not proxies.
+# cast call facets() on implementation = REVERT. This is EXPECTED.
+# For code analysis, implementation source is sufficient.
+# For on-chain state queries, you need the proxy address.
+```
+
+### Phase SC-D: Audit History Discovery (CRITICAL — saves hours)
+```bash
+# 1. Check if protocol is a FORK of a known protocol
+grep -r "authorized fork\|forked from\|based on\|adapted from" contracts/ --include="*.sol" | head -10
+# Common forks: Angle Transmuter, Aave, Compound, Uniswap, Curve, MakerDAO
+
+# 2. If fork detected → find original protocol's audits
+# Search: "<original protocol> audit report C4 Sherlock OpenZeppelin"
+# Key audit platforms: Code4rena (C4), Sherlock, OpenZeppelin, Trail of Bits, Spearbit
+
+# 3. Check if ALL audit findings are fixed in fork
+# Clone original repo → find security commits → verify patches exist in fork
+git clone <original_repo> /tmp/original_check
+cd /tmp/original_check
+git log --oneline --grep="fix\|security\|audit\|C4\|H-\|M-" | head -20
+# For each security commit: git show <hash> -- "*.sol" | head -50
+# Then verify same fix exists in target fork
+
+# 4. If all fixes applied → target is CLEAN (low finding probability)
+# If some fixes missing → VARIANT ANALYSIS opportunity (high value!)
+```
+
+### Phase SC-E: Multi-Chain Address Mapping
+```bash
+# Immunefi programs often deploy across multiple chains
+# Fetch Immunefi program page to get FULL address list per chain
+# Map: chain → addresses → contract names → LOC
+
+# Output structure:
+python3 -c "
+import json
+chain_map = {
+    'ethereum': [{'address': '0x...', 'name': 'Swapper', 'loc': 647}],
+    'polygon':  [{'address': '0x...', 'name': 'Redeemer', 'loc': 238}],
+}
+print(json.dumps(chain_map, indent=2))
+" > chain_address_map.json
+```
+
+### Phase SC-F: Scope Boundary Verification (MANDATORY — Parallel Protocol lesson)
+```bash
+# CRITICAL: Verify which VERSION is in scope
+# Parallel Protocol had V1/V2 (mimo-defi) and V3 (parallelizer) — only V3 was in scope
+# Analyst wasted 100% of time on V1/V2 code = ALL findings OOS
+
+# Checklist:
+# 1. Read Immunefi program page → exact assets + versions in scope
+# 2. If GitHub repo has multiple versions → identify which is in Immunefi scope
+# 3. If contracts fetched from Etherscan → verify they match scope version
+# 4. Document scope boundaries in recon_notes.md:
+#    "IN SCOPE: V3 contracts (Solidity 0.8.28) deployed at [addresses]"
+#    "OUT OF SCOPE: V1/V2 (mimo-defi repo), admin functions, known C4 findings"
+```
+
+### Smart Contract Recon Output
+Save to `recon_report.json` (extends standard format):
+```json
+{
+  "target_type": "smart_contract",
+  "chain_map": {},
+  "total_contracts": 0,
+  "total_loc": 0,
+  "proxy_type": "diamond|transparent|uups|none",
+  "is_fork_of": "Angle Transmuter|null",
+  "existing_audits": ["C4 2023", "Sherlock 2024"],
+  "audit_fixes_applied": true,
+  "scope_version": "V3",
+  "scope_boundary": "Only V3 on-chain contracts. V1/V2 mimo-defi repo is OUT OF SCOPE.",
+  "tvl_usd": 3000000,
+  "flash_loan_available": false,
+  "defi_specific": {
+    "pool_type": "AMM|lending|staking",
+    "oracle_type": "chainlink|custom|twap",
+    "collateral_types": []
+  }
+}
+```
+
 ## ⚠️ Reminder: Exploitation Path Required
 Scout의 발견이 최종적으로 가치를 가지려면 exploiter가 PoC를 만들 수 있어야 한다. recon 단계에서부터 "이게 실제로 exploit 가능한가?"를 항상 고려하라. 이론적 위험만으로는 H1에서 Informative로 닫힌다.
 
@@ -382,3 +825,18 @@ Scout의 발견이 최종적으로 가치를 가지려면 exploiter가 PoC를 �
 - If target appears to be a honeypot, report immediately and STOP
 - **For OSS targets: ALWAYS run `insecure-defaults` plugin + dependency audit + security config scan**
 - **Capture H1 program context** — CVSS version and excluded types are critical for reporter
+
+## Infrastructure Integration (Auto-hooks)
+
+### Post-Recon — Neo4j & RAG Ingest
+After producing recon_report.json and recon_notes.md:
+```bash
+# Ingest recon data into attack graph (Neo4j)
+python3 tools/infra_client.py graph ingest --file recon_report.json 2>/dev/null || true
+
+# Store recon knowledge in RAG for future sessions
+python3 tools/infra_client.py rag ingest --category "Recon" \
+  --technique "Service Discovery" \
+  --description "$TARGET services and attack surface" \
+  --content "$(cat recon_notes.md | head -200)" 2>/dev/null || true
+```

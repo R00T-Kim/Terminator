@@ -17,6 +17,40 @@ Read ALL artifacts from the pipeline and compile a complete writeup.
 ### Bug Bounty Report (for bounty pipeline)
 Read all findings and compile a professional security assessment report.
 
+### Output Generation Tools
+After writing the markdown report, generate additional formats:
+
+**SARIF** (for GitHub Code Scanning integration):
+```bash
+python3 /home/rootk1m/01_CYAI_Lab/01_Projects/Terminator/tools/sarif_generator.py \
+    --input findings.json --output results.sarif
+```
+
+**PDF** (for formal submission / client delivery):
+```bash
+python3 /home/rootk1m/01_CYAI_Lab/01_Projects/Terminator/tools/pdf_generator.py \
+    --input report.md --output report.pdf
+# If weasyprint unavailable, use HTML fallback:
+python3 /home/rootk1m/01_CYAI_Lab/01_Projects/Terminator/tools/pdf_generator.py \
+    --input report.md --output report.html --html-only
+```
+
+**Neo4j Finding Ingestion** (push findings to attack graph):
+```bash
+python3 -c "
+from tools.attack_graph.graph import AttackGraph
+g = AttackGraph('bolt://localhost:7687', 'neo4j', 'terminator')
+g.add_finding('<title>', '<severity>', '<description>', vuln_cve='<CVE-ID>')
+g.close()
+"
+```
+
+**RAG Knowledge Ingestion** (store exploit knowledge for future sessions):
+```bash
+curl -sf -X POST http://localhost:8100/ingest -H "Content-Type: application/json" \
+    -d '{"category":"<web|pwn|crypto>", "technique":"<technique_name>", "description":"<short_desc>", "content":"<full exploit details>"}'
+```
+
 ## CTF Writeup Format
 ```markdown
 # <Challenge Name>
@@ -227,3 +261,19 @@ Skill("fix-review:fix-review")
 - **Update `knowledge/index.md`** with the new challenge/finding entry
 - **ZIP packaging for H1**: `zip -r submission/<name>.zip report.md poc/ evidence/`
 - **CVSS 4.0 computation**: `python3 -c "from cvss import CVSS4; v=CVSS4('<vector>'); print(v.scores(), v.severities())"`
+
+## Infrastructure Integration (Auto-hooks)
+
+### Report Written — DB Update & RAG Storage
+After writing report/writeup:
+```bash
+# Update finding status in DB (if finding_id known)
+python3 tools/infra_client.py db update-finding \
+  --id "$FINDING_ID" --status SUBMITTED 2>/dev/null || true
+
+# Store writeup in RAG for future reference
+python3 tools/infra_client.py rag ingest --category "Writeup" \
+  --technique "$TECHNIQUE" \
+  --description "Writeup for $CHALLENGE_NAME" \
+  --content "$(cat writeup.md 2>/dev/null || cat report.md | head -300)" 2>/dev/null || true
+```

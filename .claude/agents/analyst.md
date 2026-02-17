@@ -27,6 +27,124 @@ curl -s "https://markdown.new/<target_url>" | head -500
 
 ## Methodology
 
+### Step 0: Scope Validation (MANDATORY — run FIRST, before ANY analysis)
+
+**Parallel Protocol lesson**: Analyst spent 100% of tokens analyzing V1/V2 code that was OUT OF SCOPE for Immunefi. ALL findings were worthless. This step prevents that disaster.
+
+```bash
+# 1. Read scope boundaries from scout's recon
+cat recon_notes.md | grep -A 20 "Scope\|IN SCOPE\|OUT OF SCOPE"
+cat program_context.md | grep -A 10 "Assets\|Scope\|Excluded"
+
+# 2. If smart contract target: verify which VERSION/REPO is in scope
+# - Immunefi scope = specific on-chain addresses + specific contract versions
+# - GitHub repo may contain multiple versions (V1, V2, V3) — only one is in scope
+# - Check: do the files I'm about to analyze match the Immunefi-listed addresses?
+
+# 3. If target is a FORK: check what the original protocol's audit covered
+cat recon_report.json | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+fork = data.get('is_fork_of')
+audits = data.get('existing_audits', [])
+if fork:
+    print(f'⚠️ FORK of {fork}. Existing audits: {audits}')
+    print('CHECK: Are audit fixes applied? If yes, finding probability is LOW.')
+    print('FOCUS: Look for NEW code added by fork, not original protocol logic.')
+else:
+    print('Not a fork — standard analysis applies.')
+"
+
+# 4. Create scope checklist (reference throughout analysis)
+# BEFORE analyzing ANY file, ask: "Is this file part of the in-scope version?"
+# If NO → SKIP. Do NOT spend tokens on out-of-scope code.
+```
+
+**HARD RULE**: If you discover mid-analysis that you've been analyzing OOS code, STOP immediately and report to Orchestrator. Do NOT continue hoping to find something — it's 100% wasted tokens.
+
+**Scope Validation Output** (include at top of vulnerability_candidates.md):
+```markdown
+## Scope Validation
+- In-scope version: V3 (Solidity 0.8.28)
+- In-scope addresses: [list from Immunefi]
+- Out-of-scope: V1/V2 (mimo-defi), admin-only functions, known audit findings
+- Fork of: [original protocol] — audit fixes: [applied/missing]
+- Files analyzed: [list only in-scope files]
+```
+
+### Step 0.5: MITRE Context Loading (run BEFORE vulnerability search)
+
+**If `mitre_enrichment.json` exists (from scout Phase 6), load it first.** This gives you pre-mapped ATT&CK techniques for known CVEs, saving redundant CVE lookups.
+
+```bash
+# Load MITRE enrichment from scout Phase 6
+python3 -c "
+import json, sys
+from pathlib import Path
+
+mf = Path('mitre_enrichment.json')
+if not mf.exists():
+    print('[MITRE] No enrichment file found — proceed without pre-mapping')
+    sys.exit(0)
+
+data = json.load(mf.open())
+print(f'[MITRE] Loaded {len(data[\"results\"])} pre-mapped CVEs')
+for r in data['results']:
+    cve = r['cve_id']
+    score = r.get('cvss_score', 'N/A')
+    cwes = [c['cwe_id'] for c in r.get('cwes', [])]
+    attacks = set()
+    for cwe in r.get('cwes', []):
+        for capec in cwe.get('capecs', []):
+            for tech in capec.get('attack_techniques', []):
+                attacks.add(tech['technique_id'])
+    print(f'  {cve} (CVSS {score}): CWEs={cwes}, ATT&CK={sorted(attacks)}')
+" 2>/dev/null
+
+# Use MITRE-enriched ATT&CK technique IDs to guide search priority:
+# T1190 (Exploit Public-Facing Application) → prioritize RCE/auth bypass CVEs
+# T1059 (Command and Scripting Interpreter) → look for injection vectors
+# T1203 (Exploitation for Client Execution) → client-side exploits
+# T1499 (Endpoint DoS) → deprioritize unless bounty includes DoS
+# T1539 (Steal Web Session Cookie) → CSRF/session fixation
+
+# Query RAG API for known exploits matching discovered services/CVEs:
+curl -sf -X POST http://localhost:8100/query \
+    -H "Content-Type: application/json" \
+    -d '{"query": "<service> <version> exploit RCE", "limit": 5}' | python3 -m json.tool
+
+# Query Neo4j for cross-session knowledge (have we seen this service before?):
+python3 -c "
+from tools.attack_graph.graph import AttackGraph
+g = AttackGraph('bolt://localhost:7687', 'neo4j', 'terminator')
+# Check if this service/version was seen in previous targets
+results = g.get_critical_vulns()
+for r in results: print(dict(r))
+g.close()
+"
+
+# Run mitre_mapper directly for additional CVEs not in scout's scan:
+python3 /home/rootk1m/01_CYAI_Lab/01_Projects/Terminator/tools/mitre_mapper.py \
+    <CVE-IDs-found-in-recon> --json 2>/dev/null | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+for r in data['results']:
+    print(r['cve_id'], '->', [t['technique_id'] for cwe in r['cwes'] for capec in cwe['capecs'] for t in capec['attack_techniques']])
+"
+```
+
+**ATT&CK Technique → Priority Mapping**:
+| ATT&CK Technique | Priority | Focus Area |
+|-----------------|----------|-----------|
+| T1190 (Exploit Public-Facing App) | CRITICAL | RCE, auth bypass on exposed services |
+| T1059.x (Command Interpreter) | CRITICAL | Command injection, eval/exec |
+| T1203 (Exploitation Client Exec) | HIGH | Memory corruption, overflow |
+| T1068 (Exploitation Privilege Esc) | HIGH | LPE, container escape |
+| T1078 (Valid Accounts) | HIGH | Credential theft, default creds |
+| T1190+T1059 (chained) | CRITICAL+ | Pre-auth RCE chain — highest value |
+| T1499 (Endpoint DoS) | LOW | Skip unless bounty includes DoS |
+| T1189 (Drive-by Compromise) | MEDIUM | XSS → client-side attacks |
+
 ### Step 1: Parse Recon Data
 ```bash
 # Read scout's findings
@@ -35,6 +153,15 @@ import json, sys
 data = json.load(sys.stdin)
 for p in data.get('ports', []):
     print(f\"{p['port']}/{p.get('service','?')} — {p.get('version','unknown')}\")
+"
+# Also read MITRE-enriched CVEs from Phase 6
+cat mitre_enrichment.json 2>/dev/null | python3 -c "
+import json, sys
+try:
+    data = json.load(sys.stdin)
+    cves = [r['cve_id'] for r in data.get('results', [])]
+    print(f'Pre-identified CVEs from scout: {cves}')
+except: pass
 "
 ```
 
@@ -512,21 +639,117 @@ Use Gemini bizlogic mode for 1st pass:
 ./tools/gemini_query.sh bizlogic src/api/transactions.ts
 ```
 
-### Level 4: Smart Contract Analysis (Web3 targets)
-```bash
-# Slither — automated vulnerability detection (100+ detectors)
-slither . --detect reentrancy-eth,arbitrary-send-eth,suicidal,unprotected-upgrade
+### Level 4: Smart Contract Analysis (Web3 targets — ENHANCED)
 
-# Mythril — symbolic execution for EVM bytecode
+#### 4A: Automated Detection (Slither — prioritized detectors)
+```bash
+# HIGH PRIORITY detectors (most likely to find real bugs):
+slither . --detect reentrancy-eth,reentrancy-no-eth,arbitrary-send-eth,\
+controlled-delegatecall,suicidal,unprotected-upgrade,\
+incorrect-equality,unchecked-transfer,locked-ether,\
+divide-before-multiply,weak-prng,tx-origin
+
+# MEDIUM PRIORITY (informational but useful for attack chains):
+slither . --detect shadowing-local,uninitialized-state,\
+missing-zero-check,calls-loop,reentrancy-events
+
+# If Slither fails on imports: provide remappings
+slither . --solc-remaps "@openzeppelin=node_modules/@openzeppelin"
+```
+
+#### 4B: Oracle Manipulation Patterns (DeFi-specific — Parallel Protocol learned)
+```bash
+# Search for oracle usage patterns
+grep -rn "latestRoundData\|latestAnswer\|getRoundData" --include="*.sol" contracts/
+
+# CHECK EACH ORACLE CALL FOR:
+# 1. answeredInRound >= roundId check (stale price protection)
+# 2. answer > 0 check (zero/negative price)
+# 3. updatedAt + heartbeat > block.timestamp (staleness window)
+# 4. Deviation tolerance between oracle and spot price
+# 5. Multi-oracle fallback (what if Chainlink goes down?)
+
+# TWAP manipulation:
+grep -rn "observe\|consult\|getTimeWeightedAverage" --include="*.sol" contracts/
+# If TWAP window < 30 minutes → manipulable via flash loan
+
+# Custom oracle patterns:
+grep -rn "updateOracle\|setOracle\|oracleConfig" --include="*.sol" contracts/
+# Check: who can update? Is it monotonic? Can it be manipulated?
+```
+
+#### 4C: Flash Loan Attack Patterns
+```bash
+# Check for flash loan protection
+grep -rn "nonReentrant\|ReentrancyGuard\|_status" --include="*.sol" contracts/
+# Missing nonReentrant on value-modifying functions = flash loan vector
+
+# Check for same-block manipulation:
+# - mint + burn in same tx (price manipulation between operations)
+# - deposit + withdraw in same block (share price manipulation)
+grep -rn "block\.number\|block\.timestamp" --include="*.sol" contracts/
+# If no same-block check → flash loan attack possible
+```
+
+#### 4D: Fee/Rounding Exploitation (Parallel Protocol pattern)
+```bash
+# Search for rounding differences
+grep -rn "mulDiv\|Math\.Rounding\|Ceil\|Floor\|roundUp\|roundDown" --include="*.sol" contracts/
+# Check: mint rounds UP (user pays more) but burn rounds DOWN (user gets less)?
+# This is DEFENSIVE rounding — good for protocol, but check consistency
+
+# Division precision loss
+grep -rn "/ BASE\|/ 1e\|/ 10\*\*" --include="*.sol" contracts/
+# Division BEFORE multiplication = precision loss (divide-before-multiply)
+
+# Normalizer/scaling patterns
+grep -rn "normalizer\|normalizedStables\|BASE_27\|BASE_18" --include="*.sol" contracts/
+# Check: what happens when normalizer gets very small or very large?
+# Parallel Protocol: _updateNormalizer renormalizes at BASE_18/BASE_36 boundaries
+```
+
+#### 4E: Access Control & Admin Patterns
+```bash
+# Check which functions are admin-only
+grep -rn "onlyOwner\|onlyAdmin\|restricted\|onlyGovernor\|onlyGuardian" --include="*.sol" contracts/
+# Admin-only functions are usually OUT OF SCOPE for Immunefi
+# Focus on: permissionless functions that interact with admin-set state
+
+# Check for trusted roles that aren't admin
+grep -rn "isTrusted\|isWhitelisted\|isKeeper\|isOperator" --include="*.sol" contracts/
+# These intermediate roles may have weaker protection
+```
+
+#### 4F: Cross-Collateral / Cross-Pool Contamination
+```bash
+# Multi-collateral systems (like Parallel Protocol's Transmuter):
+# Check if one collateral's state affects another's pricing/fees
+grep -rn "collateralList\|for.*collateral\|getCollateralRatio" --include="*.sol" contracts/
+# Pattern: getBurnOracle() takes MIN across ALL collaterals
+# → one bad collateral contaminates the whole system's burn price
+```
+
+#### 4G: Symbolic Execution (Mythril) + Fuzzing (Foundry)
+```bash
+# Mythril — EVM symbolic execution
 myth analyze contracts/Target.sol --execution-timeout 300
+
+# Foundry fuzz — property-based testing
+forge test --fork-url $RPC_URL -vvv
 
 # cargo-audit — Rust dependency vulnerabilities (Lightning/L2 targets)
 cargo audit 2>&1 | grep -E "RUSTSEC|warning|Vulnerability"
-
-# Foundry — test/fuzz Solidity contracts
-forge test -vvv
-forge fuzz run
 ```
+
+#### DeFi Confidence Score Adjustments
+For smart contract findings, apply these modifiers to the standard 10-point questionnaire:
+| Condition | Modifier | Reason |
+|-----------|----------|--------|
+| Requires flash loan | -1 if token illiquid | Can't source attack capital |
+| Admin-only trigger | -3 | Usually OOS for Immunefi |
+| Already in original audit | -2 | HIGH duplicate risk |
+| NEW code added by fork | +2 | Not covered by original audit |
+| Affects normalizer/oracle | +1 | Systemic impact |
 
 ### Analysis Depth Selection Guide
 | Target Size | Mandatory Tools | Optional Tools |
@@ -546,3 +769,21 @@ forge fuzz run
 - **For OSS targets: ALWAYS run Semgrep FIRST, then manual Steps A-E for what it misses**
 - **Bundle recommendation is MANDATORY** — the Orchestrator needs this to plan submissions
 - **Plugin-first**: If a plugin does what a manual grep would do, USE THE PLUGIN
+
+## Infrastructure Integration (Auto-hooks)
+
+### Analysis Start — Knowledge Retrieval
+Before deep analysis, query past knowledge:
+```bash
+# RAG: Search for similar past vulnerabilities
+python3 tools/infra_client.py rag query "$SERVICE $VERSION vulnerability" --limit 5 2>/dev/null || true
+
+# Neo4j: Get target attack surface summary (if scout already populated)
+python3 tools/infra_client.py graph query attack_surface_summary --target "$TARGET" 2>/dev/null || true
+
+# DB: Check for past findings on same target (duplicate prevention)
+python3 tools/infra_client.py db search-findings "$TARGET" 2>/dev/null || true
+
+# DB: Check past failure patterns for this technique
+python3 tools/infra_client.py db check-failures "$VULN_TYPE" 2>/dev/null || true
+```

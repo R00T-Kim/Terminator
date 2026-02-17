@@ -57,6 +57,65 @@ cat SECURITY.md 2>/dev/null  # security policy exists?
 # - Rate limiting presence
 ```
 
+### Step 2.5: Audit History & Fork Detection (Smart Contract targets — CRITICAL)
+
+**Parallel Protocol lesson**: Target was a fork of Angle Transmuter with ALL C4 2023 fixes applied. We spent 3 hours to confirm it was clean. This step catches that in 10 minutes.
+
+```bash
+# 1. Is this a fork of a known protocol?
+# Check: protocol docs, contract comments, GitHub repo description
+# Common indicators: "authorized fork of", "based on", "adapted from"
+# Search project source if available:
+grep -ri "fork\|based on\|adapted\|authorized" README.md docs/ contracts/ 2>/dev/null | head -10
+
+# 2. If FORK → find original protocol's audits
+# Key audit platforms to check:
+#   - Code4rena (C4): code4rena.com/reports
+#   - Sherlock: audits.sherlock.xyz
+#   - OpenZeppelin: blog.openzeppelin.com
+#   - Trail of Bits: github.com/trailofbits/publications
+#   - Spearbit, Consensys Diligence, Certik
+# Search: "<original protocol name> audit report"
+
+# 3. Score adjustment based on audit coverage
+# ALL findings fixed in fork → score -2 (very clean target)
+# SOME findings fixed, some missing → score +2 (variant analysis gold!)
+# NO audit on original → score +1 (unaudited code)
+# Fork adds NEW contracts not in original audit → score +2 (highest value!)
+
+# 4. Check if Immunefi bounties already paid for this fork family
+# Search: "<original protocol> immunefi bounty" or "<fork name> immunefi bounty"
+# If original has 100+ reports resolved → fork is likely picked clean too
+```
+
+**Fork Analysis Quick Decision Matrix**:
+| Condition | Score Impact | Action |
+|-----------|-------------|--------|
+| All audit fixes applied, no new code | -3 | Strong NO-GO signal |
+| All audit fixes applied, adds new code | +1 | Focus ONLY on new code |
+| Missing some audit fixes | +3 | Variant analysis opportunity! |
+| No prior audit exists | +1 | Standard analysis |
+
+### Step 2.6: Cross-Session Knowledge (Neo4j — if available)
+
+```bash
+# Query Neo4j for past experience with similar targets
+python3 -c "
+from tools.attack_graph.graph import AttackGraph
+g = AttackGraph('bolt://localhost:7687', 'neo4j', 'terminator')
+
+# Have we analyzed this protocol or tech stack before?
+results = g.query('MATCH (t:Target) WHERE t.name CONTAINS \"<keyword>\" RETURN t.name, t.status, t.findings_count')
+for r in results: print(dict(r))
+
+# Have we seen this technology (e.g., Diamond, Transmuter, Curve) before?
+results = g.query('MATCH (t:Technology)<-[:USES]-(target:Target) WHERE t.name CONTAINS \"<tech>\" RETURN target.name, target.status')
+for r in results: print(dict(r))
+
+g.close()
+" 2>/dev/null || echo "[Neo4j] Not available — skip cross-session check"
+```
+
 ### Step 3: Competition Analysis
 ```bash
 # Check recent H1 Hacktivity for this program

@@ -97,3 +97,15 @@ You are the cold, impartial judge. You don't care how clever the exploit is. You
 - Report flags as `FLAG_FOUND: <flag>`
 - If remote host:port is not provided, ask Orchestrator before attempting remote
 - **Copy-paste actual output** in the report — never paraphrase or summarize test results
+
+## Infrastructure Integration (Auto-hooks)
+
+### Verification Complete — Execution Logging
+After verification pass or fail:
+```bash
+# Log agent execution to DB for monitoring
+python3 tools/infra_client.py db log-run \
+  --session "$SESSION_ID" --agent verifier \
+  --target "$TARGET" --status "$VERDICT" \
+  --duration "$DURATION_SECONDS" 2>/dev/null || true
+```

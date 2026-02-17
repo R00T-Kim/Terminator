@@ -171,3 +171,15 @@ When the Orchestrator sends you a bug bounty report instead of CTF artifacts, sw
 - Report verdict to Orchestrator via SendMessage immediately after review
 - **You are the last line of defense before verifier** — if you miss a bug, it wastes a full verification cycle
 - **For bounty reports: run at least Round 1 + Round 2** — Round 3 on Orchestrator request
+
+## Infrastructure Integration (Auto-hooks)
+
+### Review Complete — Failure Pattern Storage
+On REJECTED verdict, store failure pattern for future avoidance:
+```bash
+# Log failure pattern to DB (helps future agents avoid same mistakes)
+python3 tools/infra_client.py db log-failure \
+  --technique "$TECHNIQUE" \
+  --error "$REJECTION_REASON" \
+  --solution "$FIX_SUGGESTION" 2>/dev/null || true
+```

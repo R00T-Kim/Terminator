@@ -183,3 +183,33 @@ reversal_map.md에 반드시 `## Assumptions & Verification` 섹션 포함:
 ```
 **✅ = 검증 완료, ⚠️ = 미검증 (solver/chain이 반드시 검증해야 함)**
 가정을 숨기면 다음 에이전트가 잘못된 전제 위에 exploit을 쌓는다.
+
+## Infrastructure Integration (Auto-hooks)
+
+### Analysis Start — Binary Cache Check
+Before starting analysis, check if this binary was analyzed before:
+```bash
+MD5=$(md5sum ./binary 2>/dev/null | cut -d' ' -f1)
+if [ -n "$MD5" ]; then
+  CACHE=$(python3 tools/infra_client.py db check-binary --md5 "$MD5" --json 2>/dev/null)
+  if echo "$CACHE" | python3 -c "import sys,json; d=json.load(sys.stdin); exit(0 if d.get('found') else 1)" 2>/dev/null; then
+    echo "[CACHE HIT] Previously analyzed binary — using cached results"
+    echo "$CACHE" | python3 -c "import sys,json; print(json.load(sys.stdin).get('analysis_summary',''))"
+    # Use cached analysis as starting point, still verify critical values
+  fi
+fi
+```
+
+### Analysis Complete — Cache & RAG Storage
+After saving reversal_map.md:
+```bash
+# Cache binary analysis for future sessions
+python3 tools/infra_client.py db cache-binary --file ./binary \
+  --summary "$(cat reversal_map.md | head -100)" 2>/dev/null || true
+
+# Store technique in RAG for knowledge retrieval
+python3 tools/infra_client.py rag ingest --category "Reversing" \
+  --technique "$(head -1 reversal_map.md | sed 's/# Reversal Map: //')" \
+  --description "Binary analysis" \
+  --content "$(cat reversal_map.md | head -200)" 2>/dev/null || true
+```
