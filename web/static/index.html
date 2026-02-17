@@ -1,0 +1,1171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Terminator Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f1117; --bg-elevated: #161922; --card: #1c1f2e; --card-hover: #242838;
+      --accent: #3b82f6; --accent2: #6366f1; --accent-soft: rgba(99,102,241,0.12);
+      --text: #e4e4eb; --text-dim: #7c7f94; --text-muted: #52556a; --border: #2a2d3e; --border-subtle: #222538;
+      --critical: #ef4444; --high: #f97316; --medium: #eab308;
+      --low: #22c55e; --info: #38bdf8; --up: #22c55e; --down: #ef4444;
+      --go: #22c55e; --nogo: #ef4444; --cond: #eab308;
+      --shadow: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
+      --shadow-lg: 0 4px 12px rgba(0,0,0,0.4), 0 2px 4px rgba(0,0,0,0.2);
+      --radius: 12px; --radius-sm: 8px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: var(--bg); color: var(--text); font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 15px; line-height: 1.6; min-height: 100vh; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+
+    header { background: var(--bg-elevated); border-bottom: 1px solid var(--border); padding: 16px 28px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; backdrop-filter: blur(12px); }
+    header h1 { font-size: 20px; font-weight: 700; letter-spacing: 1.5px; color: #fff; text-transform: uppercase; }
+    .header-accent { color: var(--accent); }
+    .header-meta { display: flex; align-items: center; gap: 20px; font-size: 13px; color: var(--text-dim); }
+    .ws-indicator { display: flex; align-items: center; gap: 6px; }
+    .ws-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--down); transition: background 0.3s; }
+    .ws-dot.connected { background: var(--up); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); padding: 0 24px; background: var(--bg-elevated); }
+    .tab-btn { background: none; border: none; color: var(--text-dim); font-family: inherit; font-size: 13px; font-weight: 500; letter-spacing: 0.5px; text-transform: uppercase; padding: 14px 20px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color 0.2s, border-color 0.2s; }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active { color: #fff; border-bottom-color: var(--accent); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    .container { display: grid; grid-template-columns: 280px 1fr; gap: 20px; padding: 24px; max-width: 1600px; margin: 0 auto; }
+    .sidebar { grid-row: 1 / 3; }
+    .card { background: var(--card); border: 1px solid var(--border-subtle); border-radius: var(--radius); padding: 20px; overflow: hidden; box-shadow: var(--shadow); transition: box-shadow 0.2s; }
+    .card:hover { box-shadow: var(--shadow-lg); }
+    .card-title { font-size: 12px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text-dim); border-bottom: 1px solid var(--border-subtle); padding-bottom: 10px; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; }
+    .badge { background: var(--accent-soft); color: var(--accent); font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; }
+
+    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
+    .stat-card { background: var(--card); border: 1px solid var(--border-subtle); border-radius: var(--radius); padding: 20px; text-align: center; box-shadow: var(--shadow); }
+    .stat-value { font-size: 36px; font-weight: 700; color: #fff; letter-spacing: -1px; }
+    .stat-label { font-size: 12px; font-weight: 500; color: var(--text-dim); letter-spacing: 1px; text-transform: uppercase; margin-top: 8px; }
+
+    .session-list { max-height: calc(100vh - 200px); overflow-y: auto; }
+    .session-item { padding: 12px 14px; border-bottom: 1px solid var(--border-subtle); cursor: pointer; transition: background 0.2s, transform 0.1s; border-radius: var(--radius-sm); margin-bottom: 4px; }
+    .session-item:hover { background: var(--accent-soft); }
+    .session-item.active { background: var(--accent-soft); border-left: 3px solid var(--accent); }
+    .session-sid { font-size: 12px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: 'JetBrains Mono', monospace; }
+    .session-target { font-size: 14px; font-weight: 500; color: var(--text); margin-top: 4px; }
+    .status-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; text-transform: uppercase; margin-top: 6px; letter-spacing: 0.3px; }
+    .status-badge.completed { background: rgba(34,197,94,0.12); color: var(--low); }
+    .status-badge.running { background: rgba(56,189,248,0.12); color: var(--info); }
+    .status-badge.failed { background: rgba(239,68,68,0.12); color: var(--critical); }
+    .status-badge.unknown { background: rgba(124,127,148,0.12); color: var(--text-dim); }
+
+    .main-area { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .findings-bars { display: flex; flex-direction: column; gap: 8px; }
+    .sev-row { display: flex; align-items: center; gap: 10px; }
+    .sev-label { width: 60px; font-size: 11px; text-transform: uppercase; flex-shrink: 0; }
+    .sev-bar-bg { flex: 1; background: var(--bg); border-radius: 3px; height: 14px; overflow: hidden; }
+    .sev-bar { height: 100%; border-radius: 3px; transition: width 0.5s ease; min-width: 2px; }
+    .sev-count { width: 30px; text-align: right; font-size: 12px; color: #fff; flex-shrink: 0; }
+    .sev-bar.critical { background: var(--critical); } .sev-bar.high { background: var(--high); }
+    .sev-bar.medium { background: var(--medium); } .sev-bar.low { background: var(--low); }
+    .sev-bar.info { background: var(--info); }
+
+    .live-log-area { grid-column: 1 / 3; }
+    #log-output { background: var(--bg); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 16px; height: 300px; overflow-y: auto; font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.7; white-space: pre-wrap; word-break: break-all; }
+    .log-line { color: #a8ff78; display: block; }
+    .log-line.err { color: #ff8080; }
+    .log-line.warn { color: #ffe080; }
+    .log-idle { color: var(--text-dim); font-style: italic; }
+
+    .health-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+    .health-item { display: flex; align-items: center; gap: 10px; padding: 12px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); background: var(--bg); }
+    .health-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .health-dot.up { background: var(--up); box-shadow: 0 0 6px rgba(34,197,94,0.4); } .health-dot.down { background: var(--down); box-shadow: 0 0 6px rgba(239,68,68,0.4); }
+    .health-name { font-size: 13px; font-weight: 500; color: var(--text-dim); }
+
+    #session-detail { display: none; }
+    #session-detail.visible { display: block; }
+    .detail-log { background: #0d0d1a; border: 1px solid var(--border); border-radius: 4px; padding: 10px; max-height: 300px; overflow-y: auto; font-size: 11px; line-height: 1.5; white-space: pre-wrap; word-break: break-all; color: #c8ffa8; }
+    .flags-list { display: flex; flex-direction: column; gap: 6px; }
+    .flag-item { background: #1a0d1a; border: 1px solid var(--critical); border-radius: 4px; padding: 6px 10px; font-size: 12px; color: #ff8080; word-break: break-all; }
+    .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+    .info-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .info-table td { padding: 3px 6px 3px 0; vertical-align: top; }
+    .info-table td:first-child { color: var(--text-dim); white-space: nowrap; }
+
+    /* ── Bug Bounty Missions ── */
+    .bounty-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    .mission-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 18px; }
+    .mission-card { background: var(--card); border: 1px solid var(--border-subtle); border-radius: var(--radius); padding: 20px; cursor: pointer; transition: all 0.25s ease; box-shadow: var(--shadow); }
+    .mission-card:hover { border-color: var(--accent); background: var(--card-hover); box-shadow: var(--shadow-lg); transform: translateY(-2px); }
+    .mission-card.active { border-color: var(--accent); background: var(--card-hover); box-shadow: 0 0 0 1px var(--accent), var(--shadow-lg); }
+    .mission-name { font-size: 18px; color: #fff; font-weight: 600; margin-bottom: 10px; letter-spacing: -0.2px; }
+    .mission-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+    .go-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 11px; text-transform: uppercase; font-weight: 600; letter-spacing: 0.3px; }
+    .go-badge.GO { background: rgba(34,197,94,0.15); color: var(--go); }
+    .go-badge.NO_GO { background: rgba(239,68,68,0.15); color: var(--nogo); }
+    .go-badge.CONDITIONAL_GO { background: rgba(234,179,8,0.15); color: var(--cond); }
+    .go-badge.UNKNOWN { background: rgba(124,127,148,0.12); color: var(--text-dim); }
+    .score-badge { font-size: 13px; font-weight: 500; color: var(--text-dim); }
+    .findings-badge { font-size: 13px; font-weight: 500; color: var(--info); }
+
+    /* Pipeline progress bar */
+    .pipeline-bar { display: flex; gap: 4px; margin-top: 12px; }
+    .phase-dot { flex: 1; height: 8px; border-radius: 4px; background: var(--border); transition: background 0.3s, box-shadow 0.3s; }
+    .phase-dot.done { background: var(--low); box-shadow: 0 0 6px rgba(34,197,94,0.3); }
+    .phase-dot.current { background: var(--accent); box-shadow: 0 0 8px rgba(59,130,246,0.4); animation: pulse-phase 2s infinite; }
+    @keyframes pulse-phase { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+    .pipeline-label { font-size: 12px; font-weight: 500; color: var(--text-dim); margin-top: 8px; }
+
+    /* Mission detail panel */
+    #mission-detail { display: none; grid-column: 1 / -1; }
+    #mission-detail.visible { display: block; }
+    .pipeline-timeline { display: flex; flex-direction: column; gap: 6px; }
+    .phase-row { display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-radius: var(--radius-sm); background: var(--bg); border: 1px solid var(--border-subtle); transition: background 0.2s; }
+    .phase-row:hover { background: var(--bg-elevated); }
+    .phase-icon { width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; }
+    .phase-icon.done { background: rgba(34,197,94,0.2); color: var(--low); }
+    .phase-icon.pending { background: var(--border); color: var(--text-muted); }
+    .phase-label { font-size: 14px; font-weight: 500; color: var(--text); }
+    .phase-artifact { font-size: 12px; color: var(--text-dim); margin-left: auto; font-family: 'JetBrains Mono', monospace; }
+
+    .mission-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+    .mission-tab { background: none; border: none; color: var(--text-dim); font-family: inherit; font-size: 12px; font-weight: 500; letter-spacing: 0.5px; text-transform: uppercase; padding: 10px 16px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color 0.2s; }
+    .mission-tab:hover { color: var(--text); }
+    .mission-tab.active { color: #fff; border-bottom-color: var(--accent); }
+    .mission-tab-panel { display: none; }
+    .mission-tab-panel.active { display: block; }
+
+    .md-preview { background: var(--bg); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 24px; max-height: 700px; overflow-y: auto; font-family: 'Inter', sans-serif; font-size: 14px; line-height: 1.8; color: var(--text); }
+    .md-preview h1 { font-size: 22px; font-weight: 700; color: #fff; margin: 24px 0 12px 0; padding-bottom: 8px; border-bottom: 1px solid var(--border-subtle); }
+    .md-preview h2 { font-size: 18px; font-weight: 600; color: #fff; margin: 20px 0 10px 0; padding-bottom: 6px; border-bottom: 1px solid var(--border-subtle); }
+    .md-preview h3 { font-size: 16px; font-weight: 600; color: var(--text); margin: 16px 0 8px 0; }
+    .md-preview h4 { font-size: 14px; font-weight: 600; color: var(--text-dim); margin: 12px 0 6px 0; }
+    .md-preview p { margin: 8px 0; }
+    .md-preview code { background: rgba(99,102,241,0.1); color: var(--accent); padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 13px; }
+    .md-preview pre { background: #0a0b10; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 16px; margin: 12px 0; overflow-x: auto; }
+    .md-preview pre code { background: none; color: #a8ff78; padding: 0; font-size: 12px; line-height: 1.6; }
+    .md-preview table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13px; }
+    .md-preview th { background: var(--bg-elevated); color: var(--text); font-weight: 600; text-align: left; padding: 10px 12px; border: 1px solid var(--border); }
+    .md-preview td { padding: 8px 12px; border: 1px solid var(--border-subtle); }
+    .md-preview tr:hover { background: var(--accent-soft); }
+    .md-preview blockquote { border-left: 3px solid var(--accent); padding: 8px 16px; margin: 12px 0; background: var(--accent-soft); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; color: var(--text-dim); }
+    .md-preview ul, .md-preview ol { padding-left: 24px; margin: 8px 0; }
+    .md-preview li { margin: 4px 0; }
+    .md-preview hr { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+    .md-preview strong { color: #fff; font-weight: 600; }
+    .md-preview a { color: var(--accent); text-decoration: none; }
+    .md-preview a:hover { text-decoration: underline; }
+    .md-preview img { max-width: 100%; border-radius: var(--radius-sm); }
+    .report-draft { margin-bottom: 16px; }
+    .report-draft-name { font-size: 12px; font-weight: 600; color: var(--text-dim); margin-bottom: 8px; font-family: 'JetBrains Mono', monospace; }
+
+    ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+    @media (max-width: 900px) {
+      .container { grid-template-columns: 1fr; } .sidebar { grid-row: auto; }
+      .main-area { grid-template-columns: 1fr; } .live-log-area { grid-column: auto; }
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+      .mission-grid { grid-template-columns: 1fr; }
+    }
+
+    .refresh-btn { background: var(--accent-soft); border: 1px solid var(--border); color: var(--accent); padding: 6px 14px; border-radius: var(--radius-sm); cursor: pointer; font-family: inherit; font-size: 12px; font-weight: 500; transition: all 0.2s; }
+    .refresh-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .empty-msg { color: var(--text-dim); text-align: center; padding: 20px; font-size: 12px; }
+    .mt8 { margin-top: 8px; }
+    .full-width { grid-column: 1 / -1; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1><span class="header-accent">&#9670;</span> TERMINATOR <span class="header-accent">&#9670;</span> DASHBOARD</h1>
+  <div class="header-meta">
+    <span id="last-updated">Loading...</span>
+    <div class="ws-indicator">
+      <div class="ws-dot" id="ws-dot"></div>
+      <span id="ws-status">Disconnected</span>
+    </div>
+  </div>
+</header>
+
+<div class="tabs">
+  <button class="tab-btn active" data-tab="ctf">CTF Sessions</button>
+  <button class="tab-btn" data-tab="bounty">Bug Bounty Missions</button>
+  <button class="tab-btn" data-tab="infra">Infrastructure</button>
+  <button class="tab-btn" data-tab="findings">Findings</button>
+  <button class="tab-btn" data-tab="graph">Attack Graph</button>
+</div>
+
+<!-- ─── CTF Tab ─────────────────────────────────────────────── -->
+<div id="tab-ctf" class="tab-panel active">
+  <div class="container">
+    <!-- Sidebar -->
+    <aside class="sidebar card">
+      <div class="card-title">
+        <span>Sessions</span>
+        <button class="refresh-btn" id="btn-refresh">Refresh</button>
+      </div>
+      <div class="session-list" id="session-list">
+        <div class="empty-msg">Loading sessions...</div>
+      </div>
+    </aside>
+
+    <!-- Right column -->
+    <div>
+      <div class="stats-row">
+        <div class="stat-card"><div class="stat-value" id="st-sessions">-</div><div class="stat-label">Sessions</div></div>
+        <div class="stat-card"><div class="stat-value" id="st-flags" style="color:#ff8080">-</div><div class="stat-label">Flags</div></div>
+        <div class="stat-card"><div class="stat-value" id="st-critical" style="color:var(--critical)">-</div><div class="stat-label">Critical</div></div>
+        <div class="stat-card"><div class="stat-value" id="st-high" style="color:var(--high)">-</div><div class="stat-label">High</div></div>
+      </div>
+
+      <div class="main-area">
+        <div class="card">
+          <div class="card-title"><span>Findings by Severity</span></div>
+          <div class="findings-bars" id="findings-bars"><div class="empty-msg">Loading...</div></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><span>Service Health</span></div>
+          <div class="health-grid" id="health-grid"><div class="empty-msg">Checking...</div></div>
+        </div>
+
+        <div class="card live-log-area">
+          <div class="card-title">
+            <span>Live Session Log</span>
+            <span class="badge" id="live-session-badge">-</span>
+          </div>
+          <div id="log-output"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Session detail (full width) -->
+    <div id="session-detail" class="card" style="grid-column: 1 / 3;">
+      <div class="card-title">
+        <span>Session Detail: <span id="detail-session-id"></span></span>
+        <button class="refresh-btn" id="btn-close-detail">Close</button>
+      </div>
+      <div id="detail-content"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Bug Bounty Tab ────────────────────────────────────────── -->
+<div id="tab-bounty" class="tab-panel">
+  <div style="max-width:1600px;margin:0 auto;padding:16px;">
+    <div class="bounty-header">
+      <div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim);">
+        Active Missions — <span id="mission-count">0</span> targets
+      </div>
+      <button class="refresh-btn" id="btn-refresh-missions">Refresh</button>
+    </div>
+
+    <div class="mission-grid" id="mission-grid">
+      <div class="empty-msg">Loading missions...</div>
+    </div>
+
+    <!-- Mission detail panel -->
+    <div id="mission-detail" class="card" style="margin-top:16px;">
+      <div class="card-title">
+        <span>Mission: <span id="detail-mission-name"></span></span>
+        <button class="refresh-btn" id="btn-close-mission">Close</button>
+      </div>
+      <div id="mission-detail-content"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Infrastructure Tab ───────────────────────────────────────── -->
+<div id="tab-infra" class="tab-panel">
+  <div style="max-width:1600px;margin:0 auto;padding:24px;">
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-value" id="st-rag-vectors">-</div><div class="stat-label">RAG Vectors</div></div>
+      <div class="stat-card"><div class="stat-value" id="st-rag-failures">-</div><div class="stat-label">Failure Memory</div></div>
+      <div class="stat-card"><div class="stat-value" id="st-db-findings">-</div><div class="stat-label">DB Findings</div></div>
+      <div class="stat-card"><div class="stat-value" id="st-agent-runs">-</div><div class="stat-label">Agent Runs</div></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div class="card">
+        <div class="card-title"><span>Active Agents</span><span class="badge" id="active-agent-count">0</span></div>
+        <div id="active-agents-list"><div class="empty-msg">No active agents</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span>Recent Agent Runs</span><button class="refresh-btn" id="btn-refresh-runs">Refresh</button></div>
+        <div id="recent-runs-list" style="max-height:400px;overflow-y:auto;"><div class="empty-msg">Loading...</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Findings Tab ──────────────────────────────────────────────── -->
+<div id="tab-findings" class="tab-panel">
+  <div style="max-width:1600px;margin:0 auto;padding:24px;">
+    <div class="bounty-header">
+      <div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim);">
+        DB Findings — <span id="db-findings-count">0</span> total
+      </div>
+      <div style="display:flex;gap:8px;">
+        <select id="findings-filter-status" style="background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:var(--radius-sm);padding:6px 12px;font-size:12px;">
+          <option value="">All Status</option>
+          <option value="ACTIVE">Active</option>
+          <option value="SUBMITTED">Submitted</option>
+          <option value="KILL">Killed</option>
+          <option value="DUPLICATE">Duplicate</option>
+        </select>
+        <button class="refresh-btn" id="btn-refresh-findings">Refresh</button>
+      </div>
+    </div>
+    <div id="db-findings-table" style="overflow-x:auto;">
+      <table class="info-table" style="width:100%;font-size:13px;">
+        <thead>
+          <tr style="border-bottom:1px solid var(--border);">
+            <th style="padding:10px;text-align:left;color:var(--text-dim);">ID</th>
+            <th style="padding:10px;text-align:left;color:var(--text-dim);">Target</th>
+            <th style="padding:10px;text-align:left;color:var(--text-dim);">Title</th>
+            <th style="padding:10px;text-align:left;color:var(--text-dim);">Severity</th>
+            <th style="padding:10px;text-align:left;color:var(--text-dim);">Status</th>
+            <th style="padding:10px;text-align:left;color:var(--text-dim);">PoC Tier</th>
+            <th style="padding:10px;text-align:left;color:var(--text-dim);">Created</th>
+          </tr>
+        </thead>
+        <tbody id="findings-tbody"><tr><td colspan="7" class="empty-msg">Loading...</td></tr></tbody>
+      </table>
+    </div>
+
+    <div class="card" style="margin-top:16px;">
+      <div class="card-title"><span>Findings by Severity &amp; Status</span></div>
+      <div id="findings-stats-chart" style="display:flex;gap:16px;flex-wrap:wrap;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Attack Graph Tab ──────────────────────────────────────────── -->
+<div id="tab-graph" class="tab-panel">
+  <div style="max-width:1600px;margin:0 auto;padding:24px;">
+    <div class="bounty-header">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim);">Attack Graph</span>
+        <input type="text" id="graph-target-input" placeholder="Target name..." style="background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:var(--radius-sm);padding:6px 12px;font-size:13px;width:200px;">
+      </div>
+      <button class="refresh-btn" id="btn-load-graph">Load Graph</button>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+      <div class="card">
+        <div class="card-title"><span>Attack Surface Summary</span></div>
+        <div id="graph-summary"><div class="empty-msg">Enter a target and click Load Graph</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span>Critical Vulnerabilities</span></div>
+        <div id="graph-vulns" style="max-height:300px;overflow-y:auto;"><div class="empty-msg">-</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span>Force-Directed Graph</span></div>
+      <div id="graph-viz" style="width:100%;height:500px;background:var(--bg);border-radius:var(--radius-sm);overflow:hidden;position:relative;">
+        <svg id="graph-svg" width="100%" height="100%"></svg>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ── Safe DOM helpers ────────────────────────────────────────────────────────
+
+function el(tag, cls, text) {
+  const node = document.createElement(tag);
+  if (cls) node.className = cls;
+  if (text != null) node.textContent = String(text);
+  return node;
+}
+
+function mdEl(content) {
+  const node = document.createElement('div');
+  node.className = 'md-preview';
+  try { node.innerHTML = marked.parse(String(content || '')); }
+  catch (e) { node.textContent = String(content || ''); }
+  return node;
+}
+
+function clearEl(node) {
+  while (node.firstChild) node.removeChild(node.firstChild);
+}
+
+// ── Tabs ─────────────────────────────────────────────────────────────────────
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 'bounty') loadMissions();
+    if (btn.dataset.tab === 'infra') loadInfraStats();
+    if (btn.dataset.tab === 'findings') loadDBFindings();
+    if (btn.dataset.tab === 'graph') { /* user clicks Load Graph button */ }
+  });
+});
+
+// ── API ───────────────────────────────────────────────────────────────────────
+
+async function apiFetch(path) {
+  const r = await fetch(path);
+  if (!r.ok) throw new Error('HTTP ' + r.status + ': ' + path);
+  return r.json();
+}
+
+// ── Stats ─────────────────────────────────────────────────────────────────────
+
+async function loadStats() {
+  try {
+    const data = await apiFetch('/api/stats');
+    document.getElementById('st-sessions').textContent = data.total_sessions ?? 0;
+    document.getElementById('st-flags').textContent = data.flags_captured ?? 0;
+    document.getElementById('st-critical').textContent = data.findings?.critical ?? 0;
+    document.getElementById('st-high').textContent = data.findings?.high ?? 0;
+    document.getElementById('last-updated').textContent = 'Updated: ' + new Date().toLocaleTimeString();
+    renderHealth(data.health || {});
+  } catch (e) {
+    console.error('Stats:', e);
+  }
+}
+
+// ── Sessions ──────────────────────────────────────────────────────────────────
+
+async function loadSessions() {
+  const container = document.getElementById('session-list');
+  try {
+    const data = await apiFetch('/api/sessions');
+    const sessions = data.sessions || [];
+    clearEl(container);
+    if (!sessions.length) {
+      container.appendChild(el('div', 'empty-msg', 'No sessions found.'));
+      return;
+    }
+    sessions.forEach(s => container.appendChild(buildSessionItem(s)));
+  } catch (e) {
+    clearEl(container);
+    container.appendChild(el('div', 'empty-msg', 'Error: ' + e.message));
+  }
+}
+
+function buildSessionItem(s) {
+  const item = el('div', 'session-item');
+  item.appendChild(el('div', 'session-sid', s.session_id || '-'));
+  item.appendChild(el('div', 'session-target', s.target || s.mode || 'N/A'));
+  item.appendChild(el('span', 'status-badge ' + (s.status || 'unknown'), s.status || 'unknown'));
+  if (s.flags && s.flags.length) {
+    const note = el('span', null, ' \u25C7 ' + s.flags.length + ' flag(s)');
+    note.style.cssText = 'color:var(--critical);font-size:10px;margin-left:4px;';
+    item.appendChild(note);
+  }
+  item.addEventListener('click', () => openSession(s.session_id, item));
+  return item;
+}
+
+// ── Findings ──────────────────────────────────────────────────────────────────
+
+async function loadFindings() {
+  const container = document.getElementById('findings-bars');
+  try {
+    const data = await apiFetch('/api/findings');
+    const counts = data.counts || {};
+    const max = Math.max(1, ...Object.values(counts).map(Number));
+    clearEl(container);
+    ['critical', 'high', 'medium', 'low', 'info'].forEach(sev => {
+      const count = counts[sev] || 0;
+      const pct = Math.round((count / max) * 100);
+
+      const row = el('div', 'sev-row');
+
+      const label = el('span', 'sev-label', sev);
+      label.style.color = 'var(--' + sev + ')';
+      row.appendChild(label);
+
+      const barBg = el('div', 'sev-bar-bg');
+      const bar = el('div', 'sev-bar ' + sev);
+      bar.style.width = pct + '%';
+      barBg.appendChild(bar);
+      row.appendChild(barBg);
+
+      row.appendChild(el('span', 'sev-count', String(count)));
+      container.appendChild(row);
+    });
+  } catch (e) {
+    clearEl(container);
+    container.appendChild(el('div', 'empty-msg', 'Error: ' + e.message));
+  }
+}
+
+// ── Health ────────────────────────────────────────────────────────────────────
+
+function renderHealth(health) {
+  const container = document.getElementById('health-grid');
+  clearEl(container);
+  const entries = Object.entries(health);
+  if (!entries.length) {
+    container.appendChild(el('div', 'empty-msg', 'No data'));
+    return;
+  }
+  entries.forEach(([name, status]) => {
+    const item = el('div', 'health-item');
+    item.appendChild(el('div', 'health-dot ' + status));
+    item.appendChild(el('span', 'health-name', name));
+    container.appendChild(item);
+  });
+}
+
+// ── Session detail ────────────────────────────────────────────────────────────
+
+let activeSessionItem = null;
+
+async function openSession(sessionId, itemEl) {
+  if (activeSessionItem) activeSessionItem.classList.remove('active');
+  activeSessionItem = itemEl;
+  itemEl.classList.add('active');
+
+  const detail = document.getElementById('session-detail');
+  const content = document.getElementById('detail-content');
+  document.getElementById('detail-session-id').textContent = sessionId;
+  detail.classList.add('visible');
+  clearEl(content);
+  content.appendChild(el('div', 'empty-msg', 'Loading...'));
+
+  try {
+    const [session, logData] = await Promise.all([
+      apiFetch('/api/sessions/' + sessionId),
+      apiFetch('/api/sessions/' + sessionId + '/log?tail=200'),
+    ]);
+
+    clearEl(content);
+
+    // Detail grid
+    const grid = el('div', 'detail-grid');
+
+    // Meta
+    const metaDiv = el('div');
+    metaDiv.appendChild(el('div', 'card-title', 'Info'));
+    const table = document.createElement('table');
+    table.className = 'info-table';
+    [
+      ['Status', session.status || 'unknown', true],
+      ['Mode', session.mode || '-', false],
+      ['Target', session.target || '-', false],
+      ['Duration', session.duration_seconds ? session.duration_seconds + 's' : '-', false],
+      ['Files', (session.files || []).join(', ') || '-', false],
+    ].forEach(([label, value, isBadge]) => {
+      const tr = document.createElement('tr');
+      const tdLabel = el('td', null, label);
+      const tdVal = document.createElement('td');
+      if (isBadge) {
+        tdVal.appendChild(el('span', 'status-badge ' + (session.status || 'unknown'), value));
+      } else {
+        tdVal.textContent = value;
+      }
+      tr.appendChild(tdLabel);
+      tr.appendChild(tdVal);
+      table.appendChild(tr);
+    });
+    metaDiv.appendChild(table);
+    grid.appendChild(metaDiv);
+
+    // Flags
+    const flagsDiv = el('div');
+    const flags = session.flags || [];
+    flagsDiv.appendChild(el('div', 'card-title', 'Flags (' + flags.length + ')'));
+    if (flags.length) {
+      const list = el('div', 'flags-list');
+      flags.forEach(f => list.appendChild(el('div', 'flag-item', f)));
+      flagsDiv.appendChild(list);
+    } else {
+      flagsDiv.appendChild(el('div', 'empty-msg', 'No flags'));
+    }
+    grid.appendChild(flagsDiv);
+    content.appendChild(grid);
+
+    // Log
+    const lines = logData.lines || [];
+    if (lines.length) {
+      content.appendChild(el('div', 'card-title mt8', 'Session Log (last ' + lines.length + ' lines)'));
+      const logEl = el('div', 'detail-log');
+      logEl.textContent = lines.join('\n');
+      content.appendChild(logEl);
+    }
+
+    // Writeup
+    if (session.writeup) {
+      content.appendChild(el('div', 'card-title mt8', 'Writeup Preview'));
+      const wpEl = el('div', 'detail-log');
+      wpEl.style.color = 'var(--text)';
+      wpEl.textContent = session.writeup;
+      content.appendChild(wpEl);
+    }
+
+  } catch (e) {
+    clearEl(content);
+    content.appendChild(el('div', 'empty-msg', 'Error: ' + e.message));
+  }
+}
+
+function closeDetail() {
+  document.getElementById('session-detail').classList.remove('visible');
+  if (activeSessionItem) { activeSessionItem.classList.remove('active'); activeSessionItem = null; }
+}
+
+// ── Bug Bounty Missions ────────────────────────────────────────────────────────
+
+let activeMissionCard = null;
+
+async function loadMissions() {
+  const grid = document.getElementById('mission-grid');
+  clearEl(grid);
+  grid.appendChild(el('div', 'empty-msg', 'Loading missions...'));
+  try {
+    const data = await apiFetch('/api/bounty/missions');
+    const missions = data.missions || [];
+    document.getElementById('mission-count').textContent = missions.length;
+    clearEl(grid);
+    if (!missions.length) {
+      grid.appendChild(el('div', 'empty-msg', 'No missions found in targets/ directory.'));
+      return;
+    }
+    missions.forEach(m => grid.appendChild(buildMissionCard(m)));
+  } catch (e) {
+    clearEl(grid);
+    grid.appendChild(el('div', 'empty-msg', 'Error: ' + e.message));
+  }
+}
+
+function buildMissionCard(m) {
+  const card = el('div', 'mission-card');
+
+  // Name
+  card.appendChild(el('div', 'mission-name', m.name));
+
+  // Meta row: status badge, score, findings
+  const meta = el('div', 'mission-meta');
+  const statusCls = 'go-badge ' + (m.status || 'UNKNOWN');
+  const statusLabel = (m.status || 'UNKNOWN').replace(/_/g, ' ');
+  meta.appendChild(el('span', statusCls, statusLabel));
+  if (m.score !== null && m.score !== undefined) {
+    meta.appendChild(el('span', 'score-badge', 'Score: ' + m.score + '/10'));
+  }
+  if (m.findings_count > 0) {
+    meta.appendChild(el('span', 'findings-badge', m.findings_count + ' finding(s)'));
+  }
+  card.appendChild(meta);
+
+  // Phase label
+  card.appendChild(el('div', 'pipeline-label', m.current_phase));
+
+  // Pipeline progress bar
+  const barEl = el('div', 'pipeline-bar');
+  const total = m.phases_total || 8;
+  const done = m.phases_complete || 0;
+  for (let i = 0; i < total; i++) {
+    const dot = el('div', 'phase-dot');
+    if (i < done) dot.classList.add('done');
+    else if (i === done) dot.classList.add('current');
+    barEl.appendChild(dot);
+  }
+  card.appendChild(barEl);
+
+  card.addEventListener('click', () => openMission(m.name, card));
+  return card;
+}
+
+async function openMission(name, cardEl) {
+  if (activeMissionCard) activeMissionCard.classList.remove('active');
+  activeMissionCard = cardEl;
+  cardEl.classList.add('active');
+
+  const detail = document.getElementById('mission-detail');
+  const content = document.getElementById('mission-detail-content');
+  document.getElementById('detail-mission-name').textContent = name;
+  detail.classList.add('visible');
+  clearEl(content);
+  content.appendChild(el('div', 'empty-msg', 'Loading mission data...'));
+
+  try {
+    const [mission, pipeline] = await Promise.all([
+      apiFetch('/api/bounty/missions/' + encodeURIComponent(name)),
+      apiFetch('/api/bounty/missions/' + encodeURIComponent(name) + '/pipeline'),
+    ]);
+
+    clearEl(content);
+
+    // Mission tabs
+    const tabBar = el('div', 'mission-tabs');
+    const tabs = [
+      { key: 'pipeline', label: 'Pipeline' },
+      { key: 'assessment', label: 'Assessment' },
+      { key: 'findings', label: 'Findings' },
+      { key: 'exploits', label: 'Exploits' },
+      { key: 'reports', label: 'Reports' },
+      { key: 'reviews', label: 'Reviews' },
+    ];
+    const panels = {};
+
+    tabs.forEach((t, idx) => {
+      const btn = el('button', 'mission-tab' + (idx === 0 ? ' active' : ''), t.label);
+      const panel = el('div', 'mission-tab-panel' + (idx === 0 ? ' active' : ''));
+      panels[t.key] = panel;
+      btn.addEventListener('click', () => {
+        tabBar.querySelectorAll('.mission-tab').forEach(b => b.classList.remove('active'));
+        content.querySelectorAll('.mission-tab-panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        panel.classList.add('active');
+      });
+      tabBar.appendChild(btn);
+      return panel;
+    });
+    content.appendChild(tabBar);
+
+    // Pipeline tab
+    const timeline = el('div', 'pipeline-timeline');
+    (pipeline.phases || []).forEach(ph => {
+      const row = el('div', 'phase-row');
+      const icon = el('div', 'phase-icon ' + (ph.complete ? 'done' : 'pending'), ph.complete ? '\u2713' : '\u00B7');
+      row.appendChild(icon);
+      row.appendChild(el('span', 'phase-label', ph.label));
+      const artSpan = el('span', 'phase-artifact', ph.artifact);
+      row.appendChild(artSpan);
+      timeline.appendChild(row);
+    });
+    panels['pipeline'].appendChild(timeline);
+    if (pipeline.current_phase) {
+      const cur = el('div', null, 'Current: ' + pipeline.current_phase);
+      cur.style.cssText = 'font-size:11px;color:var(--info);margin-top:10px;';
+      panels['pipeline'].appendChild(cur);
+    }
+
+    // Assessment tab
+    if (mission.assessment) {
+      panels['assessment'].appendChild(mdEl(mission.assessment));
+    } else {
+      panels['assessment'].appendChild(el('div', 'empty-msg', 'No target_assessment.md found.'));
+    }
+
+    // Findings tab
+    if (mission.vulnerability_candidates) {
+      panels['findings'].appendChild(mdEl(mission.vulnerability_candidates));
+    } else {
+      panels['findings'].appendChild(el('div', 'empty-msg', 'No vulnerability_candidates.md found.'));
+    }
+
+    // Exploits tab
+    if (mission.exploit_results) {
+      panels['exploits'].appendChild(mdEl(mission.exploit_results));
+    } else {
+      panels['exploits'].appendChild(el('div', 'empty-msg', 'No exploit_results.md found.'));
+    }
+
+    // Reports tab
+    const drafts = mission.report_drafts || [];
+    if (drafts.length) {
+      drafts.forEach(d => {
+        const wrapper = el('div', 'report-draft');
+        wrapper.appendChild(el('div', 'report-draft-name', d.filename));
+        wrapper.appendChild(mdEl(d.content));
+        panels['reports'].appendChild(wrapper);
+      });
+    } else {
+      panels['reports'].appendChild(el('div', 'empty-msg', 'No report drafts found in immunefi_reports/.'));
+    }
+
+    // Reviews tab
+    let hasReview = false;
+    if (mission.critic_review) {
+      panels['reviews'].appendChild(el('div', 'report-draft-name', 'critic_review.md'));
+      panels['reviews'].appendChild(mdEl(mission.critic_review));
+      hasReview = true;
+    }
+    if (mission.architect_review) {
+      panels['reviews'].appendChild(el('div', 'report-draft-name', 'architect_review.md'));
+      panels['reviews'].appendChild(mdEl(mission.architect_review));
+      hasReview = true;
+    }
+    if (!hasReview) {
+      panels['reviews'].appendChild(el('div', 'empty-msg', 'No review files found.'));
+    }
+
+    // Attach panels to content
+    tabs.forEach(t => content.appendChild(panels[t.key]));
+
+  } catch (e) {
+    clearEl(content);
+    content.appendChild(el('div', 'empty-msg', 'Error: ' + e.message));
+  }
+}
+
+function closeMissionDetail() {
+  document.getElementById('mission-detail').classList.remove('visible');
+  if (activeMissionCard) { activeMissionCard.classList.remove('active'); activeMissionCard = null; }
+}
+
+// ── WebSocket live log ─────────────────────────────────────────────────────────
+
+let ws = null;
+const MAX_LOG_LINES = 500;
+let logLineCount = 0;
+
+function appendLogLine(text, extraCls) {
+  const logEl = document.getElementById('log-output');
+  const span = el('span', 'log-line' + (extraCls ? ' ' + extraCls : ''), text);
+  logEl.appendChild(span);
+  logEl.appendChild(document.createTextNode('\n'));
+  logLineCount++;
+  // Trim oldest lines
+  while (logLineCount > MAX_LOG_LINES && logEl.firstChild) {
+    logEl.removeChild(logEl.firstChild);
+    if (logEl.firstChild && logEl.firstChild.nodeType === 3) logEl.removeChild(logEl.firstChild);
+    logLineCount--;
+  }
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function connectWebSocket() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(proto + '://' + location.host + '/ws/live');
+  const dot = document.getElementById('ws-dot');
+  const label = document.getElementById('ws-status');
+
+  ws.onopen = () => {
+    dot.classList.add('connected');
+    label.textContent = 'Live';
+    const logEl = document.getElementById('log-output');
+    clearEl(logEl);
+    logLineCount = 0;
+  };
+
+  ws.onmessage = (evt) => {
+    try {
+      const msg = JSON.parse(evt.data);
+      if (msg.type === 'log') {
+        document.getElementById('live-session-badge').textContent = msg.session || '-';
+        (msg.data || '').split('\n').filter(Boolean).forEach(line => {
+          const cls = /error|fail|FAIL|Error/i.test(line) ? 'err'
+                    : /warn|WARN/i.test(line) ? 'warn' : '';
+          appendLogLine(line, cls);
+        });
+      } else if (msg.type === 'idle') {
+        const logEl = document.getElementById('log-output');
+        clearEl(logEl);
+        logLineCount = 0;
+        const span = el('span', 'log-idle', '[' + (msg.ts || '') + '] ' + (msg.message || ''));
+        logEl.appendChild(span);
+      } else if (msg.type === 'error') {
+        appendLogLine('WS Error: ' + (msg.message || ''), 'err');
+      }
+    } catch (e) { console.error('WS parse:', e); }
+  };
+
+  ws.onclose = () => {
+    dot.classList.remove('connected');
+    label.textContent = 'Disconnected';
+    setTimeout(connectWebSocket, 5000);
+  };
+  ws.onerror = () => ws.close();
+}
+
+// ── Infrastructure Tab ──────────────────────────────────────────────────────
+
+async function loadInfraStats() {
+  try {
+    const [ragStats, findingsStats, runsData] = await Promise.all([
+      apiFetch('/api/rag/stats').catch(() => ({exploit_vectors: 0, failure_memory: 0})),
+      apiFetch('/api/db/findings/stats').catch(() => ({total: 0})),
+      apiFetch('/api/agent-runs?limit=20').catch(() => ({runs: []})),
+    ]);
+    document.getElementById('st-rag-vectors').textContent = ragStats.exploit_vectors ?? 0;
+    document.getElementById('st-rag-failures').textContent = ragStats.failure_memory ?? 0;
+    document.getElementById('st-db-findings').textContent = findingsStats.total ?? 0;
+    document.getElementById('st-agent-runs').textContent = (runsData.runs || []).length;
+    renderRecentRuns(runsData.runs || []);
+  } catch(e) { console.error('Infra stats:', e); }
+
+  try {
+    const active = await apiFetch('/api/agent-runs/active').catch(() => ({active: []}));
+    const list = document.getElementById('active-agents-list');
+    const agents = active.active || [];
+    document.getElementById('active-agent-count').textContent = agents.length;
+    clearEl(list);
+    if (!agents.length) { list.appendChild(el('div','empty-msg','No active agents')); return; }
+    agents.forEach(a => {
+      const item = el('div','session-item');
+      item.appendChild(el('div','session-target', a.agent_role + ' → ' + (a.target||'-')));
+      item.appendChild(el('span','status-badge running', a.model || 'unknown'));
+      list.appendChild(item);
+    });
+  } catch(e) { console.error('Active agents:', e); }
+}
+
+function renderRecentRuns(runs) {
+  const list = document.getElementById('recent-runs-list');
+  clearEl(list);
+  if (!runs.length) { list.appendChild(el('div','empty-msg','No agent runs recorded')); return; }
+  runs.forEach(r => {
+    const item = el('div','session-item');
+    const role = el('div','session-target', r.agent_role || '-');
+    item.appendChild(role);
+    const meta = el('div','session-sid', (r.target||'-') + ' | ' + (r.model||'-') + ' | ' + (r.duration_seconds ? r.duration_seconds+'s' : '-'));
+    item.appendChild(meta);
+    const statusCls = r.status === 'COMPLETED' ? 'completed' : r.status === 'RUNNING' ? 'running' : 'failed';
+    item.appendChild(el('span','status-badge '+statusCls, r.status || 'unknown'));
+    list.appendChild(item);
+  });
+}
+
+// ── Findings Tab ──────────────────────────────────────────────────────────
+
+async function loadDBFindings() {
+  const tbody = document.getElementById('findings-tbody');
+  const statusFilter = document.getElementById('findings-filter-status').value;
+  clearEl(tbody);
+  try {
+    const url = '/api/db/findings' + (statusFilter ? '?status=' + statusFilter : '');
+    const data = await apiFetch(url);
+    const findings = data.findings || [];
+    document.getElementById('db-findings-count').textContent = data.total ?? findings.length;
+    if (!findings.length) {
+      const tr = document.createElement('tr');
+      const td = el('td','empty-msg','No findings');
+      td.colSpan = 7;
+      tr.appendChild(td);
+      tbody.appendChild(tr);
+      return;
+    }
+    findings.forEach(f => {
+      const tr = document.createElement('tr');
+      tr.style.borderBottom = '1px solid var(--border-subtle)';
+      const sevColor = {'critical':'var(--critical)','high':'var(--high)','medium':'var(--medium)','low':'var(--low)'}[(f.severity||'').toLowerCase()] || 'var(--text-dim)';
+      [
+        f.id, f.target||'-', (f.title||'-').substring(0,60),
+        f.severity||'-', f.status||'-', f.poc_tier ? 'Tier '+f.poc_tier : '-',
+        f.created_at ? new Date(f.created_at).toLocaleDateString() : '-'
+      ].forEach((val, i) => {
+        const td = el('td', null, String(val));
+        td.style.padding = '8px 10px';
+        if (i === 3) td.style.color = sevColor;
+        if (i === 4) {
+          const statusColors = {'ACTIVE':'var(--info)','SUBMITTED':'var(--low)','KILL':'var(--critical)','DUPLICATE':'var(--text-dim)'};
+          td.style.color = statusColors[f.status] || 'var(--text)';
+          td.style.fontWeight = '600';
+        }
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+  } catch(e) {
+    const tr = document.createElement('tr');
+    const td = el('td','empty-msg','Error: '+e.message);
+    td.colSpan = 7;
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+  }
+
+  // Stats chart
+  try {
+    const stats = await apiFetch('/api/db/findings/stats');
+    const chart = document.getElementById('findings-stats-chart');
+    clearEl(chart);
+    (stats.stats || []).forEach(s => {
+      const card = el('div','stat-card');
+      card.style.minWidth = '120px';
+      const sevColor = {'critical':'var(--critical)','high':'var(--high)','medium':'var(--medium)','low':'var(--low)'}[(s.severity||'').toLowerCase()] || 'var(--text-dim)';
+      const val = el('div','stat-value', String(s.count));
+      val.style.color = sevColor;
+      val.style.fontSize = '24px';
+      card.appendChild(val);
+      card.appendChild(el('div','stat-label', (s.target||'?')+' / '+(s.severity||'?')));
+      chart.appendChild(card);
+    });
+  } catch(e) { /* ignore stats error */ }
+}
+
+// ── Attack Graph Tab ──────────────────────────────────────────────────────
+
+async function loadGraphData() {
+  const target = document.getElementById('graph-target-input').value.trim();
+  if (!target) { alert('Enter a target name'); return; }
+
+  // Summary
+  const summaryEl = document.getElementById('graph-summary');
+  clearEl(summaryEl);
+  try {
+    const summary = await apiFetch('/api/graph/summary?target=' + encodeURIComponent(target));
+    const data = (summary && summary[0]) || summary || {};
+    const table = document.createElement('table');
+    table.className = 'info-table';
+    [['Hosts', data.hosts],['Services', data.services],['Endpoints', data.endpoints],
+     ['Vulnerabilities', data.vulnerabilities],['Findings', data.findings]].forEach(([k,v]) => {
+      const tr = document.createElement('tr');
+      tr.appendChild(el('td',null,k));
+      const td = el('td',null,String(v ?? 0));
+      td.style.fontWeight = '600';
+      td.style.color = '#fff';
+      tr.appendChild(td);
+      table.appendChild(tr);
+    });
+    summaryEl.appendChild(table);
+  } catch(e) { summaryEl.appendChild(el('div','empty-msg','Error: '+e.message)); }
+
+  // Critical vulns
+  const vulnsEl = document.getElementById('graph-vulns');
+  clearEl(vulnsEl);
+  try {
+    const vulns = await apiFetch('/api/graph/critical-vulns?target=' + encodeURIComponent(target));
+    const items = Array.isArray(vulns) ? vulns : [];
+    if (!items.length) { vulnsEl.appendChild(el('div','empty-msg','No critical vulns')); }
+    else items.forEach(v => {
+      const item = el('div','session-item');
+      item.appendChild(el('div','session-target', v['v.cve_id'] || v.cve_id || '-'));
+      item.appendChild(el('div','session-sid', (v['v.description'] || v.description || '-').substring(0,80)));
+      const sev = v['v.severity'] || v.severity || '';
+      item.appendChild(el('span','status-badge '+(sev==='CRITICAL'?'failed':'unknown'), sev));
+      vulnsEl.appendChild(item);
+    });
+  } catch(e) { vulnsEl.appendChild(el('div','empty-msg','Error: '+e.message)); }
+
+  // D3 Graph Visualization
+  try {
+    const graphData = await apiFetch('/api/graph/export?target=' + encodeURIComponent(target));
+    renderD3Graph(graphData);
+  } catch(e) { console.error('Graph viz:', e); }
+}
+
+function renderD3Graph(data) {
+  const svg = d3.select('#graph-svg');
+  svg.selectAll('*').remove();
+  const container = document.getElementById('graph-viz');
+  const width = container.clientWidth || 800;
+  const height = container.clientHeight || 500;
+
+  // Build nodes and links from export data
+  const nodes = [];
+  const links = [];
+  const nodeMap = {};
+
+  function addNode(id, label, type) {
+    if (!nodeMap[id]) {
+      nodeMap[id] = {id, label: label||id, type};
+      nodes.push(nodeMap[id]);
+    }
+    return nodeMap[id];
+  }
+
+  // Target node
+  addNode('target:'+data.target, data.target, 'target');
+
+  // From summary
+  const summary = data.summary || {};
+
+  // From critical vulnerabilities
+  (data.critical_vulnerabilities || []).forEach(v => {
+    const cve = v['v.cve_id'] || v.cve_id || 'unknown';
+    const n = addNode('vuln:'+cve, cve, 'vulnerability');
+    links.push({source: 'target:'+data.target, target: 'vuln:'+cve});
+  });
+
+  // From exploitable services
+  (data.exploitable_services || []).forEach(s => {
+    const svcName = (s['s.name']||s.name||'svc') + ':' + (s['s.port']||s.port||'?');
+    addNode('svc:'+svcName, svcName, 'service');
+    links.push({source: 'target:'+data.target, target: 'svc:'+svcName});
+    const cve = s['v.cve_id']||s.cve_id;
+    if (cve) {
+      addNode('vuln:'+cve, cve, 'vulnerability');
+      links.push({source: 'svc:'+svcName, target: 'vuln:'+cve});
+    }
+    const exploit = s['e.source_url']||s.source_url;
+    if (exploit) {
+      const eid = 'exploit:'+(cve||Math.random());
+      addNode(eid, 'Exploit', 'exploit');
+      links.push({source: 'vuln:'+cve, target: eid});
+    }
+  });
+
+  // Technology risks
+  (data.technology_risks || []).forEach(t => {
+    const name = (t['tech.name']||t.name||'?')+' '+(t['tech.version']||t.version||'');
+    addNode('tech:'+name, name.trim(), 'technology');
+    links.push({source: 'target:'+data.target, target: 'tech:'+name});
+  });
+
+  if (nodes.length <= 1) {
+    svg.append('text').attr('x',width/2).attr('y',height/2).attr('text-anchor','middle')
+      .attr('fill','#7c7f94').attr('font-size','14px').text('No graph data for this target');
+    return;
+  }
+
+  const colors = {target:'#3b82f6',service:'#22c55e',vulnerability:'#ef4444',exploit:'#f97316',technology:'#a855f7'};
+
+  const simulation = d3.forceSimulation(nodes)
+    .force('link', d3.forceLink(links).id(d=>d.id).distance(80))
+    .force('charge', d3.forceManyBody().strength(-200))
+    .force('center', d3.forceCenter(width/2, height/2))
+    .force('collision', d3.forceCollide().radius(30));
+
+  const g = svg.append('g');
+
+  // Zoom
+  svg.call(d3.zoom().scaleExtent([0.3,5]).on('zoom', e => g.attr('transform', e.transform)));
+
+  const link = g.append('g').selectAll('line').data(links).join('line')
+    .attr('stroke','#2a2d3e').attr('stroke-width',1.5).attr('stroke-opacity',0.6);
+
+  const node = g.append('g').selectAll('g').data(nodes).join('g')
+    .call(d3.drag().on('start',(e,d)=>{if(!e.active)simulation.alphaTarget(0.3).restart();d.fx=d.x;d.fy=d.y;})
+      .on('drag',(e,d)=>{d.fx=e.x;d.fy=e.y;})
+      .on('end',(e,d)=>{if(!e.active)simulation.alphaTarget(0);d.fx=null;d.fy=null;}));
+
+  node.append('circle').attr('r',d=>d.type==='target'?16:10)
+    .attr('fill',d=>colors[d.type]||'#6366f1').attr('stroke','#1c1f2e').attr('stroke-width',2);
+
+  node.append('text').text(d=>d.label).attr('x',14).attr('y',4)
+    .attr('font-size','11px').attr('fill','#e4e4eb').attr('font-family','Inter,sans-serif');
+
+  // Tooltip
+  node.append('title').text(d=>d.type+': '+d.label);
+
+  simulation.on('tick', () => {
+    link.attr('x1',d=>d.source.x).attr('y1',d=>d.source.y).attr('x2',d=>d.target.x).attr('y2',d=>d.target.y);
+    node.attr('transform',d=>'translate('+d.x+','+d.y+')');
+  });
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+
+async function loadDashboard() {
+  await Promise.all([loadStats(), loadSessions(), loadFindings()]);
+}
+
+document.getElementById('btn-refresh').addEventListener('click', loadDashboard);
+document.getElementById('btn-close-detail').addEventListener('click', closeDetail);
+document.getElementById('btn-refresh-missions').addEventListener('click', loadMissions);
+document.getElementById('btn-close-mission').addEventListener('click', closeMissionDetail);
+document.getElementById('btn-refresh-runs').addEventListener('click', loadInfraStats);
+document.getElementById('btn-refresh-findings').addEventListener('click', loadDBFindings);
+document.getElementById('findings-filter-status').addEventListener('change', loadDBFindings);
+document.getElementById('btn-load-graph').addEventListener('click', loadGraphData);
+
+setInterval(loadDashboard, 30000);
+loadDashboard();
+connectWebSocket();
+</script>
+</body>
+</html>
