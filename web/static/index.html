@@ -289,10 +289,21 @@
 <div id="tab-infra" class="tab-panel">
   <div style="max-width:1600px;margin:0 auto;padding:24px;">
     <div class="stats-row">
-      <div class="stat-card"><div class="stat-value" id="st-rag-vectors">-</div><div class="stat-label">RAG Vectors</div></div>
-      <div class="stat-card"><div class="stat-value" id="st-rag-failures">-</div><div class="stat-label">Failure Memory</div></div>
-      <div class="stat-card"><div class="stat-value" id="st-db-findings">-</div><div class="stat-label">DB Findings</div></div>
-      <div class="stat-card"><div class="stat-value" id="st-agent-runs">-</div><div class="stat-label">Agent Runs</div></div>
+      <div class="stat-card"><div class="stat-value" id="st-targets-analyzed">-</div><div class="stat-label">Targets Analyzed</div></div>
+      <div class="stat-card"><div class="stat-value" id="st-total-findings" style="color:var(--high)">-</div><div class="stat-label">Total Findings</div></div>
+      <div class="stat-card"><div class="stat-value" id="st-tools-available" style="color:var(--low)">-</div><div class="stat-label">Tools Available</div></div>
+      <div class="stat-card"><div class="stat-value" id="st-active-missions" style="color:var(--info)">-</div><div class="stat-label">Active Missions</div></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+      <div class="card">
+        <div class="card-title"><span>Security Tools</span><button class="refresh-btn" id="btn-refresh-tools">Refresh</button></div>
+        <div class="health-grid" id="tools-grid"><div class="empty-msg">Loading tools...</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span>Service Health</span></div>
+        <div class="health-grid" id="infra-health-grid"><div class="empty-msg">Checking...</div></div>
+      </div>
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
@@ -313,7 +324,7 @@
   <div style="max-width:1600px;margin:0 auto;padding:24px;">
     <div class="bounty-header">
       <div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim);">
-        DB Findings — <span id="db-findings-count">0</span> total
+        Findings — <span id="db-findings-count">0</span> total
       </div>
       <div style="display:flex;gap:8px;">
         <select id="findings-filter-status" style="background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:var(--radius-sm);padding:6px 12px;font-size:12px;">
@@ -886,15 +897,52 @@ function connectWebSocket() {
 
 async function loadInfraStats() {
   try {
-    const [ragStats, findingsStats, runsData] = await Promise.all([
-      apiFetch('/api/rag/stats').catch(() => ({exploit_vectors: 0, failure_memory: 0})),
-      apiFetch('/api/db/findings/stats').catch(() => ({total: 0})),
+    const [statsData, toolsData, runsData] = await Promise.all([
+      apiFetch('/api/stats').catch(() => ({})),
+      apiFetch('/api/tools').catch(() => ({tools: {}, total_available: 0, total: 0})),
       apiFetch('/api/agent-runs?limit=20').catch(() => ({runs: []})),
     ]);
-    document.getElementById('st-rag-vectors').textContent = ragStats.exploit_vectors ?? 0;
-    document.getElementById('st-rag-failures').textContent = ragStats.failure_memory ?? 0;
-    document.getElementById('st-db-findings').textContent = findingsStats.total ?? 0;
-    document.getElementById('st-agent-runs').textContent = (runsData.runs || []).length;
+
+    // Update stat cards
+    document.getElementById('st-targets-analyzed').textContent = statsData.total_missions ?? 0;
+    document.getElementById('st-total-findings').textContent = statsData.total_findings ?? 0;
+    document.getElementById('st-tools-available').textContent = (toolsData.total_available ?? 0) + '/' + (toolsData.total ?? 0);
+    document.getElementById('st-active-missions').textContent = statsData.active_missions ?? 0;
+
+    // Render tools grid
+    const toolsGrid = document.getElementById('tools-grid');
+    clearEl(toolsGrid);
+    const tools = toolsData.tools || {};
+    const toolEntries = Object.entries(tools);
+    if (!toolEntries.length) {
+      toolsGrid.appendChild(el('div','empty-msg','No tools data'));
+    } else {
+      toolEntries.forEach(([name, info]) => {
+        const item = el('div','health-item');
+        item.appendChild(el('div','health-dot ' + (info.available ? 'up' : 'down')));
+        const label = el('span','health-name', name);
+        if (info.available) label.style.color = 'var(--text)';
+        item.appendChild(label);
+        toolsGrid.appendChild(item);
+      });
+    }
+
+    // Render health grid
+    const healthGrid = document.getElementById('infra-health-grid');
+    clearEl(healthGrid);
+    const health = statsData.health || {};
+    const healthEntries = Object.entries(health);
+    if (!healthEntries.length) {
+      healthGrid.appendChild(el('div','empty-msg','No health data'));
+    } else {
+      healthEntries.forEach(([name, status]) => {
+        const item = el('div','health-item');
+        item.appendChild(el('div','health-dot ' + status));
+        item.appendChild(el('span','health-name', name));
+        healthGrid.appendChild(item);
+      });
+    }
+
     renderRecentRuns(runsData.runs || []);
   } catch(e) { console.error('Infra stats:', e); }
 
@@ -907,7 +955,7 @@ async function loadInfraStats() {
     if (!agents.length) { list.appendChild(el('div','empty-msg','No active agents')); return; }
     agents.forEach(a => {
       const item = el('div','session-item');
-      item.appendChild(el('div','session-target', a.agent_role + ' → ' + (a.target||'-')));
+      item.appendChild(el('div','session-target', a.agent_role + ' \u2192 ' + (a.target||'-')));
       item.appendChild(el('span','status-badge running', a.model || 'unknown'));
       list.appendChild(item);
     });
@@ -943,27 +991,32 @@ async function loadDBFindings() {
     document.getElementById('db-findings-count').textContent = data.total ?? findings.length;
     if (!findings.length) {
       const tr = document.createElement('tr');
-      const td = el('td','empty-msg','No findings');
+      const td = el('td','empty-msg','No findings found. Analyze some targets first.');
       td.colSpan = 7;
       tr.appendChild(td);
       tbody.appendChild(tr);
       return;
     }
-    findings.forEach(f => {
+    findings.forEach((f, idx) => {
       const tr = document.createElement('tr');
       tr.style.borderBottom = '1px solid var(--border-subtle)';
       const sevColor = {'critical':'var(--critical)','high':'var(--high)','medium':'var(--medium)','low':'var(--low)'}[(f.severity||'').toLowerCase()] || 'var(--text-dim)';
+      const displayId = f.id != null ? String(f.id).substring(0,20) : String(idx+1);
+      const displayDate = f.created_at ? new Date(f.created_at).toLocaleDateString()
+                        : f.file ? f.file.split('/')[0] : '-';
+      const displayStatus = f.status || (f.source === 'filesystem' ? 'FS' : '-');
+      const displayTier = f.poc_tier ? 'Tier '+f.poc_tier
+                        : f.cvss_score ? 'CVSS '+f.cvss_score : '-';
       [
-        f.id, f.target||'-', (f.title||'-').substring(0,60),
-        f.severity||'-', f.status||'-', f.poc_tier ? 'Tier '+f.poc_tier : '-',
-        f.created_at ? new Date(f.created_at).toLocaleDateString() : '-'
+        displayId, f.target||'-', (f.title||'-').substring(0,60),
+        f.severity||'-', displayStatus, displayTier, displayDate
       ].forEach((val, i) => {
         const td = el('td', null, String(val));
         td.style.padding = '8px 10px';
         if (i === 3) td.style.color = sevColor;
         if (i === 4) {
-          const statusColors = {'ACTIVE':'var(--info)','SUBMITTED':'var(--low)','KILL':'var(--critical)','DUPLICATE':'var(--text-dim)'};
-          td.style.color = statusColors[f.status] || 'var(--text)';
+          const statusColors = {'ACTIVE':'var(--info)','SUBMITTED':'var(--low)','KILL':'var(--critical)','DUPLICATE':'var(--text-dim)','FS':'var(--accent)'};
+          td.style.color = statusColors[displayStatus] || 'var(--text)';
           td.style.fontWeight = '600';
         }
         tr.appendChild(td);
@@ -1030,13 +1083,17 @@ async function loadGraphData() {
   try {
     const vulns = await apiFetch('/api/graph/critical-vulns?target=' + encodeURIComponent(target));
     const items = Array.isArray(vulns) ? vulns : [];
-    if (!items.length) { vulnsEl.appendChild(el('div','empty-msg','No critical vulns')); }
+    if (!items.length) { vulnsEl.appendChild(el('div','empty-msg','No critical vulns (CVSS >= 7.0)')); }
     else items.forEach(v => {
       const item = el('div','session-item');
-      item.appendChild(el('div','session-target', v['v.cve_id'] || v.cve_id || '-'));
-      item.appendChild(el('div','session-sid', (v['v.description'] || v.description || '-').substring(0,80)));
+      const cveId = v['v.cve_id'] || v.cve_id || v.description || '-';
+      item.appendChild(el('div','session-target', cveId));
+      const desc = (v['v.description'] || v.description || '-').substring(0,80);
+      const cvssLabel = v.cvss ? ' (CVSS: ' + v.cvss + ')' : '';
+      item.appendChild(el('div','session-sid', desc + cvssLabel));
       const sev = v['v.severity'] || v.severity || '';
-      item.appendChild(el('span','status-badge '+(sev==='CRITICAL'?'failed':'unknown'), sev));
+      const sevCls = sev === 'CRITICAL' || sev === 'critical' ? 'failed' : 'unknown';
+      item.appendChild(el('span','status-badge '+sevCls, sev));
       vulnsEl.appendChild(item);
     });
   } catch(e) { vulnsEl.appendChild(el('div','empty-msg','Error: '+e.message)); }
@@ -1055,7 +1112,7 @@ function renderD3Graph(data) {
   const width = container.clientWidth || 800;
   const height = container.clientHeight || 500;
 
-  // Build nodes and links from export data
+  // Build nodes and links — support both Neo4j format and filesystem format
   const nodes = [];
   const links = [];
   const nodeMap = {};
@@ -1068,43 +1125,45 @@ function renderD3Graph(data) {
     return nodeMap[id];
   }
 
-  // Target node
-  addNode('target:'+data.target, data.target, 'target');
+  // If data has pre-built nodes/links (filesystem format), use directly
+  if (data.nodes && Array.isArray(data.nodes)) {
+    data.nodes.forEach(n => addNode(n.id, n.label, n.type));
+    (data.links || []).forEach(l => {
+      links.push({source: l.source, target: l.target});
+    });
+  } else {
+    // Neo4j export format (legacy)
+    addNode('target:'+data.target, data.target, 'target');
 
-  // From summary
-  const summary = data.summary || {};
-
-  // From critical vulnerabilities
-  (data.critical_vulnerabilities || []).forEach(v => {
-    const cve = v['v.cve_id'] || v.cve_id || 'unknown';
-    const n = addNode('vuln:'+cve, cve, 'vulnerability');
-    links.push({source: 'target:'+data.target, target: 'vuln:'+cve});
-  });
-
-  // From exploitable services
-  (data.exploitable_services || []).forEach(s => {
-    const svcName = (s['s.name']||s.name||'svc') + ':' + (s['s.port']||s.port||'?');
-    addNode('svc:'+svcName, svcName, 'service');
-    links.push({source: 'target:'+data.target, target: 'svc:'+svcName});
-    const cve = s['v.cve_id']||s.cve_id;
-    if (cve) {
+    (data.critical_vulnerabilities || []).forEach(v => {
+      const cve = v['v.cve_id'] || v.cve_id || 'unknown';
       addNode('vuln:'+cve, cve, 'vulnerability');
-      links.push({source: 'svc:'+svcName, target: 'vuln:'+cve});
-    }
-    const exploit = s['e.source_url']||s.source_url;
-    if (exploit) {
-      const eid = 'exploit:'+(cve||Math.random());
-      addNode(eid, 'Exploit', 'exploit');
-      links.push({source: 'vuln:'+cve, target: eid});
-    }
-  });
+      links.push({source: 'target:'+data.target, target: 'vuln:'+cve});
+    });
 
-  // Technology risks
-  (data.technology_risks || []).forEach(t => {
-    const name = (t['tech.name']||t.name||'?')+' '+(t['tech.version']||t.version||'');
-    addNode('tech:'+name, name.trim(), 'technology');
-    links.push({source: 'target:'+data.target, target: 'tech:'+name});
-  });
+    (data.exploitable_services || []).forEach(s => {
+      const svcName = (s['s.name']||s.name||'svc') + ':' + (s['s.port']||s.port||'?');
+      addNode('svc:'+svcName, svcName, 'service');
+      links.push({source: 'target:'+data.target, target: 'svc:'+svcName});
+      const cve = s['v.cve_id']||s.cve_id;
+      if (cve) {
+        addNode('vuln:'+cve, cve, 'vulnerability');
+        links.push({source: 'svc:'+svcName, target: 'vuln:'+cve});
+      }
+      const exploit = s['e.source_url']||s.source_url;
+      if (exploit) {
+        const eid = 'exploit:'+(cve||Math.random());
+        addNode(eid, 'Exploit', 'exploit');
+        links.push({source: 'vuln:'+cve, target: eid});
+      }
+    });
+
+    (data.technology_risks || []).forEach(t => {
+      const name = (t['tech.name']||t.name||'?')+' '+(t['tech.version']||t.version||'');
+      addNode('tech:'+name, name.trim(), 'technology');
+      links.push({source: 'target:'+data.target, target: 'tech:'+name});
+    });
+  }
 
   if (nodes.length <= 1) {
     svg.append('text').attr('x',width/2).attr('y',height/2).attr('text-anchor','middle')
@@ -1112,13 +1171,13 @@ function renderD3Graph(data) {
     return;
   }
 
-  const colors = {target:'#3b82f6',service:'#22c55e',vulnerability:'#ef4444',exploit:'#f97316',technology:'#a855f7'};
+  const colors = {target:'#3b82f6',service:'#22c55e',vulnerability:'#ef4444',finding:'#f97316',technique:'#a855f7',exploit:'#f97316',technology:'#a855f7'};
 
   const simulation = d3.forceSimulation(nodes)
-    .force('link', d3.forceLink(links).id(d=>d.id).distance(80))
-    .force('charge', d3.forceManyBody().strength(-200))
+    .force('link', d3.forceLink(links).id(d=>d.id).distance(100))
+    .force('charge', d3.forceManyBody().strength(-250))
     .force('center', d3.forceCenter(width/2, height/2))
-    .force('collision', d3.forceCollide().radius(30));
+    .force('collision', d3.forceCollide().radius(35));
 
   const g = svg.append('g');
 
@@ -1136,7 +1195,7 @@ function renderD3Graph(data) {
   node.append('circle').attr('r',d=>d.type==='target'?16:10)
     .attr('fill',d=>colors[d.type]||'#6366f1').attr('stroke','#1c1f2e').attr('stroke-width',2);
 
-  node.append('text').text(d=>d.label).attr('x',14).attr('y',4)
+  node.append('text').text(d=>(d.label||'').substring(0,30)).attr('x',14).attr('y',4)
     .attr('font-size','11px').attr('fill','#e4e4eb').attr('font-family','Inter,sans-serif');
 
   // Tooltip
@@ -1159,6 +1218,7 @@ document.getElementById('btn-close-detail').addEventListener('click', closeDetai
 document.getElementById('btn-refresh-missions').addEventListener('click', loadMissions);
 document.getElementById('btn-close-mission').addEventListener('click', closeMissionDetail);
 document.getElementById('btn-refresh-runs').addEventListener('click', loadInfraStats);
+document.getElementById('btn-refresh-tools').addEventListener('click', loadInfraStats);
 document.getElementById('btn-refresh-findings').addEventListener('click', loadDBFindings);
 document.getElementById('findings-filter-status').addEventListener('change', loadDBFindings);
 document.getElementById('btn-load-graph').addEventListener('click', loadGraphData);

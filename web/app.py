@@ -61,86 +61,199 @@ def _parse_session(session_dir: Path) -> dict:
     }
 
 
+def _cvss_to_severity(score: float) -> str:
+    """Convert a CVSS numeric score to a severity label."""
+    if score >= 9.0:
+        return "critical"
+    elif score >= 7.0:
+        return "high"
+    elif score >= 4.0:
+        return "medium"
+    elif score >= 0.1:
+        return "low"
+    return "info"
+
+
+def _extract_cvss_from_text(text: str) -> Optional[float]:
+    """Extract CVSS score from markdown text."""
+    import re
+    # Match patterns like "CVSS 3.1 **8.6" or "CVSS: 7.5" or "CVSS Score: 9.1"
+    patterns = [
+        r'CVSS[\s:]+(?:3\.[01]\s+)?\*{0,2}(\d+\.?\d*)',
+        r'CVSS[\s_]?(?:Score|Base)?[\s:]+\*{0,2}(\d+\.?\d*)',
+        r'cvss_score["\s:]+(\d+\.?\d*)',
+    ]
+    for pat in patterns:
+        m = re.search(pat, text, re.IGNORECASE)
+        if m:
+            try:
+                return float(m.group(1))
+            except ValueError:
+                pass
+    return None
+
+
 def _aggregate_findings() -> dict:
-    """Walk all sessions and aggregate vulnerability severity counts."""
+    """Walk all sessions and targets to aggregate vulnerability findings."""
+    import re
     counts = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}
     findings = []
 
-    if not REPORTS_DIR.exists():
-        return {"counts": counts, "findings": findings}
-
-    for session_dir in sorted(REPORTS_DIR.glob("20*"), reverse=True):
-        summary_file = session_dir / "summary.json"
-        if summary_file.exists():
-            try:
-                with open(summary_file) as f:
-                    data = json.load(f)
-                for finding in data.get("findings", []):
-                    sev = finding.get("severity", "info").lower()
-                    if sev in counts:
-                        counts[sev] += 1
-                    findings.append({
-                        "session_id": session_dir.name,
-                        "title": finding.get("title", "Unknown"),
-                        "severity": sev,
-                        "target": data.get("target"),
-                    })
-            except Exception:
-                pass
-
-        # Also check writeup.md for flags
-        flags_file = session_dir / "flags.txt"
-        if flags_file.exists():
-            try:
-                flag_lines = flags_file.read_text().strip().splitlines()
-                for line in flag_lines:
-                    if line.strip():
+    # ── Part 1: Scan reports/ directory (existing behavior) ──
+    if REPORTS_DIR.exists():
+        for session_dir in sorted(REPORTS_DIR.glob("20*"), reverse=True):
+            summary_file = session_dir / "summary.json"
+            if summary_file.exists():
+                try:
+                    with open(summary_file) as f:
+                        data = json.load(f)
+                    for finding in data.get("findings", []):
+                        sev = finding.get("severity", "info").lower()
+                        if sev in counts:
+                            counts[sev] += 1
                         findings.append({
                             "session_id": session_dir.name,
-                            "title": f"FLAG: {line.strip()}",
-                            "severity": "critical",
-                            "target": session_dir.name,
+                            "title": finding.get("title", "Unknown"),
+                            "severity": sev,
+                            "target": data.get("target"),
+                            "source": "reports",
                         })
-                        counts["critical"] += 1
-            except Exception:
-                pass
+                except Exception:
+                    pass
 
-    return {"counts": counts, "findings": findings[:50]}  # cap at 50
+            flags_file = session_dir / "flags.txt"
+            if flags_file.exists():
+                try:
+                    flag_lines = flags_file.read_text().strip().splitlines()
+                    for line in flag_lines:
+                        if line.strip():
+                            findings.append({
+                                "session_id": session_dir.name,
+                                "title": f"FLAG: {line.strip()}",
+                                "severity": "critical",
+                                "target": session_dir.name,
+                                "source": "reports",
+                            })
+                            counts["critical"] += 1
+                except Exception:
+                    pass
+
+    # ── Part 2: Scan targets/ directory for findings ──
+    if TARGETS_DIR.exists():
+        for target_dir in sorted(TARGETS_DIR.iterdir()):
+            if not target_dir.is_dir():
+                continue
+            target_name = target_dir.name
+
+            # Scan report_*.md and *_submission.md files
+            report_patterns = ["report_*.md", "*_submission.md"]
+            for pattern in report_patterns:
+                for md_file in target_dir.glob(pattern):
+                    try:
+                        text = md_file.read_text(errors="replace")[:50000]
+                        cvss = _extract_cvss_from_text(text)
+                        sev = _cvss_to_severity(cvss) if cvss else "medium"
+
+                        # Extract title from first # header or filename
+                        title_match = re.search(r'^#\s+(.+)', text, re.MULTILINE)
+                        title = title_match.group(1).strip() if title_match else md_file.stem.replace("_", " ").title()
+
+                        if sev in counts:
+                            counts[sev] += 1
+                        findings.append({
+                            "id": f"{target_name}/{md_file.name}",
+                            "title": title[:120],
+                            "severity": sev,
+                            "target": target_name,
+                            "cvss_score": cvss,
+                            "file": str(md_file.relative_to(TARGETS_DIR)),
+                            "source": "targets",
+                        })
+                    except Exception:
+                        pass
+
+            # Also scan immunefi_reports/ subdirectory
+            immunefi_dir = target_dir / "immunefi_reports"
+            if immunefi_dir.is_dir():
+                for md_file in immunefi_dir.glob("*.md"):
+                    try:
+                        text = md_file.read_text(errors="replace")[:50000]
+                        cvss = _extract_cvss_from_text(text)
+                        sev = _cvss_to_severity(cvss) if cvss else "medium"
+
+                        title_match = re.search(r'^#\s+(.+)', text, re.MULTILINE)
+                        title = title_match.group(1).strip() if title_match else md_file.stem.replace("_", " ").title()
+
+                        if sev in counts:
+                            counts[sev] += 1
+                        findings.append({
+                            "id": f"{target_name}/immunefi_reports/{md_file.name}",
+                            "title": title[:120],
+                            "severity": sev,
+                            "target": target_name,
+                            "cvss_score": cvss,
+                            "file": str(md_file.relative_to(TARGETS_DIR)),
+                            "source": "targets",
+                        })
+                    except Exception:
+                        pass
+
+            # Parse vulnerability_candidates.md — each ## header is a finding
+            vuln_file = target_dir / "vulnerability_candidates.md"
+            if vuln_file.exists():
+                try:
+                    text = vuln_file.read_text(errors="replace")[:100000]
+                    # Split by ## headers to extract individual findings
+                    sections = re.split(r'^##\s+', text, flags=re.MULTILINE)
+                    for section in sections[1:]:  # skip content before first ##
+                        lines = section.strip().split("\n")
+                        title = lines[0].strip()[:120] if lines else "Unknown Finding"
+                        section_text = "\n".join(lines)
+                        cvss = _extract_cvss_from_text(section_text)
+                        sev = _cvss_to_severity(cvss) if cvss else "info"
+
+                        if sev in counts:
+                            counts[sev] += 1
+                        findings.append({
+                            "id": f"{target_name}/vuln_candidates/{title[:40]}",
+                            "title": title,
+                            "severity": sev,
+                            "target": target_name,
+                            "cvss_score": cvss,
+                            "file": f"{target_name}/vulnerability_candidates.md",
+                            "source": "targets",
+                        })
+                except Exception:
+                    pass
+
+    return {"counts": counts, "findings": findings[:200]}
 
 
 def _get_health() -> dict:
-    """Check health of known services (best-effort, no network calls)."""
-    import socket
+    """Check availability of local security tools."""
+    import shutil
 
-    def port_open(host: str, port: int, timeout: float = 0.5) -> bool:
-        try:
-            with socket.create_connection((host, port), timeout=timeout):
-                return True
-        except Exception:
-            return False
-
-    # Use Docker service names when running in container, localhost otherwise
-    svc_host = os.environ.get("SERVICE_DISCOVERY", "docker")
-    if svc_host == "docker":
-        services = {
-            "RAG API": {"host": "rag-api", "port": 8100},
-            "Neo4j": {"host": "neo4j", "port": 7474},
-            "Ollama": {"host": "ollama", "port": 11434},
-            "LiteLLM": {"host": "litellm", "port": 4000},
-            "PostgreSQL": {"host": "db", "port": 5432},
-        }
-    else:
-        services = {
-            "RAG API": {"host": "localhost", "port": 8100},
-            "Neo4j": {"host": "localhost", "port": 7474},
-            "Ollama": {"host": "localhost", "port": 11434},
-            "LiteLLM": {"host": "localhost", "port": 4000},
-            "PostgreSQL": {"host": "localhost", "port": 5433},
-        }
+    tools = {
+        "Radare2": "r2",
+        "GDB": "gdb",
+        "Nuclei": "nuclei",
+        "SearchSploit": "searchsploit",
+        "Semgrep": "semgrep",
+        "CodeQL": "codeql",
+        "Slither": "slither",
+        "Foundry": "forge",
+        "Nmap": "nmap",
+        "SQLMap": "sqlmap",
+        "FFUF": "ffuf",
+        "GitHub CLI": "gh",
+    }
 
     result = {}
-    for name, cfg in services.items():
-        result[name] = "up" if port_open(cfg["host"], cfg["port"]) else "down"
+    for name, binary in tools.items():
+        result[name] = "up" if shutil.which(binary) else "down"
+    # Dashboard and WebSocket are always up when this code runs
+    result["Dashboard"] = "up"
+    result["WebSocket"] = "up"
     return result
 
 
@@ -218,16 +331,8 @@ async def list_findings():
 @app.get("/api/stats")
 async def get_stats():
     """Dashboard statistics."""
-    if not REPORTS_DIR.exists():
-        return {
-            "total_sessions": 0,
-            "flags_captured": 0,
-            "findings": {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0},
-            "health": _get_health(),
-        }
-
-    all_sessions = list(REPORTS_DIR.glob("20*"))
-    total = len(all_sessions)
+    all_sessions = list(REPORTS_DIR.glob("20*")) if REPORTS_DIR.exists() else []
+    total_sessions = len(all_sessions)
 
     flags = 0
     for sd in all_sessions:
@@ -240,13 +345,66 @@ async def get_stats():
 
     agg = _aggregate_findings()
 
+    # Count missions from targets/
+    total_missions = 0
+    active_missions = 0
+    if TARGETS_DIR.exists():
+        for entry in TARGETS_DIR.iterdir():
+            if entry.is_dir():
+                total_missions += 1
+                assess = entry / "target_assessment.md"
+                if assess.exists():
+                    try:
+                        text = assess.read_text(errors="replace")
+                        status = _extract_status(text)
+                        if status in ("GO", "CONDITIONAL_GO"):
+                            active_missions += 1
+                    except Exception:
+                        pass
+
+    health = _get_health()
+    tools_available = sum(1 for v in health.values() if v == "up")
+
     return {
-        "total_sessions": total,
+        "total_sessions": total_sessions,
         "flags_captured": flags,
         "findings": agg["counts"],
-        "health": _get_health(),
+        "total_findings": len(agg["findings"]),
+        "total_missions": total_missions,
+        "active_missions": active_missions,
+        "tools_available": tools_available,
+        "health": health,
         "reports_dir": str(REPORTS_DIR),
         "generated_at": datetime.now(timezone.utc).isoformat() + "Z",
+    }
+
+
+@app.get("/api/tools")
+async def list_tools():
+    """Check which security tools are available."""
+    import shutil
+    tools = {
+        "radare2": shutil.which("r2"),
+        "gdb": shutil.which("gdb"),
+        "nuclei": shutil.which("nuclei"),
+        "searchsploit": shutil.which("searchsploit"),
+        "semgrep": shutil.which("semgrep"),
+        "codeql": shutil.which("codeql"),
+        "slither": shutil.which("slither"),
+        "foundry": shutil.which("forge"),
+        "nmap": shutil.which("nmap"),
+        "sqlmap": shutil.which("sqlmap"),
+        "ffuf": shutil.which("ffuf"),
+        "gh": shutil.which("gh"),
+        "mythril": shutil.which("myth"),
+        "trufflehog": shutil.which("trufflehog"),
+        "dalfox": shutil.which("dalfox"),
+        "httpx": shutil.which("httpx"),
+    }
+    return {
+        "tools": {k: {"available": v is not None, "path": v} for k, v in tools.items()},
+        "total_available": sum(1 for v in tools.values() if v),
+        "total": len(tools),
     }
 
 
@@ -255,14 +413,14 @@ async def get_stats():
 # ──────────────────────────────────────────────
 
 PIPELINE_PHASES = [
-    ("Phase 0: Target Assessment", "target_assessment.md"),
-    ("Phase 1: Reconnaissance",    "recon_notes.md"),
-    ("Phase 1: Vuln Candidates",   "vulnerability_candidates.md"),
-    ("Phase 2: Exploit Results",   "exploit_results.md"),
-    ("Phase 3: Reports",           "immunefi_reports"),
-    ("Phase 4: Critic Review",     "critic_review.md"),
-    ("Phase 4: Architect Review",  "architect_review.md"),
-    ("Phase 5: Final Report",      "final_report.md"),
+    ("Phase 0: Target Assessment", ["target_assessment.md"]),
+    ("Phase 1: Reconnaissance",    ["recon_notes.md", "recon_report.json", "recon_report.md"]),
+    ("Phase 1: Vuln Candidates",   ["vulnerability_candidates.md"]),
+    ("Phase 2: Exploit Results",   ["exploit_results.md", "dynamic_poc_evidence.md"]),
+    ("Phase 3: Reports",           ["immunefi_reports", "report_A_*.md", "report_B_*.md", "*_submission.md", "h1_reports"]),
+    ("Phase 4: Critic Review",     ["critic_review.md", "critic_review_v2.md"]),
+    ("Phase 4: Architect Review",  ["architect_review.md"]),
+    ("Phase 5: Final Report",      ["final_report.md", "*_bugcrowd_submission.md"]),
 ]
 
 
@@ -299,11 +457,28 @@ def _count_findings(vuln_file: Path) -> int:
 
 def _get_pipeline_phase(mission_dir: Path) -> dict:
     """Determine current pipeline phase by checking which artifacts exist."""
+    import fnmatch
     phases = []
-    for label, artifact in PIPELINE_PHASES:
-        path = mission_dir / artifact
-        complete = path.exists()
-        phases.append({"label": label, "artifact": artifact, "complete": complete})
+    for label, patterns in PIPELINE_PHASES:
+        # patterns is a list of file/dir names, possibly with wildcards
+        complete = False
+        matched_artifact = None
+        for pattern in patterns:
+            if "*" in pattern or "?" in pattern:
+                # Glob pattern — check if any file matches
+                matches = list(mission_dir.glob(pattern))
+                if matches:
+                    complete = True
+                    matched_artifact = matches[0].name
+                    break
+            else:
+                # Exact path — check existence
+                if (mission_dir / pattern).exists():
+                    complete = True
+                    matched_artifact = pattern
+                    break
+        artifact_display = matched_artifact or patterns[0]
+        phases.append({"label": label, "artifact": artifact_display, "complete": complete})
 
     completed = [p for p in phases if p["complete"]]
     current_idx = len(completed)
@@ -346,8 +521,8 @@ def _parse_mission(mission_dir: Path) -> dict:
         "phases_complete": pipeline["phases_complete"],
         "phases_total": pipeline["phases_total"],
         "has_assessment": assess_file.exists(),
-        "has_exploits": (mission_dir / "exploit_results.md").exists(),
-        "has_reports": (mission_dir / "immunefi_reports").exists(),
+        "has_exploits": (mission_dir / "exploit_results.md").exists() or (mission_dir / "dynamic_poc_evidence.md").exists(),
+        "has_reports": (mission_dir / "immunefi_reports").is_dir() or (mission_dir / "h1_reports").is_dir() or bool(list(mission_dir.glob("report_*.md"))) or bool(list(mission_dir.glob("*_submission.md"))),
     }
 
 
@@ -357,7 +532,7 @@ def _parse_mission(mission_dir: Path) -> dict:
 
 @app.get("/api/bounty/missions")
 async def list_missions():
-    """List all active bounty missions from targets/ directory."""
+    """List all bounty missions from targets/ directory."""
     if not TARGETS_DIR.exists():
         return {"missions": []}
 
@@ -365,8 +540,9 @@ async def list_missions():
     for entry in sorted(TARGETS_DIR.iterdir()):
         if not entry.is_dir():
             continue
-        # Must have target_assessment.md to count as a mission
-        if not (entry / "target_assessment.md").exists():
+        # Include any directory that has at least one markdown file
+        has_content = any(entry.glob("*.md")) or any(entry.glob("*.json"))
+        if not has_content:
             continue
         try:
             missions.append(_parse_mission(entry))
@@ -472,9 +648,49 @@ def _get_graph():
 # Agent Runs Endpoints
 # ──────────────────────────────────────────────
 
+def _get_agent_runs_from_filesystem(limit: int = 50) -> list:
+    """Fallback: scan ~/.claude/teams/ for agent team info."""
+    runs = []
+    teams_dir = Path.home() / ".claude" / "teams"
+    if not teams_dir.exists():
+        return runs
+
+    for team_dir in sorted(teams_dir.iterdir(), reverse=True):
+        if not team_dir.is_dir():
+            continue
+        config_file = team_dir / "config.json"
+        if config_file.exists():
+            try:
+                with open(config_file) as f:
+                    config = json.load(f)
+                team_name = config.get("name", team_dir.name)
+                members = config.get("members", [])
+                mtime = datetime.fromtimestamp(config_file.stat().st_mtime, tz=timezone.utc)
+                for member in members:
+                    runs.append({
+                        "id": member.get("agentId", ""),
+                        "session_id": team_name,
+                        "agent_role": member.get("name", member.get("agentType", "unknown")),
+                        "target": team_name.replace("mission-", ""),
+                        "model": member.get("agentType", "unknown"),
+                        "status": "COMPLETED",
+                        "duration_seconds": None,
+                        "tokens_used": None,
+                        "output_summary": None,
+                        "artifacts": None,
+                        "created_at": mtime.isoformat(),
+                        "completed_at": mtime.isoformat(),
+                    })
+            except Exception:
+                pass
+        if len(runs) >= limit:
+            break
+    return runs[:limit]
+
+
 @app.get("/api/agent-runs")
 async def list_agent_runs(session: str = None, target: str = None, limit: int = 50):
-    """List agent execution history from agent_runs table."""
+    """List agent execution history from agent_runs table, with filesystem fallback."""
     try:
         conn = _get_db_conn()
         cur = conn.cursor()
@@ -505,8 +721,10 @@ async def list_agent_runs(session: str = None, target: str = None, limit: int = 
         cur.close()
         conn.close()
         return {"runs": rows}
-    except Exception as e:
-        return JSONResponse(status_code=503, content={"error": str(e), "runs": []})
+    except Exception:
+        # Filesystem fallback
+        runs = _get_agent_runs_from_filesystem(limit)
+        return {"runs": runs, "source": "filesystem"}
 
 
 @app.get("/api/agent-runs/active")
@@ -531,8 +749,8 @@ async def active_agent_runs():
         cur.close()
         conn.close()
         return {"active": rows}
-    except Exception as e:
-        return JSONResponse(status_code=503, content={"error": str(e), "active": []})
+    except Exception:
+        return {"active": [], "source": "filesystem"}
 
 
 # ──────────────────────────────────────────────
@@ -541,7 +759,7 @@ async def active_agent_runs():
 
 @app.get("/api/db/findings")
 async def list_db_findings(target: str = None, status: str = None, limit: int = 50):
-    """List findings from DB (not file-based)."""
+    """List findings from DB, with filesystem fallback."""
     try:
         conn = _get_db_conn()
         cur = conn.cursor()
@@ -573,8 +791,13 @@ async def list_db_findings(target: str = None, status: str = None, limit: int = 
         cur.close()
         conn.close()
         return {"findings": rows, "total": total}
-    except Exception as e:
-        return JSONResponse(status_code=503, content={"error": str(e), "findings": [], "total": 0})
+    except Exception:
+        # Filesystem fallback: use _aggregate_findings()
+        agg = _aggregate_findings()
+        fs_findings = agg["findings"]
+        if target:
+            fs_findings = [f for f in fs_findings if f.get("target") == target]
+        return {"findings": fs_findings[:limit], "total": len(fs_findings), "source": "filesystem"}
 
 
 @app.get("/api/db/findings/stats")
@@ -596,8 +819,19 @@ async def findings_stats():
         cur.close()
         conn.close()
         return {"stats": rows, "total": total}
-    except Exception as e:
-        return JSONResponse(status_code=503, content={"error": str(e), "stats": [], "total": 0})
+    except Exception:
+        # Filesystem fallback: compute stats from _aggregate_findings()
+        agg = _aggregate_findings()
+        from collections import Counter
+        by_target_sev = Counter()
+        for f in agg["findings"]:
+            key = (f.get("target", "unknown"), f.get("severity", "info"))
+            by_target_sev[key] += 1
+        stats = [
+            {"target": t, "severity": s, "status": "filesystem", "count": c}
+            for (t, s), c in by_target_sev.most_common()
+        ]
+        return {"stats": stats, "total": len(agg["findings"]), "source": "filesystem"}
 
 
 @app.post("/api/db/findings")
@@ -634,8 +868,10 @@ async def create_finding(request: Request):
         cur.close()
         conn.close()
         return {"id": new_id, "status": "created"}
-    except Exception as e:
-        return JSONResponse(status_code=503, content={"error": str(e)})
+    except Exception:
+        return JSONResponse(status_code=503, content={
+            "error": "Database not available. Start Docker services for write operations."
+        })
 
 
 @app.patch("/api/db/findings/{finding_id}")
@@ -666,52 +902,179 @@ async def update_finding(finding_id: int, request: Request):
         cur.close()
         conn.close()
         return {"status": "updated"}
-    except Exception as e:
-        return JSONResponse(status_code=503, content={"error": str(e)})
+    except Exception:
+        return JSONResponse(status_code=503, content={
+            "error": "Database not available. Start Docker services for write operations."
+        })
 
 
 # ──────────────────────────────────────────────
 # Attack Graph Endpoints (Neo4j proxy)
 # ──────────────────────────────────────────────
 
+def _build_graph_from_filesystem(target: str = None) -> dict:
+    """Build a graph data structure from targets/ filesystem data."""
+    import re
+    nodes = []
+    links = []
+    node_ids = set()
+
+    def add_node(nid, label, ntype, **extra):
+        if nid not in node_ids:
+            node_ids.add(nid)
+            node = {"id": nid, "label": label, "type": ntype}
+            node.update(extra)
+            nodes.append(node)
+
+    def add_link(source, target_id, rel="related"):
+        links.append({"source": source, "target": target_id, "relationship": rel})
+
+    scan_dirs = []
+    if target and TARGETS_DIR.exists():
+        td = TARGETS_DIR / target
+        if td.is_dir():
+            scan_dirs = [td]
+    elif TARGETS_DIR.exists():
+        scan_dirs = [d for d in TARGETS_DIR.iterdir() if d.is_dir()]
+
+    for tdir in scan_dirs:
+        tname = tdir.name
+        add_node(f"target:{tname}", tname, "target")
+
+        # Findings from vulnerability_candidates.md
+        vuln_file = tdir / "vulnerability_candidates.md"
+        if vuln_file.exists():
+            try:
+                text = vuln_file.read_text(errors="replace")[:100000]
+                sections = re.split(r'^##\s+', text, flags=re.MULTILINE)
+                for i, section in enumerate(sections[1:], 1):
+                    lines = section.strip().split("\n")
+                    title = lines[0].strip()[:80] if lines else f"Finding {i}"
+                    section_text = "\n".join(lines)
+                    cvss = _extract_cvss_from_text(section_text)
+                    sev = _cvss_to_severity(cvss) if cvss else "info"
+                    fid = f"finding:{tname}:{i}"
+                    add_node(fid, title, "finding", severity=sev, cvss=cvss)
+                    add_link(f"target:{tname}", fid, "has_finding")
+            except Exception:
+                pass
+
+        # Reports as technique nodes
+        report_patterns = ["report_*.md", "*_submission.md"]
+        for pattern in report_patterns:
+            for md_file in tdir.glob(pattern):
+                try:
+                    text = md_file.read_text(errors="replace")[:20000]
+                    title_match = re.search(r'^#\s+(.+)', text, re.MULTILINE)
+                    title = title_match.group(1).strip()[:60] if title_match else md_file.stem
+                    cvss = _extract_cvss_from_text(text)
+                    sev = _cvss_to_severity(cvss) if cvss else "medium"
+                    rid = f"report:{tname}:{md_file.stem}"
+                    add_node(rid, title, "technique", severity=sev, cvss=cvss)
+                    # Link findings to techniques
+                    finding_nodes = [n["id"] for n in nodes if n["type"] == "finding" and tname in n["id"]]
+                    if finding_nodes:
+                        add_link(finding_nodes[0], rid, "exploited_by")
+                    else:
+                        add_link(f"target:{tname}", rid, "has_technique")
+                except Exception:
+                    pass
+
+        # Recon data for services
+        recon_file = tdir / "recon_notes.md"
+        if not recon_file.exists():
+            recon_file = tdir / "recon_report.json"
+        if recon_file.exists():
+            try:
+                text = recon_file.read_text(errors="replace")[:30000]
+                # Extract service/port mentions
+                ports = re.findall(r'(?:port|service)[:\s]+(\d+)(?:/(\w+))?', text, re.IGNORECASE)
+                for port, proto in ports[:10]:
+                    sid = f"service:{tname}:{port}"
+                    add_node(sid, f"{proto or 'tcp'}:{port}", "service")
+                    add_link(f"target:{tname}", sid, "has_service")
+            except Exception:
+                pass
+
+    return {"nodes": nodes, "links": links}
+
+
 @app.get("/api/graph/summary")
 async def graph_summary(target: str):
-    """Get attack surface summary from Neo4j."""
+    """Get attack surface summary, with filesystem fallback."""
     try:
         graph = _get_graph()
         return graph.get_attack_surface_summary(target)
-    except Exception as e:
-        return JSONResponse(status_code=503, content={"error": str(e)})
+    except Exception:
+        # Filesystem fallback
+        graph_data = _build_graph_from_filesystem(target)
+        finding_nodes = [n for n in graph_data["nodes"] if n["type"] == "finding"]
+        technique_nodes = [n for n in graph_data["nodes"] if n["type"] == "technique"]
+        service_nodes = [n for n in graph_data["nodes"] if n["type"] == "service"]
+        return {
+            "hosts": 1,
+            "services": len(service_nodes),
+            "endpoints": 0,
+            "vulnerabilities": len(finding_nodes),
+            "findings": len(finding_nodes) + len(technique_nodes),
+            "source": "filesystem",
+        }
 
 
 @app.get("/api/graph/critical-vulns")
 async def graph_critical_vulns(target: str = None):
-    """Get critical vulnerabilities from Neo4j."""
+    """Get critical vulnerabilities, with filesystem fallback."""
     try:
         graph = _get_graph()
         return graph.get_critical_vulns(target)
-    except Exception as e:
-        return JSONResponse(status_code=503, content={"error": str(e)})
+    except Exception:
+        graph_data = _build_graph_from_filesystem(target)
+        critical = []
+        for n in graph_data["nodes"]:
+            if n["type"] in ("finding", "technique"):
+                cvss = n.get("cvss")
+                if cvss and cvss >= 7.0:
+                    critical.append({
+                        "cve_id": n["label"],
+                        "description": n["label"],
+                        "severity": n.get("severity", "high").upper(),
+                        "cvss": cvss,
+                    })
+        return critical
 
 
 @app.get("/api/graph/attack-paths")
 async def graph_attack_paths(target: str):
-    """Get attack paths from Neo4j."""
+    """Get attack paths, with filesystem fallback."""
     try:
         graph = _get_graph()
         return graph.get_attack_paths(target)
-    except Exception as e:
-        return JSONResponse(status_code=503, content={"error": str(e)})
+    except Exception:
+        graph_data = _build_graph_from_filesystem(target)
+        paths = []
+        for link in graph_data["links"]:
+            paths.append({
+                "from": link["source"],
+                "to": link["target"],
+                "relationship": link["relationship"],
+            })
+        return {"paths": paths, "source": "filesystem"}
 
 
 @app.get("/api/graph/export")
 async def graph_export(target: str):
-    """Export full attack graph as JSON."""
+    """Export full attack graph as d3-compatible JSON, with filesystem fallback."""
     try:
         graph = _get_graph()
         return graph.export_to_json(target)
-    except Exception as e:
-        return JSONResponse(status_code=503, content={"error": str(e)})
+    except Exception:
+        graph_data = _build_graph_from_filesystem(target)
+        return {
+            "target": target,
+            "nodes": graph_data["nodes"],
+            "links": graph_data["links"],
+            "source": "filesystem",
+        }
 
 
 # ──────────────────────────────────────────────
