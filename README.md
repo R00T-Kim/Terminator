@@ -8,7 +8,7 @@
 
 **Multi-agent AI system that autonomously solves CTF challenges and hunts bug bounties.**
 
-Built on [Claude Code Agent Teams](https://docs.anthropic.com/en/docs/claude-code) — 13 specialized agents orchestrated through sequential pipelines.
+Built on [Claude Code Agent Teams](https://docs.anthropic.com/en/docs/claude-code) — 17 specialized agents orchestrated through sequential pipelines with structured handoffs.
 
 <br>
 
@@ -19,9 +19,9 @@ Built on [Claude Code Agent Teams](https://docs.anthropic.com/en/docs/claude-cod
 
 <br>
 
-| CTF Solved | Bug Bounty Programs | AI Agents | MCP Servers | Docker Services |
-|:----------:|:-------------------:|:---------:|:-----------:|:---------------:|
-| **20** | **12+** | **13** | **10** | **6** |
+| CTF Solved | Bug Bounty Targets | AI Agents | MCP Servers | Security Tools |
+|:----------:|:------------------:|:---------:|:-----------:|:--------------:|
+| **20** | **28+** | **17** | **10** | **30+** |
 
 <br>
 
@@ -75,12 +75,12 @@ Terminator:
                         │Verifier │→ FLAG_FOUND
                         └─────────┘
 
-          ┌─────────────────────────────────────────────┐
-          │            Infrastructure Layer              │
-          ├─────────┬──────────┬──────────┬─────────────┤
-          │ 10 MCP  │ Docker   │ Web      │ Knowledge   │
-          │ Servers │ Stack    │ Dashboard│ Base        │
-          └─────────┴──────────┴──────────┴─────────────┘
+          ┌──────────────────────────────────────────────┐
+          │            Infrastructure Layer               │
+          ├──────────┬───────────┬──────────┬────────────┤
+          │ 10 MCP   │ Dashboard │ 30+      │ Knowledge  │
+          │ Servers  │ (Web UI)  │ Tools    │ Base       │
+          └──────────┴───────────┴──────────┴────────────┘
 ```
 
 ### Structured Handoffs
@@ -108,12 +108,14 @@ Agents communicate through structured artifact passing — no context is lost be
 | **Pwn (clear vuln)** — obvious overflow/fmt | `reverser → chain → critic → verifier → reporter` | 5 |
 | **Pwn (unclear vuln)** — crash discovery needed | `reverser → trigger → chain → critic → verifier → reporter` | 6 |
 | **Web** — injection, SSRF, auth bypass | `scanner → analyst → exploiter → reporter` | 4 |
+| **Firmware** — ARM binary diff, emulated PoC | `fw_profiler → fw_inventory → fw_surface → fw_validator → reporter` | 5 |
 
 ### Bug Bounty — v3 Pipeline (7 Phases)
 
 ```
 Phase 0   @target_evaluator     GO / NO-GO assessment (ROI, competition, tech stack)
           ─── GO gate ────────────────────────────────────────────────
+Phase 0.5 @scout                Automated tool scan (Slither, Semgrep, Mythril)
 Phase 1   @scout + @analyst     Parallel recon + duplicate pre-screen + CVE matching
 Phase 1.5 @analyst (N parallel) OWASP-category hunting (large codebases only)
 Phase 2   @exploiter            PoC development + Quality Tier gate (Tier 1-2 only)
@@ -136,7 +138,7 @@ Phase 6   TeamDelete            Cleanup
 |:------|:-----|:-----:|:-------|
 | **reverser** | Binary analysis, protection detection, attack surface mapping | Sonnet | `reversal_map.md` |
 | **trigger** | Crash discovery, input minimization, primitive identification | Sonnet | `trigger_report.md` |
-| **solver** | Reverse computation for reversing/crypto | Opus | `solve.py` |
+| **solver** | Reverse computation for reversing/crypto challenges | Opus | `solve.py` |
 | **chain** | Multi-stage exploit: leak → overwrite → shell | Opus | `solve.py` |
 | **critic** | Cross-verification of offsets, constants, logic | Opus | `critic_review.md` |
 | **verifier** | Local 3x reproduction → remote execution | Sonnet | `FLAG_FOUND` |
@@ -147,10 +149,79 @@ Phase 6   TeamDelete            Cleanup
 | Agent | Role | Model | Output |
 |:------|:-----|:-----:|:-------|
 | **target_evaluator** | Program ROI scoring, GO/NO-GO gate | Sonnet | `target_assessment.md` |
-| **scout** | Recon + duplicate pre-screen | Sonnet | `recon_report.json` |
+| **scout** | Recon + duplicate pre-screen + automated tool scanning | Sonnet | `recon_report.json` |
 | **analyst** | CVE matching, source→sink tracing, confidence scoring | Sonnet | `vulnerability_candidates.md` |
 | **exploiter** | PoC development, quality tier classification | Opus | PoC scripts + evidence |
 | **triager_sim** | Adversarial triage — attacks report before submission | Opus | SUBMIT / STRENGTHEN / KILL |
+
+### Firmware Agents
+
+| Agent | Role | Model | Output |
+|:------|:-----|:-----:|:-------|
+| **fw_profiler** | Firmware image profiling, architecture detection | Sonnet | `firmware_profile.md` |
+| **fw_inventory** | Binary inventory, version extraction, CVE matching | Sonnet | `firmware_inventory.md` |
+| **fw_surface** | Attack surface mapping, binary diff analysis | Sonnet | `attack_surface.md` |
+| **fw_validator** | QEMU emulation, dynamic PoC validation | Sonnet | `validation_results.md` |
+
+---
+
+## Dashboard
+
+A real-time web UI for monitoring all operations — runs in **standalone mode** with zero external dependencies.
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│  TERMINATOR                                        ● WebSocket  │
+├──────────┬──────────────┬──────────────┬──────────┬─────────────┤
+│ CTF      │ Bug Bounty   │ Infra-       │ Findings │ Attack      │
+│ Sessions │ Missions     │ structure    │          │ Graph       │
+├──────────┴──────────────┴──────────────┴──────────┴─────────────┤
+│                                                                  │
+│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐           │
+│  │ 20      │  │ 28+     │  │ 114+    │  │ 16      │           │
+│  │ FLAGS   │  │ TARGETS │  │ FINDINGS│  │ TOOLS   │           │
+│  └─────────┘  └─────────┘  └─────────┘  └─────────┘           │
+│                                                                  │
+│  Severity Distribution     Tool Health         Live Log          │
+│  ████ CRITICAL  12         ● Radare2    up     [session.log     │
+│  ██████ HIGH    18         ● GDB        up      tail -f ...]    │
+│  ████████ MED   34         ● Nuclei     up                      │
+│  ██ LOW         8          ● Slither    up                      │
+│  █ INFO         42         ● CodeQL     up                      │
+│                            ● Foundry    up                      │
+│  D3 Force-Directed Attack Graph                                  │
+│  ┌──────────────────────────────────────────────────┐           │
+│  │  (target) ──→ (finding) ──→ (technique)          │           │
+│  │     ↓             ↓              ↓               │           │
+│  │  (service)    (exploit)     (report)             │           │
+│  └──────────────────────────────────────────────────┘           │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+### 5 Tabs
+
+| Tab | Data Source | Features |
+|:----|:-----------|:---------|
+| **CTF Sessions** | `reports/` directory | Session list, flags, writeups, live log tailing via WebSocket |
+| **Bug Bounty Missions** | `targets/` directory | Pipeline phase tracker, GO/NO-GO status, findings per mission |
+| **Infrastructure** | System + Docker | 16+ tool health checks, Docker service status, RAG stats |
+| **Findings** | Filesystem + DB | Aggregated findings with CVSS auto-extraction, severity breakdown |
+| **Attack Graph** | Neo4j or filesystem | D3 force-directed graph — targets, findings, techniques, services |
+
+### Two Operating Modes
+
+| Mode | Requirements | Capabilities |
+|:-----|:-------------|:-------------|
+| **Standalone** (default) | Python + FastAPI only | Filesystem-based findings aggregation, tool health, attack graph from markdown, agent history from team configs |
+| **Full Stack** (optional) | Docker Compose | All standalone features + pgvector RAG, Neo4j graph DB, Ollama embeddings, LiteLLM multi-model proxy |
+
+```bash
+# Standalone — no Docker needed
+cd web && uvicorn app:app --host 0.0.0.0 --port 3000
+
+# Full Stack — 6 Docker services
+docker compose up -d
+```
 
 ---
 
@@ -215,6 +286,18 @@ Phase 6   TeamDelete            Cleanup
 </details>
 
 <details>
+<summary><b>Firmware Analysis</b></summary>
+
+| Category | Tools |
+|:---------|:------|
+| Emulation | QEMU ARM user-mode, rootfs mounting |
+| Diffing | Binary diff across firmware versions |
+| Profiling | Architecture detection, library inventory |
+| Validation | Dynamic PoC on emulated environment |
+
+</details>
+
+<details>
 <summary><b>Reference Databases</b></summary>
 
 | Database | Coverage |
@@ -249,7 +332,20 @@ Phase 6   TeamDelete            Cleanup
 
 ## Infrastructure
 
-### Docker Stack (6 Services)
+### Standalone Mode (Default)
+
+No Docker required. The dashboard reads directly from the filesystem:
+
+| Source | What It Reads |
+|:-------|:-------------|
+| `targets/` | 28+ mission directories with assessments, findings, reports |
+| `reports/` | CTF session logs, flags, writeups |
+| `~/.claude/teams/` | Agent team configs for run history |
+| System `$PATH` | 16 security tools auto-detected via `shutil.which()` |
+
+Aggregates **114+ findings** with automatic CVSS extraction from markdown reports. Builds D3-compatible attack graphs from vulnerability candidates, recon data, and report files — no Neo4j needed.
+
+### Full Stack Mode (Optional)
 
 ```bash
 docker compose up -d
@@ -262,14 +358,14 @@ docker compose up -d
 | **rag-api** | 8100 | ExploitDB/PoC knowledge search |
 | **neo4j** | 7474 | Attack surface graph database |
 | **litellm** | 4000 | Multi-model proxy (Claude/Gemini/DeepSeek) |
-| **web-ui** | 3000 | Real-time dashboard with D3 attack graphs |
+| **web-ui** | 3000 | Dashboard with full DB-backed features |
 
 ### Pipeline Tooling
 
 | Tool | Purpose |
 |:-----|:--------|
 | **MITRE Mapper** | CVE → CWE → CAPEC → ATT&CK mapping (27 CWEs) |
-| **Attack Graph** | Neo4j-backed attack surface visualization |
+| **Attack Graph** | Neo4j or filesystem-backed attack surface visualization |
 | **DAG Orchestrator** | Pipeline scheduling (CTF pwn/rev, bounty, firmware) |
 | **Recon Pipeline** | 6-phase automated reconnaissance |
 | **SARIF Generator** | GitHub Code Scanning compatible output |
@@ -288,15 +384,16 @@ docker compose up -d
 | Crypto | 2 | AES-ECB, z3 constraint solving |
 | Misc (logic, filter bypass) | 2 | Operator precedence, binary search |
 
-### Bug Bounty — 12+ Programs Assessed
+### Bug Bounty — 28+ Targets Assessed
 
 | Metric | Count |
-|:-------|:-----:|
-| Programs assessed | 12+ |
-| Platforms | Immunefi, HackerOne |
-| Categories | Smart Contract (DeFi), Web App, VPN, IoT, AI/SDK |
+|:-------|------:|
+| Programs assessed | 28+ |
+| Platforms | Immunefi, HackerOne, Bugcrowd |
+| Categories | Smart Contract (DeFi), Web App, VPN, IoT/Firmware, AI/SDK |
 | Smart contracts analyzed | 50+ |
 | Vulnerability leads investigated | 100+ |
+| Findings with working PoC | 15+ |
 
 > Specific targets and findings are kept private until disclosure is complete.
 
@@ -328,7 +425,7 @@ Agent definitions incorporate patterns from 10+ LLM security frameworks:
 - [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) with Anthropic API key
 - Python 3.10+ with pwntools, z3-solver, angr
 - gdb with pwndbg or GEF, radare2
-- Docker (optional, for full infrastructure)
+- Docker (optional, for full infrastructure stack)
 
 ### Interactive Mode
 
@@ -350,14 +447,30 @@ cd Terminator && claude
 ./terminator.sh status                          # Monitor
 ```
 
+### Dashboard
+
+```bash
+# Standalone (no Docker)
+cd web && pip install -r requirements.txt && uvicorn app:app --port 3000
+
+# Full stack
+docker compose up -d
+# Open http://localhost:3000
+```
+
 ---
 
 ## Project Structure
 
 ```
 Terminator/
-├── .claude/agents/          # 13 agent definitions (~2,900 lines)
-├── knowledge/               # Accumulated experience (20 writeups, 15 techniques)
+├── .claude/agents/          # 17 agent definitions (~4,300 lines)
+│   ├── reverser.md          #   Binary analysis
+│   ├── chain.md             #   Exploit chain building
+│   ├── critic.md            #   Cross-verification
+│   ├── fw_*.md              #   Firmware analysis (4 agents)
+│   └── ...                  #   + 10 more specialists
+├── knowledge/               # Accumulated experience (20 writeups, 16 techniques)
 │   ├── index.md             #   Master index
 │   ├── challenges/          #   Per-challenge writeups
 │   └── techniques/          #   Reusable attack patterns
@@ -365,16 +478,18 @@ Terminator/
 ├── tools/                   # Pipeline tooling
 │   ├── mitre_mapper.py      #   CVE→CWE→CAPEC→ATT&CK
 │   ├── recon_pipeline.py    #   6-phase recon orchestrator
-│   ├── attack_graph/        #   Neo4j attack surface graphs
+│   ├── attack_graph/        #   Neo4j + filesystem attack surface graphs
 │   ├── dag_orchestrator/    #   DAG pipeline scheduling
 │   ├── sarif_generator.py   #   SARIF 2.1.0 output
 │   └── mcp-servers/         #   nuclei, codeql, semgrep MCP
-├── web/                     # FastAPI + WebSocket dashboard
-├── targets/                 # Bug bounty workspaces
+├── web/                     # FastAPI + D3 dashboard (standalone + Docker)
+│   ├── app.py               #   REST API + WebSocket backend (1,255 lines)
+│   └── static/index.html    #   Single-page dashboard (5 tabs, 1,231 lines)
+├── targets/                 # Bug bounty workspaces (28+ missions)
 ├── tests/                   # CTF files + benchmarks
 ├── CLAUDE.md                # Orchestrator instructions
 ├── terminator.sh            # Autonomous mode launcher
-├── docker-compose.yml       # Infrastructure stack
+├── docker-compose.yml       # Full stack infrastructure
 └── README.md
 ```
 
