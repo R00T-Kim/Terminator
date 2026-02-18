@@ -379,13 +379,20 @@ Level 4: Smart contract 분석 — Slither + Mythril + Foundry fork (Web3 전용
 
 ## Interactive Bug Bounty 파이프라인 (v3 — 리서치 기반 강화)
 
-### Phase 0: Target Intelligence (NEW — 타겟 선택 실패 방지)
+### Phase 0: Target Intelligence (v5 — OOS Exclusion Check 추가)
 0. `TeamCreate("mission-<target>")`
 1. `target_evaluator` → 프로그램 분석, 경쟁도, 기술스택 매칭, 과거 실적 → `target_assessment.md`
    - **GO** (8-10점): 풀 파이프라인 진행
    - **CONDITIONAL GO** (5-7점): 제한된 범위로 진행, 토큰 예산 설정
    - **NO-GO** (0-4점): **즉시 중단. 다른 타겟 검토.**
    - Kill Signal 감지 시 즉시 NO-GO (deprecated, OOS, ghost program 등)
+   - **⚠️ OOS Exclusion Pre-Check (v5 — CapyFi 교훈, MANDATORY)**:
+     - Immunefi 프로그램 페이지에서 "Out of Scope" 항목 전수 확인
+     - `immunefi.com/common-vulnerabilities-to-exclude/` 기본 배제 목록 대조
+     - 특히: "Incorrect data supplied by third party oracles" (oracle staleness 배제)
+     - 프로그램의 Known Issues / 감사 보고서 트래킹 문서 확인
+     - **발견 후보 취약점 유형이 OOS에 해당하면 즉시 NO-GO** (PoC 품질과 무관하게 거절됨)
+     - 예: oracle staleness → OOS by default (manipulation/flash loan 제외), admin-gated → downgrade 확실
 
 ### Phase 0.5: Automated Tool Scan (NEW — Quality-First Gate)
 1.5. **scout**가 Slither/Semgrep 자동 스캔 실행 (DeFi 타겟 시):

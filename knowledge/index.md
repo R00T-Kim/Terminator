@@ -66,7 +66,7 @@
 |---------|----------|-------|--------|------|
 | USX Protocol | Immunefi | Smart Contract (Scroll L2) | 2 reports ready, pending submission | [immunefi_usx.md](challenges/immunefi_usx.md) |
 | stake.link | Immunefi | Smart Contract (Curve/CCIP) | CLOSED (Immunefi: "automated scanner output", AI-generated warning) | `targets/stakelink/submission/` |
-| CapyFi | Immunefi | Smart Contract (Compound v2 fork) | 1 HIGH ready (Oracle Staleness), 1 MEDIUM killed (Whitelist by-design) | `targets/capyfi/` |
+| CapyFi | Immunefi | Smart Contract (Compound v2 fork) | KILLED (Oracle Staleness = OOS "third party oracle data", Whitelist = by-design). 6hr/$0 | `targets/capyfi/` |
 | Vercel AI SDK | HackerOne | AI/MCP/OAuth | CLOSED (2 Dup, 3 Info, $0) | - |
 | NordSecurity | HackerOne | VPN (Linux) | 1 report ready, H1 API blocked | [nordvpn_kill_switch_bypass.md](challenges/nordvpn_kill_switch_bypass.md) |
 | Ubiquiti | HackerOne | EdgeRouter X | 1 report ready, H1 API blocked | [ubiquiti_edgerouter_x.md](challenges/ubiquiti_edgerouter_x.md) |
@@ -82,7 +82,7 @@
 | GMX V2 | Immunefi | Smart Contract (Perp DEX) | ABANDONED (all leads dead) | - |
 | NETGEAR Orbi RBR750 | Bugcrowd | Firmware (ARM, httpd) | 2 reports ready for Bugcrowd submission | `targets/netgear/` |
 | Swell Network | Immunefi | Smart Contract (LST/LRT/L2) | ABANDONED (6 audits, defense-in-depth only, triager_sim KILL) | `targets/swell/` |
-| CapyFi | Immunefi | Smart Contract (Compound v2 fork, Ethereum) | 1 HIGH ready (Oracle Staleness), 1 MEDIUM hold (Whitelist Bypass) | `targets/capyfi/` |
+| CapyFi | Immunefi | Smart Contract (Compound v2 fork, Ethereum) | KILLED (both reports — OOS exclusion + by-design) | `targets/capyfi/` |
 
 ### H1 Account Status (2026-02-17)
 - **API 제출 차단**: 계정 레벨 403 (모든 프로그램)
