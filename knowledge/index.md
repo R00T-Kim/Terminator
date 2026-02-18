@@ -58,13 +58,15 @@
 | AI Security Agent Research (Anthropic, kritt.ai) | [techniques/ai_security_agents_research.md](techniques/ai_security_agents_research.md) |
 | Competitor Analysis (CAI, RedAmon, Strix) | [techniques/competitor_analysis.md](techniques/competitor_analysis.md) |
 | Firmware diff analysis (NETGEAR Orbi) | [techniques/firmware_diff_analysis.md](techniques/firmware_diff_analysis.md) |
+| Bug Bounty Retrospective v1 (23 programs, v5 rules) | [techniques/bugbounty_retrospective_v1.md](techniques/bugbounty_retrospective_v1.md) |
 
 ## Bug Bounty Programs
 
 | Program | Platform | Focus | Status | File |
 |---------|----------|-------|--------|------|
 | USX Protocol | Immunefi | Smart Contract (Scroll L2) | 2 reports ready, pending submission | [immunefi_usx.md](challenges/immunefi_usx.md) |
-| stake.link | Immunefi | Smart Contract (Curve/CCIP) | 1 MEDIUM ready, pending cooldown | `targets/stakelink/submission/` |
+| stake.link | Immunefi | Smart Contract (Curve/CCIP) | CLOSED (Immunefi: "automated scanner output", AI-generated warning) | `targets/stakelink/submission/` |
+| CapyFi | Immunefi | Smart Contract (Compound v2 fork) | 1 HIGH ready (Oracle Staleness), 1 MEDIUM killed (Whitelist by-design) | `targets/capyfi/` |
 | Vercel AI SDK | HackerOne | AI/MCP/OAuth | CLOSED (2 Dup, 3 Info, $0) | - |
 | NordSecurity | HackerOne | VPN (Linux) | 1 report ready, H1 API blocked | [nordvpn_kill_switch_bypass.md](challenges/nordvpn_kill_switch_bypass.md) |
 | Ubiquiti | HackerOne | EdgeRouter X | 1 report ready, H1 API blocked | [ubiquiti_edgerouter_x.md](challenges/ubiquiti_edgerouter_x.md) |
@@ -79,6 +81,8 @@
 | Olympus DAO | Immunefi | Smart Contract (OHM/gOHM) | ABANDONED (16 contracts, 22 leads, 0 HIGH/CRITICAL. Mature codebase.) | - |
 | GMX V2 | Immunefi | Smart Contract (Perp DEX) | ABANDONED (all leads dead) | - |
 | NETGEAR Orbi RBR750 | Bugcrowd | Firmware (ARM, httpd) | 2 reports ready for Bugcrowd submission | `targets/netgear/` |
+| Swell Network | Immunefi | Smart Contract (LST/LRT/L2) | ABANDONED (6 audits, defense-in-depth only, triager_sim KILL) | `targets/swell/` |
+| CapyFi | Immunefi | Smart Contract (Compound v2 fork, Ethereum) | 1 HIGH ready (Oracle Staleness), 1 MEDIUM hold (Whitelist Bypass) | `targets/capyfi/` |
 
 ### H1 Account Status (2026-02-17)
 - **API 제출 차단**: 계정 레벨 403 (모든 프로그램)

@@ -293,7 +293,7 @@ Step 5: 위 도구 결과에서 HIGH+ 시그널만 수동 심층 분석
 ```
 **위 체크리스트가 전부 체크되어야만 ABANDON 가능.** Olympus DAO에서는 0개 체크 상태에서 ABANDON → 잘못된 판단.
 
-### 타겟 선택 전략 (DeFi Bug Bounty)
+### 타겟 선택 전략 v5 (DeFi Bug Bounty — 23 프로그램 회고 반영)
 ```
 ❌ 잘못된 전략: 가장 큰 바운티 + 가장 유명한 프로토콜 (OHM $3.3M, GMX 등)
   → 수년간 audited, 수십명의 보안 연구자가 이미 분석, LOW만 남음
@@ -304,7 +304,50 @@ Step 5: 위 도구 결과에서 HIGH+ 시그널만 수동 심층 분석
   4. 새로운 코드가 포함된 fork (원본 감사 범위 밖)
   5. peripheral/bridge/distributor 등 unaudited 컴포넌트 존재
 ```
-**target_evaluator에게 이 기준을 적용하도록 강제.** Audit Count가 3+ 이고 Reports Resolved 100+ 이면 자동 score -3.
+
+#### Hard NO-GO Rules (v5 — override 불가)
+```
+3+ audits = AUTO NO-GO (penalty가 아니라 hard block)
+100+ resolved reports = AUTO NO-GO
+운영 3년+ = AUTO NO-GO
+Fork 타겟 → 원본 감사 보고서 + fix commits 확인 → 전부 적용됨 = AUTO NO-GO
+```
+
+#### 즉시 제출 규칙 (v5-1 — Submission Bottleneck 해결)
+```
+보고서 완성 + triager_sim SUBMIT → 24시간 내 제출
+submission/ 폴더 + ZIP은 reporter agent가 Phase 5에서 자동 생성
+"나중에 정리" 금지. 정리는 reporter가 한다.
+```
+
+#### Anti-AI Detection Protocol (v5-3 — stake.link 교훈)
+```
+Phase 5 (reporter) 추가 체크리스트:
+□ 보고서에 specific block number 또는 tx hash 포함?
+□ 보고서 구조가 이전 제출과 다름? (매번 섹션 순서 변경)
+□ "reviewed implementation" 등 관찰적 언어 사용?
+□ 템플릿 문구 0개? ("It is important to note", "comprehensive", "robust")
+□ AI Slop Score ≤ 2/10? (triager_sim 체크)
+□ 최소 1개 unique analysis element? (커스텀 다이어그램, 독특한 공격 시나리오명 등)
+```
+
+#### Time-Box Enforcement (v5-4)
+```
+Phase 0 (target eval):      30분 MAX
+Phase 0.5 (tool scan):      30분 MAX
+Phase 1 (discovery):        2시간 MAX
+Phase 2 (exploit dev):      3시간 MAX
+Phase 3-5 (report+review):  2시간 MAX
+─────────────────────────────────────
+Total per target:            8시간 MAX
+2시간 시점에 HIGH+ signal 없으면 → ABANDON (체크리스트 통과 후)
+```
+
+#### Platform Priority (v5-6)
+```
+Immunefi (Web3) > Bugcrowd > H1 (H1은 계정 복구 후에만)
+이유: H1 계정 파괴 + AI 탐지 정책 불확실
+```
 
 ## Analysis Depth Guidelines (v4.0 — Quality-First)
 
