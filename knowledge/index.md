@@ -6,10 +6,10 @@
 
 | Challenge | Type | Flag | File |
 |-----------|------|------|------|
-| dhcc (Level10_1) | Reversing (flex/bison) | `REDACTED` | [level10_1_dhcc.md](challenges/level10_1_dhcc.md) |
-| Too Many Questions | Crypto (AES-ECB) | `REDACTED` | [too_many_questions.md](challenges/too_many_questions.md) |
-| Damnida | Reversing (Custom VM) | `REDACTED` | [damnida.md](challenges/damnida.md) |
-| Conquergent | Reversing (retf VM) | `REDACTED` | [conquergent.md](challenges/conquergent.md) |
+| dhcc (Level10_1) | Reversing (flex/bison) | Solved | [level10_1_dhcc.md](challenges/level10_1_dhcc.md) |
+| Too Many Questions | Crypto (AES-ECB) | Solved | [too_many_questions.md](challenges/too_many_questions.md) |
+| Damnida | Reversing (Custom VM) | Solved | [damnida.md](challenges/damnida.md) |
+| Conquergent | Reversing (retf VM) | Solved | [conquergent.md](challenges/conquergent.md) |
 | pwnable.kr fd | Pwn | Solved | [pwnablekr_fd.md](challenges/pwnablekr_fd.md) |
 | pwnable.kr collision | Pwn | Solved | [pwnablekr_col.md](challenges/pwnablekr_col.md) |
 | pwnable.kr horcruxes | Pwn | Solved | [pwnablekr_horcruxes.md](challenges/pwnablekr_horcruxes.md) |
@@ -59,6 +59,8 @@
 | Competitor Analysis (CAI, RedAmon, Strix) | [techniques/competitor_analysis.md](techniques/competitor_analysis.md) |
 | Firmware diff analysis (NETGEAR Orbi) | [techniques/firmware_diff_analysis.md](techniques/firmware_diff_analysis.md) |
 | Bug Bounty Retrospective v1 (23 programs, v5 rules) | [techniques/bugbounty_retrospective_v1.md](techniques/bugbounty_retrospective_v1.md) |
+| Moonwell $1.78M Vibe Coding Hack (AI oracle bug) | [techniques/moonwell_vibe_coding_hack.md](techniques/moonwell_vibe_coding_hack.md) |
+| Immunefi Submission Form Template | [techniques/immunefi_submission_form.md](techniques/immunefi_submission_form.md) |
 
 ## Bug Bounty Programs
 
@@ -83,6 +85,7 @@
 | NETGEAR Orbi RBR750 | Bugcrowd | Firmware (ARM, httpd) | 2 reports ready for Bugcrowd submission | `targets/netgear/` |
 | Swell Network | Immunefi | Smart Contract (LST/LRT/L2) | ABANDONED (6 audits, defense-in-depth only, triager_sim KILL) | `targets/swell/` |
 | CapyFi | Immunefi | Smart Contract (Compound v2 fork, Ethereum) | KILLED (both reports — OOS exclusion + by-design) | `targets/capyfi/` |
+| Kiln DeFi | Immunefi | Smart Contract (ERC4626 Vault, multi-chain) | **SUBMITTED** (2026-02-18) — _checkPartialShares DoS (Medium, $3K-$5K EV). 온체인 전 vault offset=0 → latent bug 프레이밍. PoC 7/7 PASS. | `targets/kiln-defi/` |
 
 ### H1 Account Status (2026-02-17)
 - **API 제출 차단**: 계정 레벨 403 (모든 프로그램)

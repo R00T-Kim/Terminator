@@ -1,0 +1,3 @@
+[submodule "targets/kiln-defi/source/vault_impl/Vault/lib/forge-std"]
+	path = targets/kiln-defi/source/vault_impl/Vault/lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
