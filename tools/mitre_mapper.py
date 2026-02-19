@@ -151,6 +151,21 @@ def map_cwe_to_capec(cwe_id: str, mapping: dict) -> list:
     return cwe_to_capec.get(cwe_id, [])
 
 
+def map_cwe_to_atlas(cwe_id: str, mapping: dict) -> list:
+    """
+    Map a CWE ID to MITRE ATLAS techniques using the local mapping.
+    Returns list of {'technique_id': ..., 'name': ...} dicts.
+    """
+    cwe_to_atlas = mapping.get("cwe_to_atlas", {})
+    return cwe_to_atlas.get(cwe_id, [])
+
+
+def get_atlas_detail(technique_id: str, mapping: dict) -> dict:
+    """Get ATLAS technique metadata (tactic, url) from mapping."""
+    atlas_techniques = mapping.get("atlas_techniques", {})
+    return atlas_techniques.get(technique_id, {})
+
+
 def map_capec_to_attack(capec_id: str, mapping: dict) -> list:
     """
     Map a CAPEC ID to ATT&CK techniques using the local mapping.
@@ -160,7 +175,7 @@ def map_capec_to_attack(capec_id: str, mapping: dict) -> list:
     return capec_to_attack.get(capec_id, [])
 
 
-def build_chain(cve_id: str, mapping: dict, nvd_response: dict) -> dict:
+def build_chain(cve_id: str, mapping: dict, nvd_response: dict, include_atlas: bool = False) -> dict:
     """
     Build the full CVE→CWE→CAPEC→ATT&CK chain for a single CVE.
     Returns a structured dict with the complete taxonomy chain.
@@ -212,6 +227,20 @@ def build_chain(cve_id: str, mapping: dict, nvd_response: dict) -> dict:
                 "attack_techniques": unique_techniques,
             })
 
+        # ATLAS mapping (AI/ML threat taxonomy)
+        if include_atlas:
+            atlas_entries = map_cwe_to_atlas(cwe_id, mapping)
+            atlas_enriched = []
+            for entry in atlas_entries:
+                detail = get_atlas_detail(entry["technique_id"], mapping)
+                atlas_enriched.append({
+                    "technique_id": entry["technique_id"],
+                    "name": entry["name"],
+                    "tactic": detail.get("tactic", "Unknown"),
+                    "url": detail.get("url", ""),
+                })
+            cwe_node["atlas_techniques"] = atlas_enriched
+
         chain["cwes"].append(cwe_node)
 
     return chain
@@ -253,6 +282,14 @@ def format_text(chain: dict) -> str:
 
             for tech in capec["attack_techniques"]:
                 lines.append(f"      ATT&CK: {tech['technique_id']} ({tech['name']})")
+
+        # ATLAS techniques (if present)
+        atlas_techs = cwe_node.get("atlas_techniques", [])
+        if atlas_techs:
+            for atech in atlas_techs:
+                tactic = atech.get("tactic", "")
+                tactic_str = f" [{tactic}]" if tactic else ""
+                lines.append(f"    ATLAS: {atech['technique_id']} ({atech['name']}){tactic_str}")
 
     return "\n".join(lines)
 
@@ -313,6 +350,11 @@ Examples:
         action="store_true",
         help="Skip NVD API calls (use only local mapping data)",
     )
+    parser.add_argument(
+        "--atlas",
+        action="store_true",
+        help="Include MITRE ATLAS (AI/ML threat) mappings in output",
+    )
 
     args = parser.parse_args()
 
@@ -337,7 +379,7 @@ Examples:
             if i < total:
                 time.sleep(RATE_LIMIT_DELAY)
 
-        chain = build_chain(cve_id.upper().strip(), mapping, nvd_response)
+        chain = build_chain(cve_id.upper().strip(), mapping, nvd_response, include_atlas=args.atlas)
         results.append(chain)
 
     if args.json_output:

@@ -24,6 +24,7 @@ curl -s "https://markdown.new/<target_url>" | head -500
 - **Web Recon (Go tools at ~/gopath/bin/)**: ffuf (dir/param fuzzer), subfinder (subdomain discovery), katana (web crawler), httpx (HTTP probe+tech detect), dalfox (XSS scanner), gau+waybackurls (URL collection), interactsh-client (OOB callback)
 - **Web Recon (Python)**: arjun (HTTP parameter discovery), dirsearch (directory bruteforcer)
 - **Scanning**: nuclei (v3.7.0, ~/nuclei-templates/ — 12K+ 템플릿), trufflehog (v3.93.3, 시크릿 탐지)
+- **AI/LLM Security**: garak (v0.14.0 — LLM vulnerability scanner: prompt injection, jailbreak, data leak)
 - **File Upload**: fuxploider (`python3 ~/fuxploider/fuxploider.py` — file upload vuln scanner)
 - **DNS**: dig, nslookup, host
 - **SSL**: openssl s_client, curl --cert-status
@@ -303,6 +304,11 @@ openssl s_client -connect <host>:443 -servername <host> </dev/null 2>/dev/null |
 # Collect CVE IDs found by nuclei for Phase 6
 grep -oE "CVE-[0-9]{4}-[0-9]+" nuclei_cve.txt | sort -u > cve_ids_found.txt
 echo "[Phase 5] CVE IDs found: $(wc -l < cve_ids_found.txt)"
+
+# AI/LLM Target Scan (if target has AI/chatbot/LLM features)
+# garak — automated LLM vulnerability scanner
+garak --model_type rest --model_name <target_api> --probes promptinject,dan,knowledgegraph 2>&1 | tee garak_results.txt
+# Results feed into Phase 6 ATLAS enrichment
 ```
 
 **Phase 5 Output**: `phase5_vulns.json`
@@ -331,6 +337,7 @@ if [ -n "$CVE_LIST" ]; then
     python3 /home/rootk1m/01_CYAI_Lab/01_Projects/Terminator/tools/mitre_mapper.py \
         $CVE_LIST \
         --json \
+        --atlas \
         --verbose \
         > mitre_enrichment.json 2>mitre_enrichment.log
 

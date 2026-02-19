@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0.0",
     "description": "CWE→CAPEC→ATT&CK mapping for Terminator MITRE enrichment",
-    "sources": ["MITRE CWE", "MITRE CAPEC", "MITRE ATT&CK"],
-    "last_updated": "2026-02-17"
+    "sources": ["MITRE CWE", "MITRE CAPEC", "MITRE ATT&CK", "MITRE ATLAS"],
+    "last_updated": "2026-02-19"
   },
   "cwe_to_capec": {
     "CWE-79": [
@@ -357,5 +357,111 @@
       {"technique_id": "T1203", "name": "Exploitation for Client Execution"},
       {"technique_id": "T1068", "name": "Exploitation for Privilege Escalation"}
     ]
+  },
+  "cwe_to_atlas": {
+    "CWE-20": [
+      {"technique_id": "AML.T0051", "name": "LLM Prompt Injection"},
+      {"technique_id": "AML.T0043", "name": "Craft Adversarial Data"},
+      {"technique_id": "AML.T0046", "name": "Evade ML Model"}
+    ],
+    "CWE-74": [
+      {"technique_id": "AML.T0051", "name": "LLM Prompt Injection"},
+      {"technique_id": "AML.T0050", "name": "Command Injection via AI"}
+    ],
+    "CWE-77": [
+      {"technique_id": "AML.T0050", "name": "Command Injection via AI"},
+      {"technique_id": "AML.T0048", "name": "Command and Scripting Interpreter"}
+    ],
+    "CWE-78": [
+      {"technique_id": "AML.T0050", "name": "Command Injection via AI"},
+      {"technique_id": "AML.T0048", "name": "Command and Scripting Interpreter"}
+    ],
+    "CWE-79": [
+      {"technique_id": "AML.T0051", "name": "LLM Prompt Injection"},
+      {"technique_id": "AML.T0052", "name": "Phishing via LLM"}
+    ],
+    "CWE-89": [
+      {"technique_id": "AML.T0050", "name": "Command Injection via AI"}
+    ],
+    "CWE-94": [
+      {"technique_id": "AML.T0048", "name": "Command and Scripting Interpreter"},
+      {"technique_id": "AML.T0050", "name": "Command Injection via AI"}
+    ],
+    "CWE-200": [
+      {"technique_id": "AML.T0024", "name": "Exfiltration via ML Inference API"},
+      {"technique_id": "AML.T0054", "name": "LLM Meta Prompt Extraction"},
+      {"technique_id": "AML.T0044", "name": "Full ML Model Access"}
+    ],
+    "CWE-285": [
+      {"technique_id": "AML.T0040", "name": "ML Model Inference API Access"},
+      {"technique_id": "AML.T0044", "name": "Full ML Model Access"}
+    ],
+    "CWE-287": [
+      {"technique_id": "AML.T0040", "name": "ML Model Inference API Access"}
+    ],
+    "CWE-306": [
+      {"technique_id": "AML.T0040", "name": "ML Model Inference API Access"},
+      {"technique_id": "AML.T0049", "name": "Exploit Public-Facing ML Application"}
+    ],
+    "CWE-352": [
+      {"technique_id": "AML.T0049", "name": "Exploit Public-Facing ML Application"}
+    ],
+    "CWE-400": [
+      {"technique_id": "AML.T0029", "name": "Denial of ML Service"},
+      {"technique_id": "AML.T0043", "name": "Craft Adversarial Data"}
+    ],
+    "CWE-434": [
+      {"technique_id": "AML.T0018", "name": "Backdoor ML Model"},
+      {"technique_id": "AML.T0019", "name": "Publish Poisoned Datasets"}
+    ],
+    "CWE-502": [
+      {"technique_id": "AML.T0010", "name": "ML Supply Chain Compromise"},
+      {"technique_id": "AML.T0018", "name": "Backdoor ML Model"}
+    ],
+    "CWE-798": [
+      {"technique_id": "AML.T0040", "name": "ML Model Inference API Access"},
+      {"technique_id": "AML.T0054", "name": "LLM Meta Prompt Extraction"}
+    ],
+    "CWE-862": [
+      {"technique_id": "AML.T0040", "name": "ML Model Inference API Access"},
+      {"technique_id": "AML.T0044", "name": "Full ML Model Access"}
+    ],
+    "CWE-863": [
+      {"technique_id": "AML.T0040", "name": "ML Model Inference API Access"},
+      {"technique_id": "AML.T0053", "name": "LLM Jailbreak"}
+    ],
+    "CWE-917": [
+      {"technique_id": "AML.T0051", "name": "LLM Prompt Injection"},
+      {"technique_id": "AML.T0048", "name": "Command and Scripting Interpreter"}
+    ],
+    "CWE-918": [
+      {"technique_id": "AML.T0049", "name": "Exploit Public-Facing ML Application"},
+      {"technique_id": "AML.T0024", "name": "Exfiltration via ML Inference API"}
+    ],
+    "CWE-1426": [
+      {"technique_id": "AML.T0051", "name": "LLM Prompt Injection"},
+      {"technique_id": "AML.T0053", "name": "LLM Jailbreak"},
+      {"technique_id": "AML.T0054", "name": "LLM Meta Prompt Extraction"},
+      {"technique_id": "AML.T0052", "name": "Phishing via LLM"}
+    ]
+  },
+  "atlas_techniques": {
+    "AML.T0010": {"name": "ML Supply Chain Compromise", "tactic": "Initial Access", "url": "https://atlas.mitre.org/techniques/AML.T0010"},
+    "AML.T0018": {"name": "Backdoor ML Model", "tactic": "Persistence", "url": "https://atlas.mitre.org/techniques/AML.T0018"},
+    "AML.T0019": {"name": "Publish Poisoned Datasets", "tactic": "Initial Access", "url": "https://atlas.mitre.org/techniques/AML.T0019"},
+    "AML.T0024": {"name": "Exfiltration via ML Inference API", "tactic": "Exfiltration", "url": "https://atlas.mitre.org/techniques/AML.T0024"},
+    "AML.T0029": {"name": "Denial of ML Service", "tactic": "Impact", "url": "https://atlas.mitre.org/techniques/AML.T0029"},
+    "AML.T0040": {"name": "ML Model Inference API Access", "tactic": "ML Model Access", "url": "https://atlas.mitre.org/techniques/AML.T0040"},
+    "AML.T0043": {"name": "Craft Adversarial Data", "tactic": "ML Attack Staging", "url": "https://atlas.mitre.org/techniques/AML.T0043"},
+    "AML.T0044": {"name": "Full ML Model Access", "tactic": "ML Model Access", "url": "https://atlas.mitre.org/techniques/AML.T0044"},
+    "AML.T0045": {"name": "Create Proxy ML Model", "tactic": "ML Attack Staging", "url": "https://atlas.mitre.org/techniques/AML.T0045"},
+    "AML.T0046": {"name": "Evade ML Model", "tactic": "Defense Evasion", "url": "https://atlas.mitre.org/techniques/AML.T0046"},
+    "AML.T0048": {"name": "Command and Scripting Interpreter", "tactic": "Execution", "url": "https://atlas.mitre.org/techniques/AML.T0048"},
+    "AML.T0049": {"name": "Exploit Public-Facing ML Application", "tactic": "Initial Access", "url": "https://atlas.mitre.org/techniques/AML.T0049"},
+    "AML.T0050": {"name": "Command Injection via AI", "tactic": "Execution", "url": "https://atlas.mitre.org/techniques/AML.T0050"},
+    "AML.T0051": {"name": "LLM Prompt Injection", "tactic": "Initial Access", "url": "https://atlas.mitre.org/techniques/AML.T0051"},
+    "AML.T0052": {"name": "Phishing via LLM", "tactic": "Initial Access", "url": "https://atlas.mitre.org/techniques/AML.T0052"},
+    "AML.T0053": {"name": "LLM Jailbreak", "tactic": "Defense Evasion", "url": "https://atlas.mitre.org/techniques/AML.T0053"},
+    "AML.T0054": {"name": "LLM Meta Prompt Extraction", "tactic": "Collection", "url": "https://atlas.mitre.org/techniques/AML.T0054"}
   }
 }

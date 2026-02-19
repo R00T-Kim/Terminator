@@ -1,6 +1,6 @@
 # Installed Bug Bounty & Security Tools Reference
 
-**Updated**: 2026-02-15
+**Updated**: 2026-02-19
 
 ## PATH Setup (every new shell)
 ```bash
@@ -73,6 +73,8 @@ echo "target.com" | ~/gopath/bin/waybackurls > wayback.txt
 | **mitmproxy** | `~/tools/mitmproxy/mitmproxy` | HTTP(S) intercept proxy (v12.2.1) |
 | **fuxploider** | `python3 ~/fuxploider/fuxploider.py` | File upload vulnerability scanner/exploiter |
 | **codeql** | `~/tools/codeql/codeql` | Semantic code analysis (variant hunting, taint tracking) |
+| **garak** | `garak` | LLM vulnerability scanner (NVIDIA, prompt injection/jailbreak/data leak testing) v0.14.0 |
+| **promptfoo** | `promptfoo` | Prompt injection testing & red teaming for LLM apps v0.120.19 |
 
 ### Quick Usage
 ```bash

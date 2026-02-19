@@ -35,6 +35,14 @@ python3 /home/rootk1m/01_CYAI_Lab/01_Projects/Terminator/tools/pdf_generator.py 
     --input report.md --output report.html --html-only
 ```
 
+**MITRE ATT&CK + ATLAS Enrichment** (CVE→CWE→CAPEC→ATT&CK chain for reports):
+```bash
+# Standard ATT&CK mapping
+python3 /home/rootk1m/01_CYAI_Lab/01_Projects/Terminator/tools/mitre_mapper.py <CVE-ID> --json
+# With ATLAS (AI/ML threat taxonomy) — use for AI/LLM-related targets
+python3 /home/rootk1m/01_CYAI_Lab/01_Projects/Terminator/tools/mitre_mapper.py <CVE-ID> --json --atlas
+```
+
 **Neo4j Finding Ingestion** (push findings to attack graph):
 ```bash
 python3 -c "

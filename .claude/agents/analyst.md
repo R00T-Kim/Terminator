@@ -185,9 +185,9 @@ for r in results: print(dict(r))
 g.close()
 "
 
-# Run mitre_mapper directly for additional CVEs not in scout's scan:
+# Run mitre_mapper directly for additional CVEs (with ATLAS for AI targets):
 python3 /home/rootk1m/01_CYAI_Lab/01_Projects/Terminator/tools/mitre_mapper.py \
-    <CVE-IDs-found-in-recon> --json 2>/dev/null | python3 -c "
+    <CVE-IDs-found-in-recon> --json --atlas 2>/dev/null | python3 -c "
 import json, sys
 data = json.load(sys.stdin)
 for r in data['results']:
