@@ -35,8 +35,37 @@ elif 문제_유형 == "web":
 ```
 **6-agent 풀 파이프라인을 무조건 쓰지 말 것.** 불필요한 에이전트 = 토큰 낭비.
 
-### 에이전트별 모델 지정 (MANDATORY)
-스폰 시 반드시 `model` 파라미터를 명시할 것. 미지정 시 parent(opus) 상속 = 토큰 낭비.
+### Early Critic 옵션 (reverser 정확도 검증)
+reversal_map의 오류가 전체 파이프라인을 오염시키는 것을 방지하기 위해, **복잡한 문제**(Full RELRO+PIE+Canary, custom allocator, stripped 등)에서는 reverser 직후에 lightweight critic을 삽입할 수 있다:
+```
+복잡한 바이너리:
+  reverser → critic(lightweight, model=sonnet) → chain/solver → critic(full) → verifier → reporter
+일반 바이너리:
+  reverser → chain/solver → critic → verifier → reporter  (기존 파이프라인 유지)
+```
+**Early Critic의 범위**: reversal_map.md의 주소/오프셋/상수/보호기법 정보만 r2/GDB로 교차 검증. 전체 리뷰가 아닌 **팩트체크 전용**. unibitmap에서 "canary 도달 가능" 오보가 1384줄 코드 폐기를 초래한 교훈 반영.
+
+### Dual-Approach 자동 트리거 (3회 실패 시)
+chain/solver가 **동일 문제에서 3회 연속 실패** 시, Orchestrator는 자동으로 Dual-Approach Parallel을 발동한다:
+```
+3회 실패 감지 → Orchestrator가 2개 에이전트 동시 스폰:
+  - chain-A(접근법 A: 기존과 다른 전략) + chain-B(접근법 B: 완전히 다른 기법)
+  - 먼저 성공한 에이전트 채택, 나머지 종료
+예: chain-A(ROP) + chain-B(ret2libc), solver-A(z3) + solver-B(GDB Oracle)
+```
+**자동 트리거 조건**: 같은 챌린지에서 chain/solver가 3회 FAIL 보고 + Orchestrator가 근본적으로 다른 접근법 2개를 식별 가능할 때.
+**5회 실패**: 외부 writeup 검색 (WebSearch) 필수.
+
+### Trivial 문제: ctf-solver 에이전트 사용 가능
+CLAUDE.md 필수 규칙 1번의 "Trivial 문제는 직접 풀어도 된다" 대신, `.claude/agents/ctf-solver.md` (Legacy single-agent)를 활용할 수 있다:
+```
+if 난이도 == "trivial" and 단일 에이전트로 충분:
+    ctf-solver 1-agent (subagent_type="ctf-solver", model=sonnet) → reporter
+```
+Orchestrator가 직접 풀이하는 것보다 ctf-solver 에이전트에 위임하는 것이 컨텍스트 오염을 방지한다.
+
+### 에이전트별 모델 지정 (MANDATORY — 미지정 시 스폰 금지)
+스폰 시 반드시 `model` 파라미터를 명시할 것. **model 파라미터 없이 에이전트를 스폰하면 parent(opus)가 상속되어 토큰 3-5x 낭비.** model 미지정 에이전트 스폰은 파이프라인 위반으로 간주.
 ```
 | 에이전트   | model   | 이유                          |
 |-----------|---------|-------------------------------|
@@ -89,6 +118,14 @@ Claude Code (Orchestrator = Team Lead)
 - **1000줄 이상 한번에 작성 금지** → Phase별 200줄 이내 + 로컬 테스트
 - Phase 1 (leak) → 테스트 → Phase 2 (overflow) → 테스트 → Phase 3 (ROP) → 테스트 → 합치기
 - 테스트 없이 다음 Phase 진행 금지
+
+### Firmware Pipeline (별도 에이전트 정의 존재)
+```
+elif 문제_유형 == "firmware":
+    fw_profiler → fw_inventory → fw_surface → fw_validator  (4-agent)
+```
+에이전트 정의: `.claude/agents/fw_profiler.md`, `fw_inventory.md`, `fw_surface.md`, `fw_validator.md`
+DAG 파이프라인 정의: `tools/dag_orchestrator/pipelines/firmware.yaml`
 
 Agent definitions: `.claude/agents/*.md`
 
@@ -402,6 +439,19 @@ Level 4: Smart contract 분석 — Slither + Mythril + Foundry fork (Web3 전용
    - **이 결과를 analyst에게 전달** — analyst는 도구 결과부터 분석 시작
    - 도구 결과 없이 analyst가 코드 읽기 시작하는 것은 금지
 
+   **⚠️ Code Path Activation Check (v6 — Kiln DeFi 교훈, MANDATORY for DeFi)**:
+   - 취약점이 특정 config/parameter에 의존하면 (예: offset>0, fee>0, custom oracle 등)
+   - **배포된 모든 컨트랙트에서 해당 config가 활성화되어 있는지 `cast call`로 확인**:
+   ```bash
+   # 예: offset 파라미터 확인
+   cast call <vault_addr> "decimalsOffset()(uint8)" --rpc-url $RPC_URL
+   # 예: fee 파라미터 확인
+   cast call <pool_addr> "fee()(uint256)" --rpc-url $RPC_URL
+   ```
+   - **전부 비활성화(0)이면**: 취약점이 "latent bug" → severity 자동 하락 (High→Medium→Low)
+   - **Kiln 교훈**: 5개 배포 vault 전부 offset=0 → "not in production, already known" → CLOSED ($0)
+   - **코드에 존재하지만 프로덕션에서 사용 안 하는 코드 경로의 버그 = 거의 확실히 거절됨**
+
 ### Phase 1: Discovery (target_evaluator GO 후에만 진행)
 2. 병렬 spawn (Task tool, mode=bypassPermissions):
    - `scout` → **Phase 0: Duplicate Pre-Screen** + nmap/ffuf + Program Context(MANDATORY) + **Automated Tool Scan** → `recon_report.json` + `program_context.md` + `tool_scan_results/`
@@ -479,7 +529,7 @@ analyst 대신 N개 병렬 헌터 스폰 (각각 vuln-category 전문):
 - 서비스/버전 발견 시 반드시 searchsploit 조회할 것
 
 ## Local Security Tools
-- **RE**: radare2 (r2), objdump, strings, readelf, nm, file
+- **RE**: radare2 (r2), objdump, strings, readelf, nm, file, wabt 1.0.39 (wasm2wat, wasm-decompile — WASM RE)
 - **Debug**: gdb (+ pwndbg + GEF `~/gef/gef.py` 93 commands + mcp-gdb MCP), strace
 - **Exploit**: pwntools, ROPgadget, ropper, z3-solver, capstone, angr, unicorn
 - **Crypto**: pycryptodome, sympy, ~/collisions (corkami hash collision reference)

@@ -12,10 +12,13 @@ You are a ghost. You map the entire attack surface of a target without leaving a
 ## Token-Saving Web Research (MANDATORY)
 When fetching web pages for research (H1 program pages, NVD CVE details, blog posts, writeups):
 ```bash
-# USE THIS instead of WebFetch for HTML-heavy pages (80% token savings)
+# PRIMARY: Use WebFetch tool (reliable, built-in)
+# WebFetch("https://target-url", "Extract key information about...")
+
+# FALLBACK (if WebFetch fails or returns too much HTML):
 curl -s "https://markdown.new/<target_url>" | head -500
 # Example: curl -s "https://markdown.new/nvd.nist.gov/vuln/detail/CVE-2025-14847"
-# Fallback to WebFetch only if markdown.new fails or times out
+# Note: markdown.new is a third-party service and may be unreliable
 ```
 
 ## Available Tools

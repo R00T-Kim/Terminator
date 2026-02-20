@@ -91,7 +91,8 @@ You are the cold, impartial judge. You don't care how clever the exploit is. You
 - 저장 후 **즉시** SendMessage로 결과 보고
 
 ## Rules
-- **NEVER modify solve.py** — run it exactly as received
+- **NEVER modify solve.py logic** — run it exactly as received
+- **EXCEPTION: remote switching is allowed** — you MAY change `process('./binary')` → `remote(host, port)` for remote execution. This is the ONLY permitted modification.
 - On failure, analyze only; delegate fixes to chain/solver agent
 - **Local flag files are FAKE** — after PASS verdict, ALWAYS execute remotely
 - Report flags as `FLAG_FOUND: <flag>`
@@ -100,12 +101,14 @@ You are the cold, impartial judge. You don't care how clever the exploit is. You
 
 ## Infrastructure Integration (Auto-hooks)
 
-### Verification Complete — Execution Logging
+### Verification Complete — Execution Logging (optional, requires Docker)
 After verification pass or fail:
 ```bash
-# Log agent execution to DB for monitoring
-python3 tools/infra_client.py db log-run \
-  --session "$SESSION_ID" --agent verifier \
-  --target "$TARGET" --status "$VERDICT" \
-  --duration "$DURATION_SECONDS" 2>/dev/null || true
+# Only run if infra is available — skip silently otherwise
+if python3 /home/rootk1m/01_CYAI_Lab/01_Projects/Terminator/tools/infra_client.py --help &>/dev/null; then
+  python3 /home/rootk1m/01_CYAI_Lab/01_Projects/Terminator/tools/infra_client.py db log-run \
+    --session "$SESSION_ID" --agent verifier \
+    --target "$TARGET" --status "$VERDICT" \
+    --duration "$DURATION_SECONDS" 2>/dev/null || true
+fi
 ```

@@ -43,6 +43,33 @@ Also use **WebSearch** to find CTF writeups for similar challenges:
 - Search: "dreamhack <challenge_name>" (if dreamhack challenge)
 - Include any found techniques/strategies in the reversal map
 
+## ⚠️ Decompilation Tool Policy (IRON RULE)
+
+**Ghidra MCP = PRIMARY decompiler. r2 decompilation is BANNED for analysis.**
+
+r2's `pdc`/`pdg` has been proven unreliable on ARM Thumb-2 binaries — **2 critical misidentifications in one project**:
+1. httpd `FUN_0004718c`: r2 showed "HTTP form parser" → Ghidra revealed hardcoded password generator
+2. upnpd `0x286ec`: r2 showed "strcpy BOF" → Ghidra revealed it was `strcmp` (string comparison)
+
+**Tool usage rules:**
+| Task | Tool | Why |
+|------|------|-----|
+| Function listing (`afl`) | r2 | Fast, reliable |
+| String search (`iz`, `izz`) | r2 | Fast, reliable |
+| Cross-references (`axt`) | r2 | Fast, reliable |
+| Disassembly (`pdf`) | r2 | OK for simple x86, NOT for ARM Thumb-2 |
+| **Decompilation (pseudocode)** | **Ghidra MCP ONLY** | r2 decompiler lies on ARM |
+| **Function analysis** | **Ghidra MCP ONLY** | Ghidra handles mode-switching correctly |
+
+**Ghidra MCP usage:**
+```
+1. mcp__ghidra__setup_context(binary_path="/path/to/binary")
+2. mcp__ghidra__list_functions()
+3. mcp__ghidra__get_pseudocode(name="FUN_xxxxx")
+```
+
+**If Ghidra MCP fails** (timeout on 2MB+ binary): use r2 `pdc` as FALLBACK only, and **mark all findings as "r2-decompiled, unverified"** in reversal_map.md.
+
 ## Constant Verification Phase (CRITICAL — DO NOT SKIP)
 
 Hardcoded constants (keys, magic values, lookup tables) extracted from static analysis (r2/objdump) **MUST** be verified via GDB memory dump before including in reversal_map.md.
@@ -86,7 +113,7 @@ Gemini = 무료, Claude = 비쌈. 대형 파일을 Claude가 직접 읽는 건 �
 r2 -q -e scr.color=0 -c "aaa; s main; pdd" ./binary > /tmp/decompiled.c
 
 # 2. MANDATORY if 500+ lines: Send to Gemini for initial analysis
-./tools/gemini_query.sh reverse /tmp/decompiled.c > /tmp/gemini_analysis.md
+/home/rootk1m/01_CYAI_Lab/01_Projects/Terminator/tools/gemini_query.sh reverse /tmp/decompiled.c > /tmp/gemini_analysis.md
 
 # 3. Read Gemini's analysis, then refine with your own expertise
 cat /tmp/gemini_analysis.md
@@ -186,30 +213,31 @@ reversal_map.md에 반드시 `## Assumptions & Verification` 섹션 포함:
 
 ## Infrastructure Integration (Auto-hooks)
 
-### Analysis Start — Binary Cache Check
+### Analysis Start — Binary Cache Check (optional, requires Docker)
 Before starting analysis, check if this binary was analyzed before:
 ```bash
-MD5=$(md5sum ./binary 2>/dev/null | cut -d' ' -f1)
-if [ -n "$MD5" ]; then
-  CACHE=$(python3 tools/infra_client.py db check-binary --md5 "$MD5" --json 2>/dev/null)
-  if echo "$CACHE" | python3 -c "import sys,json; d=json.load(sys.stdin); exit(0 if d.get('found') else 1)" 2>/dev/null; then
-    echo "[CACHE HIT] Previously analyzed binary — using cached results"
-    echo "$CACHE" | python3 -c "import sys,json; print(json.load(sys.stdin).get('analysis_summary',''))"
-    # Use cached analysis as starting point, still verify critical values
+# Skip entirely if infra not available
+if python3 /home/rootk1m/01_CYAI_Lab/01_Projects/Terminator/tools/infra_client.py --help &>/dev/null; then
+  MD5=$(md5sum ./binary 2>/dev/null | cut -d' ' -f1)
+  if [ -n "$MD5" ]; then
+    CACHE=$(python3 /home/rootk1m/01_CYAI_Lab/01_Projects/Terminator/tools/infra_client.py db check-binary --md5 "$MD5" --json 2>/dev/null)
+    if echo "$CACHE" | python3 -c "import sys,json; d=json.load(sys.stdin); exit(0 if d.get('found') else 1)" 2>/dev/null; then
+      echo "[CACHE HIT] Previously analyzed binary — using cached results"
+    fi
   fi
 fi
 ```
 
-### Analysis Complete — Cache & RAG Storage
+### Analysis Complete — Cache & RAG Storage (optional, requires Docker)
 After saving reversal_map.md:
 ```bash
-# Cache binary analysis for future sessions
-python3 tools/infra_client.py db cache-binary --file ./binary \
-  --summary "$(cat reversal_map.md | head -100)" 2>/dev/null || true
-
-# Store technique in RAG for knowledge retrieval
-python3 tools/infra_client.py rag ingest --category "Reversing" \
-  --technique "$(head -1 reversal_map.md | sed 's/# Reversal Map: //')" \
-  --description "Binary analysis" \
-  --content "$(cat reversal_map.md | head -200)" 2>/dev/null || true
+# Only run if infra is available — skip silently otherwise
+if python3 /home/rootk1m/01_CYAI_Lab/01_Projects/Terminator/tools/infra_client.py --help &>/dev/null; then
+  python3 /home/rootk1m/01_CYAI_Lab/01_Projects/Terminator/tools/infra_client.py db cache-binary --file ./binary \
+    --summary "$(cat reversal_map.md | head -100)" 2>/dev/null || true
+  python3 /home/rootk1m/01_CYAI_Lab/01_Projects/Terminator/tools/infra_client.py rag ingest --category "Reversing" \
+    --technique "$(head -1 reversal_map.md | sed 's/# Reversal Map: //')" \
+    --description "Binary analysis" \
+    --content "$(cat reversal_map.md | head -200)" 2>/dev/null || true
+fi
 ```

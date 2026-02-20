@@ -174,12 +174,14 @@ When the Orchestrator sends you a bug bounty report instead of CTF artifacts, sw
 
 ## Infrastructure Integration (Auto-hooks)
 
-### Review Complete — Failure Pattern Storage
+### Review Complete — Failure Pattern Storage (optional, requires Docker)
 On REJECTED verdict, store failure pattern for future avoidance:
 ```bash
-# Log failure pattern to DB (helps future agents avoid same mistakes)
-python3 tools/infra_client.py db log-failure \
-  --technique "$TECHNIQUE" \
-  --error "$REJECTION_REASON" \
-  --solution "$FIX_SUGGESTION" 2>/dev/null || true
+# Only run if infra is available — skip silently otherwise
+if python3 /home/rootk1m/01_CYAI_Lab/01_Projects/Terminator/tools/infra_client.py --help &>/dev/null; then
+  python3 /home/rootk1m/01_CYAI_Lab/01_Projects/Terminator/tools/infra_client.py db log-failure \
+    --technique "$TECHNIQUE" \
+    --error "$REJECTION_REASON" \
+    --solution "$FIX_SUGGESTION" 2>/dev/null || true
+fi
 ```

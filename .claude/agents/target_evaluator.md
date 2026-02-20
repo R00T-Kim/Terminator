@@ -17,10 +17,13 @@ Evaluate a bug bounty target BEFORE any scanning or analysis begins. Produce a G
 ## Token-Saving Web Research (MANDATORY)
 When fetching H1 program pages, Hacktivity, NVD, or blog posts:
 ```bash
-# USE THIS instead of WebFetch for HTML-heavy pages (80% token savings)
+# PRIMARY: Use WebFetch tool (reliable, built-in)
+# WebFetch("https://target-url", "Extract program details, bounty range, scope...")
+
+# FALLBACK (if WebFetch fails or returns too much HTML):
 curl -s "https://markdown.new/<target_url>" | head -500
 # Example: curl -s "https://markdown.new/hackerone.com/mongodb"
-# Fallback to WebFetch only if markdown.new fails or times out
+# Note: markdown.new is a third-party service and may be unreliable
 ```
 
 ## Methodology
@@ -367,19 +370,20 @@ Save to `target_assessment.md`:
 
 ## Infrastructure Integration (Auto-hooks)
 
-### Assessment Start — Past Finding Check
+### Assessment Start — Past Finding Check (optional, requires Docker)
 ```bash
-# Check if we've assessed this target before
-python3 tools/infra_client.py db search-findings "$TARGET" 2>/dev/null || true
-# Check past failure patterns for this target type
-python3 tools/infra_client.py db check-failures "$TARGET_TYPE" 2>/dev/null || true
+if python3 /home/rootk1m/01_CYAI_Lab/01_Projects/Terminator/tools/infra_client.py --help &>/dev/null; then
+  python3 /home/rootk1m/01_CYAI_Lab/01_Projects/Terminator/tools/infra_client.py db search-findings "$TARGET" 2>/dev/null || true
+  python3 /home/rootk1m/01_CYAI_Lab/01_Projects/Terminator/tools/infra_client.py db check-failures "$TARGET_TYPE" 2>/dev/null || true
+fi
 ```
 
-### Assessment Complete — Record Decision
+### Assessment Complete — Record Decision (optional, requires Docker)
 ```bash
-# Log assessment as agent run
-python3 tools/infra_client.py db log-run \
-  --session "$SESSION_ID" --agent target_evaluator \
-  --target "$TARGET" --status "$DECISION" \
-  --summary "Score: $SCORE/10, Decision: $DECISION" 2>/dev/null || true
+if python3 /home/rootk1m/01_CYAI_Lab/01_Projects/Terminator/tools/infra_client.py --help &>/dev/null; then
+  python3 /home/rootk1m/01_CYAI_Lab/01_Projects/Terminator/tools/infra_client.py db log-run \
+    --session "$SESSION_ID" --agent target_evaluator \
+    --target "$TARGET" --status "$DECISION" \
+    --summary "Score: $SCORE/10, Decision: $DECISION" 2>/dev/null || true
+fi
 ```

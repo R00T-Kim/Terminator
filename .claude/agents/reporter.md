@@ -272,16 +272,16 @@ Skill("fix-review:fix-review")
 
 ## Infrastructure Integration (Auto-hooks)
 
-### Report Written — DB Update & RAG Storage
+### Report Written — DB Update & RAG Storage (optional, requires Docker)
 After writing report/writeup:
 ```bash
-# Update finding status in DB (if finding_id known)
-python3 tools/infra_client.py db update-finding \
-  --id "$FINDING_ID" --status SUBMITTED 2>/dev/null || true
-
-# Store writeup in RAG for future reference
-python3 tools/infra_client.py rag ingest --category "Writeup" \
-  --technique "$TECHNIQUE" \
-  --description "Writeup for $CHALLENGE_NAME" \
-  --content "$(cat writeup.md 2>/dev/null || cat report.md | head -300)" 2>/dev/null || true
+# Only run if infra is available — skip silently otherwise
+if python3 /home/rootk1m/01_CYAI_Lab/01_Projects/Terminator/tools/infra_client.py --help &>/dev/null; then
+  python3 /home/rootk1m/01_CYAI_Lab/01_Projects/Terminator/tools/infra_client.py db update-finding \
+    --id "$FINDING_ID" --status SUBMITTED 2>/dev/null || true
+  python3 /home/rootk1m/01_CYAI_Lab/01_Projects/Terminator/tools/infra_client.py rag ingest --category "Writeup" \
+    --technique "$TECHNIQUE" \
+    --description "Writeup for $CHALLENGE_NAME" \
+    --content "$(cat writeup.md 2>/dev/null || cat report.md | head -300)" 2>/dev/null || true
+fi
 ```

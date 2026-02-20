@@ -61,6 +61,7 @@
 | Bug Bounty Retrospective v1 (23 programs, v5 rules) | [techniques/bugbounty_retrospective_v1.md](techniques/bugbounty_retrospective_v1.md) |
 | Moonwell $1.78M Vibe Coding Hack (AI oracle bug) | [techniques/moonwell_vibe_coding_hack.md](techniques/moonwell_vibe_coding_hack.md) |
 | Immunefi Submission Form Template | [techniques/immunefi_submission_form.md](techniques/immunefi_submission_form.md) |
+| Custom Allocator Exploitation (hunter, Sand_Message) | [techniques/custom_allocator_exploitation.md](techniques/custom_allocator_exploitation.md) |
 
 ## Bug Bounty Programs
 
@@ -82,10 +83,14 @@
 | Veda Protocol | Immunefi | Smart Contract (DeFi vault) | KILLED (triager_sim: missing capacity restore not exploitable, theoretical only) | - |
 | Olympus DAO | Immunefi | Smart Contract (OHM/gOHM) | ABANDONED (16 contracts, 22 leads, 0 HIGH/CRITICAL. Mature codebase.) | - |
 | GMX V2 | Immunefi | Smart Contract (Perp DEX) | ABANDONED (all leads dead) | - |
-| NETGEAR Orbi RBR750 | Bugcrowd | Firmware (ARM, httpd) | 2 reports ready for Bugcrowd submission | `targets/netgear/` |
-| Swell Network | Immunefi | Smart Contract (LST/LRT/L2) | ABANDONED (6 audits, defense-in-depth only, triager_sim KILL) | `targets/swell/` |
-| CapyFi | Immunefi | Smart Contract (Compound v2 fork, Ethereum) | KILLED (both reports — OOS exclusion + by-design) | `targets/capyfi/` |
-| Kiln DeFi | Immunefi | Smart Contract (ERC4626 Vault, multi-chain) | **SUBMITTED** (2026-02-18) — _checkPartialShares DoS (Medium, $3K-$5K EV). 온체인 전 vault offset=0 → latent bug 프레이밍. PoC 7/7 PASS. | `targets/kiln-defi/` |
+| NETGEAR Orbi RBR750 | Bugcrowd | Firmware (ARM, httpd) | Report A **PSVR-27669 배정** (NETGEAR 내부 트래킹, 2/19). Report B **철회 완료** (Invalid). | `targets/netgear/` |
+| NETGEAR RAX43 | Bugcrowd | Firmware (ARM, 30+ binaries) | **VUL-A SUBMITTED** (Bugcrowd 8fc9af65, 2/20). VUL-B~E 물리장비 필요. VUL-D 키 로테이션 확인. ~16hr/1건. | `targets/netgear-rax43/submission/` |
+| Swell Network | Immunefi | Smart Contract (LST/LRT/L2) | ABANDONED (6 audits, defense-in-depth only, triager_sim KILL). 2hr/$0. | `targets/swell/` |
+| CapyFi | Immunefi | Smart Contract (Compound v2 fork, Ethereum) | KILLED (both reports — OOS exclusion + by-design). 6hr/$0. | `targets/capyfi/` |
+| Kiln DeFi | Immunefi | Smart Contract (ERC4626 Vault, multi-chain) | **CLOSED (Duplicate, $0)** — "offset use is OOS, not in production, already known". ~8hr/$0. | `targets/kiln-defi/` |
+| Royco Protocol | Immunefi | Smart Contract (DeFi) | ABANDONED — 2x Nethermind audited, 2,563 LOC, 0 HIGH+. ~2hr/$0. | - |
+| Katana Protocol | Immunefi | Smart Contract (vault-bridge) | ABANDONED — 5 audits, integration thin. 0 HIGH+. ~1.5hr/$0. | - |
+| Resolv Protocol | Immunefi | Smart Contract (DeFi) | ABANDONED — core 8x audited, SimpleOFT source inaccessible. 0 HIGH+. ~1.5hr/$0. | - |
 
 ### H1 Account Status (2026-02-17)
 - **API 제출 차단**: 계정 레벨 403 (모든 프로그램)

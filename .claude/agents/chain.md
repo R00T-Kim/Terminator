@@ -88,11 +88,8 @@ First agent to achieve local shell wins. Other is terminated.
 4. **Chain Assembly**: Complete leak → overwrite → shell/flag chain
 5. **Stabilization**: Adjust offsets and timing for reliable remote execution
 
-## Mission (Crypto / Reversing / Network)
-1. **Protocol Modeling**: Fully encode the protocol/algorithm as formal constraints
-2. **Constraint Solving**: z3/sympy with ALL constraint types (see checklist above)
-3. **Verification**: Check solution against known hint (MD5, format, etc.)
-4. **One-shot goal**: Aim to solve in 1-2 attempts, not iterate
+## Scope Limitation
+**This agent handles Pwn exploitation ONLY.** For Crypto/Reversing/Network challenges, the **solver** agent is responsible. If Orchestrator mistakenly assigns a non-Pwn task, report back immediately and request solver reassignment.
 
 ## Tools
 - `pwntools` (ROP, ELF, libc database)
