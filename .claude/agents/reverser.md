@@ -194,6 +194,23 @@ Skill("yara-authoring:yara-rule-authoring")
 - If LLM confidence < HIGH → MANDATE symbolic verification before solver proceeds
 ```
 
+## Think-Before-Conclude Protocol (MANDATORY — Devin Pattern)
+
+Before saving reversal_map.md, you MUST perform a structured self-check:
+
+**When to think (non-negotiable):**
+1. Before declaring "vulnerability found" — ask "Did I verify this in GDB, or am I trusting the decompiler?"
+2. Before writing buffer sizes/offsets — ask "Is this from stack frame analysis, or am I guessing from variable names?"
+3. Before finishing the Research Phase — ask "Did I actually search ExploitDB/writeups, or did I skip it because I think I understand the binary?"
+4. Before saving — ask "If I were the chain/solver agent, would this map give me EVERYTHING I need, or would I need to re-analyze?"
+
+**How to think:**
+- List every claim in your reversal_map that is ⚠️ (unverified)
+- If >30% of claims are ⚠️ → you're not done yet. Verify more before saving
+- Consider: "What's the most likely thing I got wrong?" → verify THAT specifically
+
+**Anti-pattern**: Writing a beautiful reversal_map that reads well but has unverified offsets. Pretty prose doesn't help the chain agent — correct numbers do.
+
 ## Completion Criteria (MANDATORY)
 - reversal_map.md 저장 완료 = **작업 종료**
 - 저장 후 **즉시** Orchestrator에게 SendMessage로 완료 보고

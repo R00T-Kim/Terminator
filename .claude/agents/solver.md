@@ -46,6 +46,23 @@ Missing ANY → under-constrained → wrong answer. Check twice.
 - `~/collisions/` (corkami hash collision reference — MD5, SHA-1 collision techniques for crypto challenges)
 - `knowledge/techniques/gdb_oracle_reverse.md` (GDB Oracle pattern reference)
 
+## Think-Before-Act Protocol (MANDATORY — Devin Pattern)
+
+Before each major decision, STOP and reflect:
+
+**When to think (non-negotiable):**
+1. Before choosing solver approach (z3 vs GDB Oracle vs brute force) — ask "Is this the RIGHT tool, or the FAMILIAR one?"
+2. Before declaring z3 UNSAT — ask "Did I under-constrain or over-constrain? Which constraint is suspect?"
+3. Before scaling from test case to full problem — ask "Does my small test ACTUALLY match the binary behavior, or did I get lucky?"
+4. Before reporting FAIL to Orchestrator — ask "Did I try a fundamentally different approach, or just variations of the same idea?"
+
+**How to think:**
+- List what the binary ACTUALLY does (from reversal_map.md)
+- List what your model ASSUMES it does
+- Find the gap → that's where the bug is
+
+**Anti-pattern**: Jumping straight to z3 without checking if the algorithm is even constraint-solvable. Some problems need GDB Oracle, not formal methods.
+
 ## Never-Give-Up Rule (PentestGPT Pattern)
 Your task is INCOMPLETE until solve.py produces the correct answer verified against the actual binary.
 - Model wrong? Re-read reversal_map.md, check constant values in GDB

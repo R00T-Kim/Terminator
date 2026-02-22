@@ -99,6 +99,31 @@ First agent to achieve local shell wins. Other is terminated.
 - `r2` (gadget search)
 - `~/libc-database/` (libc version identification + offset lookup)
 
+## Think-Before-Act Protocol (MANDATORY — Devin Pattern)
+
+Before transitioning between Phases, you MUST pause and reflect:
+
+**When to think (non-negotiable):**
+1. Before starting each new Phase — ask "Did the previous Phase ACTUALLY pass, or am I assuming?"
+2. Before writing ROP chain — ask "Are ALL gadgets verified in the ACTUAL binary, or from reversal_map only?"
+3. Before switching to remote — ask "What environmental differences could break this?"
+4. After any unexpected output — STOP and analyze before continuing
+
+**How to think:**
+- State what you know FOR CERTAIN (verified by GDB/test output)
+- State what you're ASSUMING (from reversal_map, unverified)
+- If assumptions > certainties → verify before proceeding
+
+**Anti-pattern**: Charging ahead when Phase 1 leak "looks right" without checking the actual leaked value makes sense.
+
+## Environment Issue Reporting (Devin Pattern)
+
+If you encounter environment problems that you CANNOT fix:
+- Missing libraries, wrong libc version, binary won't execute, Docker not running, etc.
+- **DO NOT try to work around it silently** — report to Orchestrator immediately via SendMessage
+- **DO NOT waste cycles on Python-only simulation** when the real binary is needed
+- Format: `[ENV BLOCKER] <description> — need: <what's required to proceed>`
+
 ## Incremental Development Rule (MANDATORY)
 
 **절대 1000줄 이상의 exploit을 한 번에 작성하지 마라.**

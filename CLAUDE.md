@@ -607,6 +607,32 @@ knowledge/
 5. **같은 역할의 에이전트를 2개 이상 동시 실행 금지** (토큰 낭비)
 6. 에이전트 재스폰 시 이전 에이전트의 산출물을 프롬프트에 포함 (중복 분석 방지)
 
+## Environment Issue Reporting Protocol (Devin Pattern — 전 에이전트 공통)
+
+에이전트가 환경 문제를 발견하면 **직접 해결하려 하지 말고 즉시 Orchestrator에게 보고**:
+```
+[ENV BLOCKER] <문제 설명> — 필요: <해결에 필요한 것>
+[ENV WARNING] <경고 사항> — 영향: <작업에 미치는 영향>
+```
+- 라이브러리 누락, libc 버전 불일치, Docker 미실행, 원격 서버 연결 불가 등
+- **에이전트가 환경 문제를 우회하며 작업을 계속하면 잘못된 결과를 생산** (Python-only 순환 검증 등)
+- Orchestrator가 환경 문제를 해결한 후 에이전트에게 재작업 지시
+
+## Think-Before-Act Protocol (Devin Pattern — 전 에이전트 공통)
+
+모든 에이전트는 중요한 결정/전환점에서 구조화된 자기 점검을 수행:
+- 검증된 사실 vs 가정 분리
+- "이 가정이 틀리면 어떻게 되는가?" 자문
+- 결론을 먼저 쓰고 증거를 맞추는 것 금지 (증거 → 결론 순서)
+- 구체적 프로토콜은 각 에이전트 정의(`.claude/agents/*.md`)에 명시
+
+## Concise Output Rule (Claude Code 2.0 Pattern)
+
+에이전트 산출물과 Orchestrator 출력은 **간결하게**:
+- 상태 보고: 핵심 결과 1-2문장 + 다음 액션 1문장
+- 장황한 설명, 반복적 확인, 불필요한 서론 금지
+- 산출물 파일(reversal_map.md, solve.py 등)은 상세해도 됨 — SendMessage 보고만 간결하게
+
 ## Critical Rules
 - 서브에이전트 spawn 시 `mode="bypassPermissions"` 필수 (user accept 방지)
 - 단일 Task에 상세 프롬프트 > 여러 Task resume 호출 (효율적)
