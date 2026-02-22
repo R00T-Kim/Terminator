@@ -10,7 +10,7 @@ CTF 자동 풀이 및 버그바운티 평가 시스템
 
 ## 개요
 
-Terminator는 CTF 챌린지를 자율적으로 풀고 인가된 버그바운티 평가를 수행하는 멀티에이전트 보안 시스템입니다. **Claude Code Agent Teams** 기반으로 구축되어, 13개의 전문화된 에이전트를 구조화된 파이프라인을 통해 조율합니다.
+Terminator는 CTF 챌린지를 자율적으로 풀고 인가된 버그바운티 평가를 수행하는 멀티에이전트 보안 시스템입니다. **Claude Code Agent Teams** 기반으로 구축되어, 17개의 전문화된 에이전트를 구조화된 파이프라인을 통해 조율합니다.
 
 이 시스템은 단순히 취약점을 찾는 것이 아니라 **검증**합니다. 모든 CTF 익스플로잇은 원격 실행 전에 로컬에서 3회 테스트됩니다. 모든 버그바운티 발견사항은 작동하는 PoC가 있어야만 보고서가 생성됩니다.
 
@@ -63,6 +63,7 @@ Terminator는 CTF 챌린지를 자율적으로 풀고 인가된 버그바운티 
 | **Pwn (명확한 취약점)** — 오버플로우, 포맷 스트링 등 | reverser → chain → critic → verifier → reporter | 5 |
 | **Pwn (불명확한 취약점)** — 크래시 발견 필요 | reverser → trigger → chain → critic → verifier → reporter | 6 |
 | **Web** — 인젝션, SSRF, 인증 우회 | scanner → analyst → exploiter → reporter | 4 |
+| **Firmware** — ARM 바이너리 diff, 에뮬레이션 PoC | fw_profiler → fw_inventory → fw_surface → fw_validator → reporter | 5 |
 
 ### 버그바운티 파이프라인 (v3 — 7단계)
 
@@ -85,7 +86,7 @@ Phase 6   TeamDelete            정리
 
 ## 에이전트
 
-13개의 전문화된 에이전트, 각각 명확한 역할, 구조화된 프롬프트, 산출물 계약:
+17개의 전문화된 에이전트, 각각 명확한 역할, 구조화된 프롬프트, 산출물 계약:
 
 ### CTF 에이전트
 
@@ -108,6 +109,15 @@ Phase 6   TeamDelete            정리
 | **analyst** | CVE 매칭, 변종 분석, source→sink 추적, 신뢰도 점수화 | Sonnet | vulnerability_candidates.md |
 | **exploiter** | PoC 개발, 통합 테스트, 품질 등급 분류 | Opus | PoC 스크립트 + 증거 |
 | **triager_sim** | 적대적 트리아저 시뮬레이션 — 회의적 리뷰어 관점에서 보고서 공격 | Opus | SUBMIT / STRENGTHEN / KILL 판정 |
+
+### 펌웨어 에이전트
+
+| 에이전트 | 역할 | 모델 | 출력 |
+|:---------|:-----|:----:|:-----|
+| **fw_profiler** | 펌웨어 이미지 프로파일링, 아키텍처 탐지 | Sonnet | firmware_profile.md |
+| **fw_inventory** | 바이너리 인벤토리, 버전 추출, CVE 매칭 | Sonnet | firmware_inventory.md |
+| **fw_surface** | 공격 표면 매핑, 바이너리 diff 분석 | Sonnet | attack_surface.md |
+| **fw_validator** | QEMU 에뮬레이션, 동적 PoC 검증 | Sonnet | validation_results.md |
 
 ---
 
@@ -154,6 +164,9 @@ Phase 6   TeamDelete            정리
 | **pentest-mcp** | nmap 스캔, nikto, gobuster, john/hashcat |
 | **playwright** | 웹 익스플로잇용 브라우저 자동화 |
 | **context7** | 최신 라이브러리 문서 조회 |
+| **nuclei-mcp** | 12K+ 취약점 탐지 템플릿 스캔 |
+| **codeql-mcp** | 시맨틱 taint tracking, 변종 분석 |
+| **semgrep-mcp** | 패턴 기반 정적 분석 |
 
 ### 참조 데이터베이스
 
@@ -255,30 +268,30 @@ export TERMINATOR_FIRMWARE_PROFILE=analysis  # 또는 exploit
 
 ```
 Terminator/
-├── .claude/
-│   └── agents/                 # 13개 에이전트 정의 (총 ~2,900줄)
-│       ├── reverser.md         # 바이너리 분석 → reversal_map.md
-│       ├── trigger.md          # 크래시 발견 → trigger_report.md
-│       ├── chain.md            # 익스플로잇 체인 → solve.py (pwn)
-│       ├── solver.md           # 역연산 → solve.py (reversing/crypto)
-│       ├── critic.md           # 교차 검증 → critic_review.md
-│       ├── verifier.md         # 로컬/원격 검증 → FLAG_FOUND
-│       ├── reporter.md         # 라이트업 및 보고서 생성
-│       └── ...
-│
-├── knowledge/                  # 축적된 경험 베이스
-│   ├── index.md                # 마스터 인덱스 (풀이/실패/대기)
-│   ├── challenges/             # 챌린지별 라이트업 및 분석
-│   └── techniques/             # 재사용 가능한 공격 기법 (9개 문서)
-│
-├── research/                   # 외부 프레임워크 분석 (14개 문서)
-├── targets/                    # 버그바운티 타겟 작업공간
-├── tests/wargames/             # CTF 챌린지 파일
-├── tools/                      # 헬퍼 스크립트 (Gemini 통합 등)
-│
-├── CLAUDE.md                   # 오케스트레이터 지침 (세션별 자동 로드)
-├── terminator.sh               # 자율 모드용 CLI 런처
-└── README.md
+├── .claude/agents/          # 17개 에이전트 정의 (~4,300줄)
+│   ├── reverser.md          #   바이너리 분석 → reversal_map.md
+│   ├── chain.md             #   익스플로잇 체인 (+ heap sub-protocol)
+│   ├── critic.md            #   교차 검증
+│   ├── fw_*.md              #   펌웨어 분석 (4개 에이전트)
+│   └── ...                  #   + 10개 전문가 에이전트
+├── knowledge/               # 축적된 경험 (20개 라이트업, 17개 기법)
+│   ├── index.md             #   마스터 인덱스
+│   ├── challenges/          #   챌린지별 라이트업
+│   └── techniques/          #   재사용 가능한 공격 기법
+├── research/                # LLM 보안 프레임워크 분석 (14개 문서)
+├── tools/                   # 파이프라인 도구
+│   ├── dag_orchestrator/    #   DAG 스케줄링 + Claude CLI 핸들러
+│   ├── mitre_mapper.py      #   CVE→CWE→CAPEC→ATT&CK
+│   ├── recon_pipeline.py    #   6-phase 정찰 오케스트레이터
+│   ├── sarif_generator.py   #   SARIF 2.1.0 출력
+│   └── mcp-servers/         #   nuclei, codeql, semgrep MCP
+├── web/                     # FastAPI + D3 대시보드 (독립 + Docker)
+├── targets/                 # 버그바운티 작업공간 (28+ 미션)
+├── tests/                   # CTF 파일 + E2E 리플레이 벤치마크
+├── CLAUDE.md                # 오케스트레이터 지침
+├── terminator.sh            # 자율 모드 런처
+├── docker-compose.yml       # 전체 스택 인프라 (시크릿 환경변수화)
+└── .env.example             # 환경변수 설정 템플릿
 ```
 
 ---
@@ -340,6 +353,17 @@ Terminator/
 | **Dual-Approach Parallel** | 3회 실패 후, 다른 전략으로 2개의 solver를 동시 스폰 |
 | **Constant Verification** | 항상 GDB 메모리 덤프를 통해 상수 검증 (정적 분석만으로는 off-by-one 오류 발생) |
 | **Trivial Detection** | 소스 < 50줄 + 1-3줄 버그 + one-liner exploit = 에이전트 팀 건너뛰기 |
+
+---
+
+## 최근 개선사항 (2026-02)
+
+- **시크릿 환경변수화** — docker-compose.yml 자격증명이 `${VAR:-default}` 패턴 사용
+- **커스텀 에이전트 타입** — terminator.sh 자율 모드가 적절한 에이전트 정의 사용
+- **결정적 파이프라인** — DAG 엔진이 `claude_handler.py`를 통해 Claude CLI에 연결
+- **E2E 리플레이 벤치마크** — solve.py 자동 재실행으로 리그레션 감지
+- **Heap 익스플로잇 프로토콜** — chain.md에 allocator fingerprinting, glibc 버전별 기법 추가
+- **3모델 외부 평가** — GPT/Gemini/Claude 독립 파이프라인 검토 반영
 
 ---
 

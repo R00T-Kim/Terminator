@@ -243,32 +243,40 @@ Challenge directory: $CHALLENGE_DIR
 Files found: $FILES
 Report directory: $REPORT_DIR
 
-STEP 1: Create a team
-- Use TeamCreate to create team 'terminator-ctf'
+MANDATORY: Follow CLAUDE.md pipeline rules. Use custom agent types (NOT general-purpose).
 
-STEP 2: Create tasks
-- TaskCreate: 'Recon and static analysis of challenge binaries'
-- TaskCreate: 'Deep reverse engineering and exploit development'
-- TaskCreate: 'Write solve script and extract flag'
-- TaskCreate: 'Generate writeup'
+STEP 1: Create team
+- TeamCreate('terminator-ctf')
 
-STEP 3: Spawn agents (use Task tool with team_name='terminator-ctf')
-- Spawn a 'recon' agent (subagent_type=general-purpose, mode=bypassPermissions):
-  Analyze all files: file, strings, checksec on binaries. r2 disassembly of main functions.
-  Search ExploitDB: ~/exploitdb/searchsploit <relevant terms>
-  Save findings to $REPORT_DIR/recon.md
+STEP 2: Pre-check (do this yourself before spawning agents)
+- file and strings on binaries, checksec
+- Determine problem type: pwn / reversing / crypto
 
-- Spawn a 'solver' agent (subagent_type=general-purpose, mode=bypassPermissions):
-  Read recon findings. Identify the vulnerability/algorithm.
-  Write Python solve script. Test it. Extract the flag.
-  Save solve.py to $CHALLENGE_DIR/solve.py
-  Output: FLAG_FOUND: <flag>
+STEP 3: Spawn pipeline agents (Task tool, team_name='terminator-ctf', mode=bypassPermissions)
+
+For PWN:
+  @reverser (subagent_type=reverser, model=sonnet) → reversal_map.md
+  @trigger (subagent_type=trigger, model=sonnet) → trigger_report.md [if crash needed]
+  @chain (subagent_type=chain, model=opus) → solve.py
+  @critic (subagent_type=critic, model=opus) → critic_review.md
+  @verifier (subagent_type=verifier, model=sonnet) → FLAG_FOUND
+  @reporter (subagent_type=reporter, model=sonnet) → writeup
+
+For REVERSING/CRYPTO:
+  @reverser (subagent_type=reverser, model=sonnet) → reversal_map.md
+  @solver (subagent_type=solver, model=opus) → solve.py
+  @critic (subagent_type=critic, model=opus) → critic_review.md
+  @verifier (subagent_type=verifier, model=sonnet) → FLAG_FOUND
+  @reporter (subagent_type=reporter, model=sonnet) → writeup
+
+Pass each agent's output to the next via structured HANDOFF.
+Save solve.py to $CHALLENGE_DIR/solve.py
+Save writeup to $REPORT_DIR/writeup.md
 
 STEP 4: Collect results
-- Read agent outputs
-- TaskUpdate completed tasks
-- Save writeup to $REPORT_DIR/writeup.md
-- Output final: FLAG_FOUND: <flag>
+- Verify FLAG_FOUND by running solve.py yourself
+- Update knowledge/index.md
+- TeamDelete
 
 Flag formats: DH{...}, FLAG{...}, flag{...}, CTF{...}, GoN{...}, CYAI{...}
 PROMPT
@@ -396,41 +404,40 @@ Target: $TARGET
 Scope: $SCOPE
 Report directory: $REPORT_DIR
 
+MANDATORY: Follow CLAUDE.md pipeline rules. Use custom agent types (NOT general-purpose).
+
 STEP 1: Create team
 - TeamCreate('terminator-bounty')
 
-STEP 2: Create tasks for each phase
-- TaskCreate: 'Reconnaissance and attack surface mapping'
-- TaskCreate: 'Vulnerability analysis and CVE correlation'
-- TaskCreate: 'PoC exploit development and verification'
-- TaskCreate: 'Final security report compilation'
+STEP 2: Phase 0 — Target Intelligence
+- Spawn @target_evaluator (subagent_type=target_evaluator, model=sonnet, mode=bypassPermissions)
+- Wait for GO/NO-GO. If NO-GO → abort.
 
-STEP 3: Spawn agents (Task tool, team_name='terminator-bounty', mode=bypassPermissions)
+STEP 3: Phase 1 — Discovery (parallel)
+- Spawn @scout (subagent_type=scout, model=sonnet, mode=bypassPermissions):
+  nmap, ffuf, program context, duplicate pre-screen
+  Save: $REPORT_DIR/recon_report.md
 
-Agent 'scout' (subagent_type=general-purpose):
-  - nmap -sV -sC -p- --min-rate 1000 $TARGET
-  - Web fingerprinting, directory discovery
-  - Save: $REPORT_DIR/recon_report.md
+- Spawn @analyst (subagent_type=analyst, model=sonnet, mode=bypassPermissions):
+  searchsploit, CVE matching, source analysis
+  Save: $REPORT_DIR/vulnerability_candidates.md
 
-Agent 'analyst' (subagent_type=general-purpose):
-  - Read scout results from $REPORT_DIR/recon_report.md
-  - ~/exploitdb/searchsploit <service> <version> for each finding
-  - Check ~/PoC-in-GitHub/ for CVE PoCs
-  - Prioritize attack chains
-  - Save: $REPORT_DIR/analysis_report.md
+STEP 4: Phase 2 — PoC Development
+- Spawn @exploiter (subagent_type=exploiter, model=opus, mode=bypassPermissions):
+  Develop safe PoC for HIGH+ candidates (benign payloads only)
+  Save: $REPORT_DIR/exploit_report.md
 
-Agent 'exploiter' (subagent_type=general-purpose):
-  - Read analysis from $REPORT_DIR/analysis_report.md
-  - Develop safe PoC (benign payloads only: id, whoami)
-  - Save scripts: $REPORT_DIR/evidence/
-  - Save: $REPORT_DIR/exploit_report.md
+STEP 5: Phase 3-5 — Report + Review
+- Spawn @reporter (subagent_type=reporter, model=sonnet, mode=bypassPermissions):
+  Draft report with CVSS. Save: $REPORT_DIR/final_report.md
 
-Agent 'reporter' (subagent_type=general-purpose):
-  - Read ALL reports in $REPORT_DIR/
-  - Compile: $REPORT_DIR/final_report.md
-  - Format: Executive Summary, Findings (CVSS v3.1), Remediation
+- Spawn @critic (subagent_type=critic, model=opus, mode=bypassPermissions):
+  Fact-check report
 
-STEP 4: Collect results, verify all tasks completed, shutdown team.
+- Spawn @triager_sim (subagent_type=triager_sim, model=opus, mode=bypassPermissions):
+  SUBMIT/STRENGTHEN/KILL decision
+
+STEP 6: Collect results, verify tasks, TeamDelete.
 
 SAFETY: Authorized target only. Benign payloads. No destructive actions.
 PROMPT

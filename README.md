@@ -25,7 +25,7 @@ Built on [Claude Code Agent Teams](https://docs.anthropic.com/en/docs/claude-cod
 
 <br>
 
-**English** | [한국어](README_KO.md)
+**English** | [한국어](README.ko.md)
 
 </div>
 
@@ -222,6 +222,7 @@ A real-time web UI for monitoring all operations — runs in **standalone mode**
 cd web && uvicorn app:app --host 0.0.0.0 --port 3000
 
 # Full Stack — 6 Docker services
+cp .env.example .env  # Configure credentials before production use
 docker compose up -d
 ```
 
@@ -369,9 +370,19 @@ docker compose up -d
 | **MITRE Mapper** | CVE → CWE → CAPEC → ATT&CK mapping (27 CWEs) |
 | **Attack Graph** | Neo4j or filesystem-backed attack surface visualization |
 | **DAG Orchestrator** | Pipeline scheduling (CTF pwn/rev, bounty, firmware) |
+| **Pipeline Controller** | Claude CLI handler for deterministic DAG→agent execution |
+| **E2E Replay Benchmark** | solve.py re-execution for regression detection |
 | **Recon Pipeline** | 6-phase automated reconnaissance |
 | **SARIF Generator** | GitHub Code Scanning compatible output |
 | **PDF Generator** | Report PDF generation |
+
+### Recent Hardening (2026-02)
+
+- **Secrets externalized** — All docker-compose.yml credentials use `${VAR:-default}` pattern
+- **Custom agent types** — terminator.sh autonomous mode uses proper agent definitions (not generic)
+- **Deterministic pipeline** — DAG engine connected to Claude CLI via `claude_handler.py`
+- **E2E replay benchmark** — Automated solve.py re-execution for regression detection
+- **Heap exploitation protocol** — chain.md sub-protocol for allocator fingerprinting, glibc-version-aware techniques
 
 ---
 
@@ -481,14 +492,14 @@ Terminator/
 │   ├── mitre_mapper.py      #   CVE→CWE→CAPEC→ATT&CK
 │   ├── recon_pipeline.py    #   6-phase recon orchestrator
 │   ├── attack_graph/        #   Neo4j + filesystem attack surface graphs
-│   ├── dag_orchestrator/    #   DAG pipeline scheduling
+│   ├── dag_orchestrator/    #   DAG pipeline scheduling + Claude CLI handler
 │   ├── sarif_generator.py   #   SARIF 2.1.0 output
 │   └── mcp-servers/         #   nuclei, codeql, semgrep MCP
 ├── web/                     # FastAPI + D3 dashboard (standalone + Docker)
 │   ├── app.py               #   REST API + WebSocket backend (1,255 lines)
 │   └── static/index.html    #   Single-page dashboard (5 tabs, 1,231 lines)
 ├── targets/                 # Bug bounty workspaces (28+ missions)
-├── tests/                   # CTF files + benchmarks
+├── tests/                   # CTF files + E2E replay benchmarks
 ├── CLAUDE.md                # Orchestrator instructions
 ├── terminator.sh            # Autonomous mode launcher
 ├── docker-compose.yml       # Full stack infrastructure

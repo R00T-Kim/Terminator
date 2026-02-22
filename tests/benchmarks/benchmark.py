@@ -18,6 +18,8 @@ import datetime
 from pathlib import Path
 from dataclasses import dataclass, asdict, field
 from typing import Optional
+import subprocess
+import re as re_module
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 CHALLENGES_DIR = PROJECT_ROOT / "knowledge" / "challenges"
@@ -238,6 +240,163 @@ class BenchmarkRunner:
 
         return metrics
 
+    def _find_solve_script(self, name: str) -> Optional[Path]:
+        """Find solve.py for a challenge in common locations."""
+        candidates = [
+            CHALLENGES_DIR / name / "solve.py",
+            PROJECT_ROOT / "tests" / "wargames" / "extracted" / name / "solve.py",
+            PROJECT_ROOT / "reports" / name / "solve.py",
+        ]
+        # Also search by glob pattern
+        for pattern_dir in [CHALLENGES_DIR, PROJECT_ROOT / "tests" / "wargames" / "extracted"]:
+            if pattern_dir.exists():
+                for p in pattern_dir.rglob("solve.py"):
+                    if name.lower() in str(p).lower():
+                        candidates.append(p)
+
+        for path in candidates:
+            if path.exists():
+                return path
+        return None
+
+    def _extract_flag_from_output(self, output: str) -> Optional[str]:
+        """Extract flag from solve.py stdout using known flag formats."""
+        patterns = [
+            r'FLAG_FOUND:\s*(\S+)',
+            r'(DH\{[^}]+\})',
+            r'(FLAG\{[^}]+\})',
+            r'(flag\{[^}]+\})',
+            r'(CTF\{[^}]+\})',
+            r'(GoN\{[^}]+\})',
+            r'(CYAI\{[^}]+\})',
+        ]
+        for pattern in patterns:
+            match = re_module.search(pattern, output)
+            if match:
+                return match.group(1)
+        return None
+
+    def replay_challenge(self, name: str, timeout: int = 300) -> "BenchmarkResult":
+        """Actually execute solve.py and verify flag output."""
+        meta = self.load_challenge_metadata(name)
+        if not meta:
+            return BenchmarkResult(
+                challenge=name, run_id=f"replay_{name}",
+                timestamp=datetime.datetime.utcnow().isoformat() + "Z",
+                status="SKIP", notes="Not in solved challenges registry"
+            )
+
+        solve_path = self._find_solve_script(name)
+        if not solve_path:
+            return BenchmarkResult(
+                challenge=name, run_id=f"replay_{name}",
+                timestamp=datetime.datetime.utcnow().isoformat() + "Z",
+                status="SKIP", notes="No solve.py found",
+                difficulty=meta.get("difficulty", ""),
+                challenge_type=meta.get("type", ""),
+            )
+
+        # Execute solve.py in local-only mode
+        start = time.time()
+        try:
+            result = subprocess.run(
+                ["python3", str(solve_path)],
+                capture_output=True, timeout=timeout,
+                cwd=str(solve_path.parent),
+                env={**os.environ, "LOCAL_TEST": "1"},
+                text=True,
+            )
+            elapsed = time.time() - start
+            output = result.stdout + result.stderr
+
+            # Extract and validate flag
+            flag_found = self._extract_flag_from_output(output)
+            flag_correct = self.validate_flag(name, flag_found) if flag_found else False
+
+            status = "PASS" if flag_correct else "FAIL"
+            notes = f"Replay: {solve_path.name}"
+            if result.returncode != 0:
+                notes += f" (exit code {result.returncode})"
+            if not flag_found:
+                notes += " — no flag in output"
+                status = "FAIL"
+
+            br = BenchmarkResult(
+                challenge=name,
+                run_id=f"replay_{name}_{datetime.datetime.utcnow().strftime('%Y%m%dT%H%M%S')}",
+                timestamp=datetime.datetime.utcnow().isoformat() + "Z",
+                status=status,
+                flag_correct=flag_correct,
+                solve_time_seconds=round(elapsed, 2),
+                agent_count=len(meta.get("agents_used", [])),
+                agents_used=meta.get("agents_used", []),
+                pipeline_type=meta.get("type", ""),
+                difficulty=meta.get("difficulty", ""),
+                challenge_type=meta.get("type", ""),
+                notes=notes,
+            )
+            self.results.append(br)
+            self._save_result(br)
+            return br
+
+        except subprocess.TimeoutExpired:
+            elapsed = time.time() - start
+            br = BenchmarkResult(
+                challenge=name,
+                run_id=f"replay_{name}_{datetime.datetime.utcnow().strftime('%Y%m%dT%H%M%S')}",
+                timestamp=datetime.datetime.utcnow().isoformat() + "Z",
+                status="FAIL",
+                solve_time_seconds=round(elapsed, 2),
+                difficulty=meta.get("difficulty", ""),
+                challenge_type=meta.get("type", ""),
+                notes=f"Timeout after {timeout}s",
+                error=f"TimeoutExpired after {timeout}s",
+            )
+            self.results.append(br)
+            self._save_result(br)
+            return br
+
+        except Exception as e:
+            br = BenchmarkResult(
+                challenge=name,
+                run_id=f"replay_{name}_{datetime.datetime.utcnow().strftime('%Y%m%dT%H%M%S')}",
+                timestamp=datetime.datetime.utcnow().isoformat() + "Z",
+                status="FAIL",
+                difficulty=meta.get("difficulty", ""),
+                challenge_type=meta.get("type", ""),
+                notes="Exception during replay",
+                error=str(e),
+            )
+            self.results.append(br)
+            self._save_result(br)
+            return br
+
+    def replay_all(self, filter_type: str = None, filter_difficulty: str = None,
+                   timeout: int = 300) -> list:
+        """Replay all solved challenges and detect regressions."""
+        results = []
+        for name, meta in SOLVED_CHALLENGES.items():
+            if filter_type and meta.get("type") != filter_type:
+                continue
+            if filter_difficulty and meta.get("difficulty") != filter_difficulty:
+                continue
+            print(f"  [REPLAY] {name}...", end=" ", flush=True)
+            br = self.replay_challenge(name, timeout=timeout)
+            print(f"{br.status} ({br.solve_time_seconds or '?'}s)")
+            results.append(br)
+
+        # Print regression summary
+        passed = sum(1 for r in results if r.status == "PASS")
+        failed = sum(1 for r in results if r.status == "FAIL")
+        skipped = sum(1 for r in results if r.status == "SKIP")
+        print(f"\n  Replay summary: {passed} PASS, {failed} FAIL, {skipped} SKIP")
+        if failed > 0:
+            print("  REGRESSIONS DETECTED:")
+            for r in results:
+                if r.status == "FAIL":
+                    print(f"    - {r.challenge}: {r.notes} {r.error}")
+        return results
+
     def validate_flag(self, challenge: str, flag_found: str) -> bool:
         """Validate flag against known correct answer."""
         meta = SOLVED_CHALLENGES.get(challenge, {})
@@ -450,6 +609,12 @@ def main():
     parser.add_argument("--time", type=float, help="Solve time in seconds")
     parser.add_argument("--tokens", type=int, help="Token count used")
     parser.add_argument("--notes", default="", help="Additional notes")
+    parser.add_argument("--replay", action="store_true",
+                        help="Replay: re-execute solve.py scripts for regression testing")
+    parser.add_argument("--type", help="Filter by challenge type (pwn, reversing, crypto)")
+    parser.add_argument("--difficulty", help="Filter by difficulty (easy, medium, hard)")
+    parser.add_argument("--timeout-replay", type=int, default=300,
+                        help="Timeout per challenge replay in seconds")
     args = parser.parse_args()
 
     runner = BenchmarkRunner()
@@ -470,6 +635,21 @@ def main():
         runner.run_all_from_registry()
         summary = runner.generate_summary()
         runner.print_report(summary)
+
+    elif args.replay:
+        print(f"Replaying solved challenges (timeout={args.timeout_replay}s)...")
+        if args.challenge:
+            result = runner.replay_challenge(args.challenge, timeout=args.timeout_replay)
+            print(f"Result: {result.status} | flag_correct={result.flag_correct} | "
+                  f"time={result.solve_time_seconds}s | {result.notes}")
+        else:
+            runner.replay_all(
+                filter_type=getattr(args, 'type', None),
+                filter_difficulty=args.difficulty,
+                timeout=args.timeout_replay,
+            )
+            summary = runner.generate_summary()
+            runner.print_report(summary)
 
     elif args.report:
         summary = runner.generate_summary()

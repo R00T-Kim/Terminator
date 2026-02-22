@@ -66,6 +66,7 @@
 | Pipeline Tools & Ecosystem 2026 | [techniques/pipeline_tools_2026.md](techniques/pipeline_tools_2026.md) |
 | Protocol Vulnerabilities Index Guide (460 cats × 31 types) | [techniques/protocol_vulns_index_guide.md](techniques/protocol_vulns_index_guide.md) |
 | Immunefi Target Candidates 2026 | [techniques/immunefi_target_candidates_2026.md](techniques/immunefi_target_candidates_2026.md) |
+| Pipeline External Review (GPT/Gemini/Claude 3-model eval) | [techniques/pipeline_external_review_2026.md](techniques/pipeline_external_review_2026.md) |
 
 ## Bug Bounty Programs
 
@@ -96,6 +97,10 @@
 | Katana Protocol | Immunefi | Smart Contract (vault-bridge) | ABANDONED — 5 audits, integration thin. 0 HIGH+. ~1.5hr/$0. | - |
 | Resolv Protocol | Immunefi | Smart Contract (DeFi) | ABANDONED — core 8x audited, SimpleOFT source inaccessible. 0 HIGH+. ~1.5hr/$0. | - |
 | ZKsync OS | Immunefi | Rust (EVM interpreter, 151K LOC) | **Report A SUBMITTED (2/22)** — DIFFICULTY/PREVRANDAO returns 1, docs say 0. Medium $5K. Deep dive 완료 (3-agent parallel: bootloader/circuit/precompile). Finding-B~F-8 전부 INVALIDATED. 추가 HIGH+ 없음. ~12hr/1건. | `targets/zksync-os/submission/` |
+| Immutable zkEVM Bridge | Immunefi | Smart Contract (Axelar GMP bridge, 3.7K LOC) | ABANDONED — 2 audits (ToB+Perimeter 1.41B runs), 21 findings 전부 admin-gated/OOS/documented. EIP-712 0% coverage 영역도 SAFE. 0 HIGH+. ~4hr/$0. | [immutable_zkevm_bridge.md](challenges/immutable_zkevm_bridge.md) |
+| Royco Dawn | Immunefi | Smart Contract (Risk-Tranching, 8.5K LOC) | ABANDONED — **CRITICAL-ONLY program** ($50K-$250K). 3 analysts, 32 findings 전부 Medium 이하. Hexens audit variant(K3 div-by-zero) cancel workaround. Admin-gated/oracle OOS. ~4hr/$0. | `targets/royco-dawn/` |
+| XION Chain | Immunefi | Blockchain/DLT (Cosmos SDK, 68K LOC Go+Rust) | ABANDONED — $250K Critical, 2 audits, 9 months old. 3 analysts (auth/chain/contracts), 24 findings. Top 3 HIGH+ 전부 KILLED: (A) ZK AddVKey no gov=by design (test confirms), (B) gnark validates input count, (C) BeginBlocker panic=dead code path. JWT alg confusion=jwx rejects empty. 0 HIGH+. ~4hr/$0. | `targets/xion/` |
+| QNAP QTS 5.2.7 | QNAP Security Bounty | Firmware (x86-64, 56 CGIs, thttpd) | ABANDONED — All HIGH findings DISPROVED/PATCHED/POST-AUTH. CVE-2024-27130 patched (snprintf). authLogin.cgi obfuscated (static analysis blocked). No pre-auth surface. ~10hr/$0. | [qnap_qts_5.2.7.md](challenges/qnap_qts_5.2.7.md) |
 
 ### H1 Account Status (2026-02-17)
 - **API 제출 차단**: 계정 레벨 403 (모든 프로그램)

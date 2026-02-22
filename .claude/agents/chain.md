@@ -81,6 +81,56 @@ If Orchestrator spawns two chain agents with different strategies:
 First agent to achieve local shell wins. Other is terminated.
 **You will be told which approach to take in your spawn prompt.**
 
+## Heap Exploitation Sub-Protocol (Phase 0.5)
+
+### When to Activate
+- reversal_map.md contains "heap", "malloc", "free", "UAF", "double free", or "custom allocator"
+- checksec shows Full RELRO + PIE (stack exploit unlikely → heap pivot)
+- Binary uses custom allocator (not glibc ptmalloc2)
+
+### Phase 0.5a: Allocator Fingerprinting
+1. `pwndbg> heap` or `vis_heap_chunks` → identify allocator: glibc ptmalloc2 / musl mallocng / custom
+2. Custom allocator → read `knowledge/techniques/custom_allocator_exploitation.md` BEFORE coding
+3. Record: chunk size class, bin distribution, tcache state, arena count
+4. `pwndbg> arena` → check single vs multi-threaded heap layout
+
+### Phase 0.5b: Primitive Refinement
+1. UAF → identify dangling pointer's chunk size class + what data overlaps
+2. OOB → measure exact bounds with GDB watchpoint (`watch *(char*)(buf+N)`)
+3. Double free → check tcache count manipulation or fastbin dup feasibility
+4. Heap overflow → determine overflow direction and adjacent chunk metadata
+5. Document all findings in chain_report.md "Heap Context" section
+
+### Phase 1 (Leak) — Heap Variant
+- **glibc < 2.32**: unsorted bin fd/bk → main_arena offset → libc base
+- **glibc >= 2.32**: safe-linking XOR → need heap base first, then decrypt fd
+- **tcache**: tcache_perthread_struct leak → heap base
+- **Partial overwrite**: ASLR lower 12 bits fixed, 4-bit brute force for 1/16 reliability
+- **MANDATORY**: `p/x *(long*)chunk_addr` to verify leak value makes sense before using it
+
+### Phase 2 (Control) — Heap Feng Shui
+- Design target layout FIRST → then determine alloc/free sequence to achieve it
+- **Techniques by glibc version**:
+  - < 2.26: fastbin dup, unsorted bin attack, House of Spirit/Force/Einherjar
+  - 2.26-2.33: tcache poisoning (no count check < 2.29), tcache stashing unlink
+  - >= 2.34: NO hooks (__free_hook/__malloc_hook removed), must use FSOP/gadgets
+- **MANDATORY**: After EVERY alloc/free, run `vis_heap_chunks` in GDB to verify layout
+- **FORBIDDEN**: Blind heap manipulation without GDB verification ("Python-only heap simulation")
+
+### Phase 3 (Payload) — Execution Targets
+- **glibc < 2.34**: `__free_hook` / `__malloc_hook` → system / one_gadget
+- **glibc >= 2.34**: `_IO_list_all` FSOP chain, `_IO_wfile_overflow` vtable hijack
+- **Always check**: `one_gadget <libc.so>` constraints — some require rsp alignment or r12=0
+- **Stack pivot**: If heap control but no direct hook → `setcontext+53` gadget for stack pivot to ROP
+
+### Anti-Patterns (FORBIDDEN)
+- ❌ Assuming heap layout without `vis_heap_chunks` verification
+- ❌ Python-only heap simulation as "proof" (this is circular validation)
+- ❌ Using __free_hook on glibc >= 2.34 (removed, will segfault)
+- ❌ Skipping allocator fingerprinting ("it's probably ptmalloc2")
+- ❌ Writing 500+ line heap feng shui without testing intermediate states
+- ✅ Every Phase transition requires GDB heap snapshot evidence
+
 ## Mission (Pwn)
 1. **Primitive Extension**: Expand trigger's raw primitive → practical read/write/execute primitives
 2. **Information Leak**: Leak addresses for ASLR bypass (PIE base, libc base, stack, heap)
