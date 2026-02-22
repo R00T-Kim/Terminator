@@ -62,6 +62,10 @@
 | Moonwell $1.78M Vibe Coding Hack (AI oracle bug) | [techniques/moonwell_vibe_coding_hack.md](techniques/moonwell_vibe_coding_hack.md) |
 | Immunefi Submission Form Template | [techniques/immunefi_submission_form.md](techniques/immunefi_submission_form.md) |
 | Custom Allocator Exploitation (hunter, Sand_Message) | [techniques/custom_allocator_exploitation.md](techniques/custom_allocator_exploitation.md) |
+| Prompt Caching & Token Efficiency | [techniques/prompt_caching_lessons.md](techniques/prompt_caching_lessons.md) |
+| Pipeline Tools & Ecosystem 2026 | [techniques/pipeline_tools_2026.md](techniques/pipeline_tools_2026.md) |
+| Protocol Vulnerabilities Index Guide (460 cats × 31 types) | [techniques/protocol_vulns_index_guide.md](techniques/protocol_vulns_index_guide.md) |
+| Immunefi Target Candidates 2026 | [techniques/immunefi_target_candidates_2026.md](techniques/immunefi_target_candidates_2026.md) |
 
 ## Bug Bounty Programs
 
@@ -91,6 +95,7 @@
 | Royco Protocol | Immunefi | Smart Contract (DeFi) | ABANDONED — 2x Nethermind audited, 2,563 LOC, 0 HIGH+. ~2hr/$0. | - |
 | Katana Protocol | Immunefi | Smart Contract (vault-bridge) | ABANDONED — 5 audits, integration thin. 0 HIGH+. ~1.5hr/$0. | - |
 | Resolv Protocol | Immunefi | Smart Contract (DeFi) | ABANDONED — core 8x audited, SimpleOFT source inaccessible. 0 HIGH+. ~1.5hr/$0. | - |
+| ZKsync OS | Immunefi | Rust (EVM interpreter, 151K LOC) | **Report A SUBMITTED (2/22)** — DIFFICULTY/PREVRANDAO returns 1, docs say 0. Medium $5K. Deep dive 완료 (3-agent parallel: bootloader/circuit/precompile). Finding-B~F-8 전부 INVALIDATED. 추가 HIGH+ 없음. ~12hr/1건. | `targets/zksync-os/submission/` |
 
 ### H1 Account Status (2026-02-17)
 - **API 제출 차단**: 계정 레벨 403 (모든 프로그램)

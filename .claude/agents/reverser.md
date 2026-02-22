@@ -103,6 +103,19 @@ gdb -batch -ex "set pagination off" \
 - `WebSearch` (CTF writeups, technique references)
 - Source code review when available (most efficient)
 
+## pwndbg 2026.02.18 New Features
+- **`nearpc -f <funcname>`**: Decompile entire function with branch visualization (annotated arrows for jumps/loops)
+- **`nearpc -r N`**: Show N previous instructions from current PC
+- **`nearpc -t N`**: Total N instructions displayed
+- **Decompiler Integration**: IDA/Ghidra/BinaryNinja/r2/rizin backends available from within GDB
+  - `decompiler connect ida/ghidra/r2/rizin` → live decompilation alongside debugging
+  - `decompile [function]` → pseudocode in GDB context panel
+- **`kmem-trace`**: Kernel SLUB/SLAB allocator tracing (heap exploitation)
+- **musl-ng heap support**: `mallocng-dump`, `mallocng-explain`, `mallocng-find`, `mallocng-vis` (musl allocator analysis)
+- **Compact register display**: `set context-regs-show very` — minimal register panel
+- **Stack variable annotations**: Local variable names shown on stack in context display
+- **Branch visualization**: Loop-back arrows and conditional branch annotations in `nearpc` output
+
 ### Gemini CLI (Token-Saving Analysis)
 
 **MANDATORY trigger**: 디컴파일 출력 또는 소스코드가 **500줄 이상**이면 반드시 Gemini 먼저 실행.

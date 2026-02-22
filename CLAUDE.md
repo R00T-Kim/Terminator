@@ -540,6 +540,9 @@ analyst 대신 N개 병렬 헌터 스폰 (각각 vuln-category 전문):
 - **Payloads/References**: PayloadsAllTheThings (~/PayloadsAllTheThings — 70+ 취약점 카테고리), trickest-cve (~/trickest-cve — 154K+ CVE PoC), ExploitDB (~/exploitdb), PoC-in-GitHub (~/PoC-in-GitHub)
 - **Web3/Smart Contract**: Foundry 1.5.1 (forge/cast/anvil/chisel — `~/.foundry/bin/`), Slither (pipx — 100+ Solidity detectors), Mythril (pipx — EVM symbolic execution), cargo-audit 0.22.1, cargo-fuzz 0.13.1
 - **AI**: Gemini CLI (gemini-3-pro-preview 고정, `tools/gemini_query.sh` — 모드: reverse/analyze/triage/summarize/protocol/bizlogic/summarize-dir)
+- **Web Crawling**: crawl4ai (pipx — Playwright 기반, LLM-friendly Markdown 출력, stealth mode, JS 렌더링)
+- **Browser Debug**: chrome-devtools-mcp (26 tools: 네트워크 검사/콘솔/JS 실행/스크린샷)
+- **Vuln Reference**: protocol-vulnerabilities-index (`knowledge/protocol-vulns-index/` — 460 categories × 31 protocol types)
 - **GitHub**: gh CLI (PRs, issues, API — `/usr/bin/gh`)
 - **MCP Servers**: mcp-gdb (GDB), radare2-mcp (r2 디스어셈블/디컴파일), pentest-mcp (nmap/nikto/john), pentest-thinking (공격경로계획), context7 (문서조회), frida-mcp (동적계측), ghidra-mcp (디컴파일)
 

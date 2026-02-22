@@ -1,6 +1,6 @@
 # Installed Bug Bounty & Security Tools Reference
 
-**Updated**: 2026-02-19
+**Updated**: 2026-02-22
 
 ## PATH Setup (every new shell)
 ```bash
@@ -186,7 +186,7 @@ nuclei -u https://target.com -t ~/custom-templates/ -jsonl-export results.jsonl
 | Tool | Purpose |
 |------|---------|
 | **pwntools** | Exploit development framework |
-| **gdb** + pwndbg + GEF | Binary debugging (GEF: `source ~/gef/gef.py`, 93 commands) |
+| **gdb** + pwndbg (2026.02.18) + GEF | Binary debugging (pwndbg: nearpc -f, decompiler integration, branch viz, kmem-trace, musl-ng heap; GEF: `source ~/gef/gef.py`, 93 commands) |
 | **r2** (radare2) | Disassembly/decompilation |
 | **angr** | Symbolic execution |
 | **z3-solver** | SMT solver |
@@ -437,6 +437,76 @@ curl localhost:4000/health        # LiteLLM
 # http://100.127.216.114:8100      # RAG API
 # http://100.127.216.114:11434     # Ollama
 # DB: 100.127.216.114:5433 (호스트 PG 충돌 방지로 5433)
+```
+
+---
+
+## Web Crawling & Browser Tools
+
+| Tool | Command | Purpose |
+|------|---------|---------|
+| **crawl4ai** | `crawl4ai` (pipx) | LLM-optimized web crawler — Playwright JS rendering, Markdown output, stealth mode |
+| **chrome-devtools-mcp** | `npx chrome-devtools-mcp` | Chrome DevTools Protocol MCP — 26 tools: network, console, JS eval, screenshots |
+
+### Quick Usage
+```bash
+# crawl4ai — LLM-friendly web crawling (Python)
+python3 -c "
+from crawl4ai import AsyncWebCrawler
+import asyncio
+async def main():
+    async with AsyncWebCrawler() as crawler:
+        result = await crawler.arun(url='https://target.com')
+        print(result.markdown[:2000])
+asyncio.run(main())
+"
+
+# chrome-devtools-mcp — registered as MCP server, use via Claude Code MCP tools
+# Tools: network inspection, console messages, JS evaluation, screenshots
+```
+
+---
+
+## Vulnerability Reference Databases (New)
+
+| Collection | Path | Purpose |
+|-----------|------|---------|
+| **protocol-vulnerabilities-index** | `knowledge/protocol-vulns-index/` | 460 vulnerability categories × 31 DeFi protocol types |
+
+### Quick Usage
+```bash
+# Load protocol-specific vulnerability checklist
+cat knowledge/protocol-vulns-index/categories/lending.md     # DeFi Lending (17 cats)
+cat knowledge/protocol-vulns-index/categories/dexes.md       # DEX/AMM (19 cats)
+cat knowledge/protocol-vulns-index/categories/liquid_staking.md  # Liquid Staking (20 cats)
+cat knowledge/protocol-vulns-index/categories/bridge.md      # Bridge (18 cats)
+# See knowledge/techniques/protocol_vulns_index_guide.md for full mapping
+```
+
+---
+
+## pwndbg 2026.02.18 New Features
+
+```bash
+# Branch-visualized disassembly
+nearpc -f main            # full function with branch arrows
+nearpc -r 20              # 20 previous instructions
+nearpc -t 50              # total 50 instructions
+
+# Decompiler integration (IDA/Ghidra/r2/rizin backends)
+decompiler connect ghidra  # connect to Ghidra backend
+decompile main             # pseudocode in GDB context
+
+# Kernel heap tracing
+kmem-trace                 # SLUB/buddy allocator tracking
+
+# musl-ng heap analysis
+mallocng-dump              # musl allocator state
+mallocng-explain           # explain musl heap structure
+mallocng-vis               # visualize musl heap
+
+# Compact mode
+set context-regs-show very # minimal register display
 ```
 
 ---

@@ -207,6 +207,36 @@ for r in data['results']:
 | T1499 (Endpoint DoS) | LOW | Skip unless bounty includes DoS |
 | T1189 (Drive-by Compromise) | MEDIUM | XSS → client-side attacks |
 
+### Step 0.6: Protocol Vulnerability Index (460 categories × 31 protocol types)
+
+**After identifying the target protocol type, load the relevant vulnerability checklist:**
+```bash
+# Protocol type → category dir mapping (31 types):
+# DeFi Lending → lending/
+# DEX/AMM → dexes/
+# Stablecoin → algo-stables/ + decentralized-stablecoin/
+# Liquid Staking → liquid-staking/
+# Bridge → bridge/ + cross-chain/
+# Yield Vault → leveraged-farming/
+# Options → options-vault/
+# Derivatives/Perp → derivatives/
+# Oracle → oracle/
+# CDP → cdp/
+# NFT → nft-marketplace/ + nft-lending/
+# Insurance → insurance/
+# Synthetics → synthetics/
+# RWA → rwa/ + rwa-lending/
+
+# Load checklist for target protocol type:
+ls knowledge/protocol-vulns-index/categories/<protocol_type>/
+
+# Cross-reference with tool results:
+# For each category → check slither_results.json, grep codebase, check audit known-issues
+# Score on Confidence Questionnaire if match found
+```
+**Guide**: See `knowledge/techniques/protocol_vulns_index_guide.md` for full mapping and usage.
+**Rule**: If target is DeFi, you MUST load the relevant protocol type checklist before manual code review.
+
 ### Step 1: Parse Recon Data
 ```bash
 # Read scout's findings

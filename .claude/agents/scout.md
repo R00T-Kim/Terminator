@@ -26,6 +26,7 @@ curl -s "https://markdown.new/<target_url>" | head -500
 - **Web**: gobuster (via pentest MCP), nikto (via pentest MCP), curl, whatweb
 - **Web Recon (Go tools at ~/gopath/bin/)**: ffuf (dir/param fuzzer), subfinder (subdomain discovery), katana (web crawler), httpx (HTTP probe+tech detect), dalfox (XSS scanner), gau+waybackurls (URL collection), interactsh-client (OOB callback)
 - **Web Recon (Python)**: arjun (HTTP parameter discovery), dirsearch (directory bruteforcer)
+- **Web Crawling (LLM-optimized)**: crawl4ai — Playwright-based JS rendering + Markdown output, stealth mode, session management. Use for dynamic content, lazy loading, infinite scroll. `from crawl4ai import AsyncWebCrawler`
 - **Scanning**: nuclei (v3.7.0, ~/nuclei-templates/ — 12K+ 템플릿), trufflehog (v3.93.3, 시크릿 탐지)
 - **AI/LLM Security**: garak (v0.14.0 — LLM vulnerability scanner: prompt injection, jailbreak, data leak)
 - **File Upload**: fuxploider (`python3 ~/fuxploider/fuxploider.py` — file upload vuln scanner)
