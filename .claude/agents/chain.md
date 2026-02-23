@@ -266,6 +266,10 @@ python3 solve.py  # process('./binary')로 로컬 테스트
 - solve.py must output `FLAG_FOUND: <flag>`
 - Save results as `chain_report.md` + `solve.py`
 
+## Knowledge Graph
+- Auto: SubagentStart hook injects exploit chain techniques
+- Use `mcp__graphrag-security__knowledge_search` for specific technique lookups (e.g., "tcache poisoning", "House of Orange", "ret2libc")
+
 ## Code Discipline (반드시 준수)
 
 ### Simplicity First

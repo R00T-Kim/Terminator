@@ -285,3 +285,10 @@ if python3 /home/rootk1m/01_CYAI_Lab/01_Projects/Terminator/tools/infra_client.p
     --content "$(cat writeup.md 2>/dev/null || cat report.md | head -300)" 2>/dev/null || true
 fi
 ```
+
+## Knowledge Graph Update (MANDATORY)
+After writing a report to knowledge/challenges/ or knowledge/techniques/:
+1. Run: `bash tools/graphrag-security/incremental_index.sh <report_path> <type>`
+   - type: ctf_writeup | technique | bugbounty_report
+2. This ensures the next session's agents have access to this finding via GraphRAG
+3. If incremental_index.sh fails (e.g., GraphRAG not initialized), log warning and continue

@@ -887,3 +887,8 @@ python3 tools/infra_client.py db search-findings "$TARGET" 2>/dev/null || true
 # DB: Check past failure patterns for this technique
 python3 tools/infra_client.py db check-failures "$VULN_TYPE" 2>/dev/null || true
 ```
+
+## Knowledge Graph
+- Use `mcp__graphrag-security__similar_findings` BEFORE deep analysis — check if similar vuln was already found/rejected
+- Use `mcp__graphrag-security__exploit_lookup` for CVE/product exploit search
+- Use `mcp__graphrag-security__knowledge_global` for cross-corpus pattern analysis (e.g., "common rejection reasons for DeFi findings")

@@ -272,3 +272,8 @@ if python3 /home/rootk1m/01_CYAI_Lab/01_Projects/Terminator/tools/infra_client.p
     --content "$(cat reversal_map.md | head -200)" 2>/dev/null || true
 fi
 ```
+
+## Knowledge Graph (Auto-injected + Manual)
+- Auto: SubagentStart hook injects relevant techniques from GraphRAG
+- Manual: Use `mcp__graphrag-security__knowledge_search` for specific lookups (e.g., "heap exploitation", "format string")
+- Manual: Use `mcp__graphrag-security__exploit_lookup` for known CVE/exploit search

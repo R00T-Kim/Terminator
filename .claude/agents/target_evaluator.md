@@ -387,3 +387,7 @@ if python3 /home/rootk1m/01_CYAI_Lab/01_Projects/Terminator/tools/infra_client.p
     --summary "Score: $SCORE/10, Decision: $DECISION" 2>/dev/null || true
 fi
 ```
+
+## Knowledge Graph (Phase 0 Enhancement)
+- Use `mcp__graphrag-security__similar_findings` — check past analysis of similar targets
+- Use `mcp__graphrag-security__knowledge_global` — "what patterns predict bug bounty rejection?"

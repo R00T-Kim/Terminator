@@ -915,3 +915,7 @@ python3 tools/infra_client.py rag ingest --category "Recon" \
   --description "$TARGET services and attack surface" \
   --content "$(cat recon_notes.md | head -200)" 2>/dev/null || true
 ```
+
+## Knowledge Graph (Phase 0: Duplicate Pre-Screen Enhancement)
+- Use `mcp__graphrag-security__exploit_lookup` with discovered service/version
+- Use `mcp__graphrag-security__similar_findings` to check past program analysis

@@ -101,6 +101,7 @@
 | Royco Dawn | Immunefi | Smart Contract (Risk-Tranching, 8.5K LOC) | ABANDONED — **CRITICAL-ONLY program** ($50K-$250K). 3 analysts, 32 findings 전부 Medium 이하. Hexens audit variant(K3 div-by-zero) cancel workaround. Admin-gated/oracle OOS. ~4hr/$0. | `targets/royco-dawn/` |
 | XION Chain | Immunefi | Blockchain/DLT (Cosmos SDK, 68K LOC Go+Rust) | ABANDONED — $250K Critical, 2 audits, 9 months old. 3 analysts (auth/chain/contracts), 24 findings. Top 3 HIGH+ 전부 KILLED: (A) ZK AddVKey no gov=by design (test confirms), (B) gnark validates input count, (C) BeginBlocker panic=dead code path. JWT alg confusion=jwx rejects empty. 0 HIGH+. ~4hr/$0. | `targets/xion/` |
 | QNAP QTS 5.2.7 | QNAP Security Bounty | Firmware (x86-64, 56 CGIs, thttpd) | ABANDONED — All HIGH findings DISPROVED/PATCHED/POST-AUTH. CVE-2024-27130 patched (snprintf). authLogin.cgi obfuscated (static analysis blocked). No pre-auth surface. ~10hr/$0. | [qnap_qts_5.2.7.md](challenges/qnap_qts_5.2.7.md) |
+| Synology SRM 1.3.1 | Synology PSIRT | Firmware (ARM32, captiveportal.cgi) | **SUBMITTED (2/23)** — 3 findings: Script Injection (CWE-79) + CSTI (CWE-1336) + Open Redirect (CWE-601). CVSS 6.1 Medium. Pre-auth captive portal, AngularJS 1.5.5 EOL. QEMU+Playwright verified. ~6hr. 응답 ETA: 7일 (3/2). | `targets/synology-srm/disclosure-captiveportal/` |
 
 ### H1 Account Status (2026-02-17)
 - **API 제출 차단**: 계정 레벨 403 (모든 프로그램)
