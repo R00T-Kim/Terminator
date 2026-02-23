@@ -87,6 +87,14 @@ BUILD_VALIDATION_REPORT.md
 research/doordash_*.md
 research/FINDINGS.md
 
+# --- GraphRAG (large generated data, keep code only) ---
+tools/graphrag-security/input/
+tools/graphrag-security/input_backup/
+tools/graphrag-security/output/
+tools/graphrag-security/cache/
+tools/graphrag-security/logs/
+tools/graphrag-security/STATUS.md
+
 # --- Misc ---
 ref.md
 research/vpn_client_attack_techniques.md
