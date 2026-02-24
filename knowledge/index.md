@@ -103,6 +103,7 @@
 | QNAP QTS 5.2.7 | QNAP Security Bounty | Firmware (x86-64, 56 CGIs, thttpd) | ABANDONED — All HIGH findings DISPROVED/PATCHED/POST-AUTH. CVE-2024-27130 patched (snprintf). authLogin.cgi obfuscated (static analysis blocked). No pre-auth surface. ~10hr/$0. | [qnap_qts_5.2.7.md](challenges/qnap_qts_5.2.7.md) |
 | Synology SRM 1.3.1 | Synology PSIRT | Firmware (ARM32, captiveportal.cgi) | **SUBMITTED (2/23)** — 3 findings: Script Injection (CWE-79) + CSTI (CWE-1336) + Open Redirect (CWE-601). CVSS 6.1 Medium. Pre-auth captive portal, AngularJS 1.5.5 EOL. QEMU+Playwright verified. ~6hr. 응답 ETA: 7일 (3/2). | `targets/synology-srm/disclosure-captiveportal/` |
 | AXIS OS (Q3536-LVE) | Bugcrowd | Firmware (aarch64, D-Bus services) | **READY TO SUBMIT** — Systemic D-Bus Authorization Bypass (CWE-863). 5 services, 17 methods, CVSS 8.1 High. Incomplete patch of CVE-2025-0359/0360. PoC Tier 1 Gold. Critic+Architect+Triager_sim all SUBMIT. ~6hr. | `targets/axis-os/submission/` |
+| T-Mobile | Bugcrowd | Web/API (54 targets, Akamai WAF) | ABANDONED (unauth surface exhausted) — 200+ subdomains probed, 4 SSRF vectors tested, Adobe Campaign XXE deep-tested. All P4-P5 info disclosure only. P1/P2 requires account registration. ~4hr/$0. | `targets/t-mobile/` |
 
 ### H1 Account Status (2026-02-17)
 - **API 제출 차단**: 계정 레벨 403 (모든 프로그램)

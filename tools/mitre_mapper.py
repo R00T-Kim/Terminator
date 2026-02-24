@@ -16,6 +16,17 @@ NVD_API_BASE = "https://services.nvd.nist.gov/rest/json/cves/2.0"
 RATE_LIMIT_DELAY = 6  # seconds between requests (5 req/30s without API key)
 REQUEST_TIMEOUT = 15
 
+# Module-level lazy-loaded mapping cache
+_MAPPING: dict | None = None
+
+
+def _get_mapping() -> dict:
+    """Lazy-load and cache the CWE→CAPEC→ATT&CK mapping."""
+    global _MAPPING
+    if _MAPPING is None:
+        _MAPPING = load_cwe_capec_map()
+    return _MAPPING
+
 # Well-known CVE→CWE offline fallback (for --offline mode or NVD outage)
 KNOWN_CVE_CWE: dict[str, list[str]] = {
     "CVE-2021-44228": ["CWE-917", "CWE-502", "CWE-20", "CWE-400"],  # Log4Shell
@@ -159,37 +170,87 @@ def extract_cwes(nvd_response: dict) -> list:
     return cwes
 
 
-def map_cwe_to_capec(cwe_id: str, mapping: dict) -> list:
+def map_cwe_to_capec(cwe_id: str, mapping: dict | None = None) -> list:
     """
     Map a CWE ID to CAPEC entries using the local mapping.
     Returns list of {'capec_id': ..., 'name': ...} dicts.
     """
+    if mapping is None:
+        mapping = _get_mapping()
     cwe_to_capec = mapping.get("cwe_to_capec", {})
     return cwe_to_capec.get(cwe_id, [])
 
 
-def map_cwe_to_atlas(cwe_id: str, mapping: dict) -> list:
+def map_cwe_to_atlas(cwe_id: str, mapping: dict | None = None) -> list:
     """
     Map a CWE ID to MITRE ATLAS techniques using the local mapping.
     Returns list of {'technique_id': ..., 'name': ...} dicts.
     """
+    if mapping is None:
+        mapping = _get_mapping()
     cwe_to_atlas = mapping.get("cwe_to_atlas", {})
     return cwe_to_atlas.get(cwe_id, [])
 
 
-def get_atlas_detail(technique_id: str, mapping: dict) -> dict:
+def get_atlas_detail(technique_id: str, mapping: dict | None = None) -> dict:
     """Get ATLAS technique metadata (tactic, url) from mapping."""
+    if mapping is None:
+        mapping = _get_mapping()
     atlas_techniques = mapping.get("atlas_techniques", {})
     return atlas_techniques.get(technique_id, {})
 
 
-def map_capec_to_attack(capec_id: str, mapping: dict) -> list:
+def map_capec_to_attack(capec_id: str, mapping: dict | None = None) -> list:
     """
     Map a CAPEC ID to ATT&CK techniques using the local mapping.
     Returns list of {'technique_id': ..., 'name': ...} dicts.
     """
+    if mapping is None:
+        mapping = _get_mapping()
     capec_to_attack = mapping.get("capec_to_attack", {})
     return capec_to_attack.get(capec_id, [])
+
+
+def map_cwe_to_attack(cwe_id: str, mapping: dict | None = None) -> list:
+    """
+    Convenience: full CWE→CAPEC→ATT&CK chain in one call.
+    Returns deduplicated list of {'technique_id': ..., 'name': ...} dicts.
+    """
+    if mapping is None:
+        mapping = _get_mapping()
+    capecs = map_cwe_to_capec(cwe_id, mapping)
+    seen: set[str] = set()
+    techniques: list[dict] = []
+    for capec in capecs:
+        for tech in map_capec_to_attack(capec["capec_id"], mapping):
+            if tech["technique_id"] not in seen:
+                seen.add(tech["technique_id"])
+                techniques.append(tech)
+    return techniques
+
+
+def lookup_cwe(cwe_id: str, mapping: dict | None = None) -> dict | None:
+    """
+    Convenience: return full CWE info (name, CAPECs, ATT&CK, context) in one call.
+    Returns dict with 'cwe_id', 'name', 'capec_ids', 'attack_techniques', 'related', 'sinks'
+    or None if CWE is not in our mapping.
+    """
+    cwe_id = cwe_id.upper().strip()
+    if mapping is None:
+        mapping = _get_mapping()
+    capecs = map_cwe_to_capec(cwe_id, mapping)
+    meta = _CWE_CONTEXT.get(cwe_id, {})
+    if not capecs and not meta:
+        return None
+    techniques = map_cwe_to_attack(cwe_id, mapping)
+    return {
+        "cwe_id": cwe_id,
+        "name": meta.get("name", "Unknown"),
+        "related": meta.get("related", []),
+        "sinks": meta.get("sinks", []),
+        "capec_ids": [c["capec_id"] for c in capecs],
+        "attack_techniques": [t["technique_id"] for t in techniques],
+    }
 
 
 def build_chain(cve_id: str, mapping: dict, nvd_response: dict, include_atlas: bool = False) -> dict:
@@ -392,13 +453,14 @@ def get_context_for_finding(cwe_id: str, mapping: dict | None = None) -> str:
     """
     Return a formatted MITRE context string suitable for injecting into an agent prompt.
 
-    Usage (standalone):
+    Usage (simple — auto-loads mapping):
+        from tools.mitre_mapper import get_context_for_finding
+        print(get_context_for_finding("CWE-79"))
+
+    Usage (explicit mapping):
         from tools.mitre_mapper import get_context_for_finding, load_cwe_capec_map
         mapping = load_cwe_capec_map()
         print(get_context_for_finding("CWE-79", mapping))
-
-    Usage (without mapping — metadata only):
-        print(get_context_for_finding("CWE-79"))
 
     Example output:
         MITRE Context: CWE-79 (XSS) → CAPEC-86 (XSS via HTTP Headers) → T1059.007 (JavaScript)
@@ -411,6 +473,10 @@ def get_context_for_finding(cwe_id: str, mapping: dict | None = None) -> str:
     cwe_name = meta.get("name", "Unknown weakness")
     related = meta.get("related", [])
     sinks = meta.get("sinks", [])
+
+    # Auto-load mapping for full CAPEC/ATT&CK enrichment
+    if mapping is None:
+        mapping = _get_mapping()
 
     lines: list[str] = []
 
