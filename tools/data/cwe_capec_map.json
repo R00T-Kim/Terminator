@@ -1,9 +1,9 @@
 {
   "meta": {
-    "version": "1.0.0",
+    "version": "1.1.0",
     "description": "CWE→CAPEC→ATT&CK mapping for Terminator MITRE enrichment",
     "sources": ["MITRE CWE", "MITRE CAPEC", "MITRE ATT&CK", "MITRE ATLAS"],
-    "last_updated": "2026-02-19"
+    "last_updated": "2026-02-24"
   },
   "cwe_to_capec": {
     "CWE-79": [
@@ -146,6 +146,51 @@
     "CWE-190": [
       {"capec_id": "CAPEC-92", "name": "Forced Integer Overflow"},
       {"capec_id": "CAPEC-100", "name": "Overflow Buffers"}
+    ],
+    "CWE-601": [
+      {"capec_id": "CAPEC-194", "name": "Fake the Source of Data"},
+      {"capec_id": "CAPEC-486", "name": "HTTP Response Smuggling"},
+      {"capec_id": "CAPEC-184", "name": "Software Integrity Attack"}
+    ],
+    "CWE-639": [
+      {"capec_id": "CAPEC-1", "name": "Accessing Functionality Not Properly Constrained by ACLs"},
+      {"capec_id": "CAPEC-122", "name": "Privilege Abuse"},
+      {"capec_id": "CAPEC-87", "name": "Forceful Browsing"}
+    ],
+    "CWE-347": [
+      {"capec_id": "CAPEC-115", "name": "Authentication Bypass"},
+      {"capec_id": "CAPEC-196", "name": "Session Fixation"},
+      {"capec_id": "CAPEC-194", "name": "Fake the Source of Data"}
+    ],
+    "CWE-327": [
+      {"capec_id": "CAPEC-97", "name": "Cryptanalysis of Cellular Phone Communication"},
+      {"capec_id": "CAPEC-20", "name": "Encryption Brute Forcing"},
+      {"capec_id": "CAPEC-112", "name": "Brute Force"}
+    ],
+    "CWE-1321": [
+      {"capec_id": "CAPEC-19", "name": "Embedding Scripts within Scripts"},
+      {"capec_id": "CAPEC-242", "name": "Code Injection"},
+      {"capec_id": "CAPEC-153", "name": "Input Data Manipulation"}
+    ],
+    "CWE-942": [
+      {"capec_id": "CAPEC-62", "name": "Cross Site Request Forgery"},
+      {"capec_id": "CAPEC-111", "name": "JSON Hijacking"},
+      {"capec_id": "CAPEC-104", "name": "Cross Zone Scripting"}
+    ],
+    "CWE-1336": [
+      {"capec_id": "CAPEC-242", "name": "Code Injection"},
+      {"capec_id": "CAPEC-86", "name": "XSS via HTTP Headers"},
+      {"capec_id": "CAPEC-35", "name": "Leverage Executable Code in Non-Executable Files"}
+    ],
+    "CWE-74": [
+      {"capec_id": "CAPEC-88", "name": "OS Command Injection"},
+      {"capec_id": "CAPEC-242", "name": "Code Injection"},
+      {"capec_id": "CAPEC-183", "name": "IMAP/SMTP Command Injection"}
+    ],
+    "CWE-285": [
+      {"capec_id": "CAPEC-1", "name": "Accessing Functionality Not Properly Constrained by ACLs"},
+      {"capec_id": "CAPEC-122", "name": "Privilege Abuse"},
+      {"capec_id": "CAPEC-212", "name": "Functionality Misuse"}
     ]
   },
   "capec_to_attack": {
@@ -356,6 +401,37 @@
     "CAPEC-92": [
       {"technique_id": "T1203", "name": "Exploitation for Client Execution"},
       {"technique_id": "T1068", "name": "Exploitation for Privilege Escalation"}
+    ],
+    "CAPEC-486": [
+      {"technique_id": "T1190", "name": "Exploit Public-Facing Application"},
+      {"technique_id": "T1036", "name": "Masquerading"}
+    ],
+    "CAPEC-184": [
+      {"technique_id": "T1036", "name": "Masquerading"},
+      {"technique_id": "T1199", "name": "Trusted Relationship"}
+    ],
+    "CAPEC-87": [
+      {"technique_id": "T1083", "name": "File and Directory Discovery"},
+      {"technique_id": "T1078", "name": "Valid Accounts"}
+    ],
+    "CAPEC-97": [
+      {"technique_id": "T1040", "name": "Network Sniffing"},
+      {"technique_id": "T1557", "name": "Adversary-in-the-Middle"}
+    ],
+    "CAPEC-20": [
+      {"technique_id": "T1110", "name": "Brute Force"},
+      {"technique_id": "T1600", "name": "Weaken Encryption"}
+    ],
+    "CAPEC-112": [
+      {"technique_id": "T1110", "name": "Brute Force"}
+    ],
+    "CAPEC-19": [
+      {"technique_id": "T1059.007", "name": "Command and Scripting Interpreter: JavaScript"},
+      {"technique_id": "T1059", "name": "Command and Scripting Interpreter"}
+    ],
+    "CAPEC-104": [
+      {"technique_id": "T1059.007", "name": "Command and Scripting Interpreter: JavaScript"},
+      {"technique_id": "T1189", "name": "Drive-by Compromise"}
     ]
   },
   "cwe_to_atlas": {
@@ -443,6 +519,39 @@
       {"technique_id": "AML.T0053", "name": "LLM Jailbreak"},
       {"technique_id": "AML.T0054", "name": "LLM Meta Prompt Extraction"},
       {"technique_id": "AML.T0052", "name": "Phishing via LLM"}
+    ],
+    "CWE-347": [
+      {"technique_id": "AML.T0040", "name": "ML Model Inference API Access"},
+      {"technique_id": "AML.T0053", "name": "LLM Jailbreak"}
+    ],
+    "CWE-327": [
+      {"technique_id": "AML.T0010", "name": "ML Supply Chain Compromise"}
+    ],
+    "CWE-1321": [
+      {"technique_id": "AML.T0051", "name": "LLM Prompt Injection"},
+      {"technique_id": "AML.T0048", "name": "Command and Scripting Interpreter"}
+    ],
+    "CWE-1336": [
+      {"technique_id": "AML.T0051", "name": "LLM Prompt Injection"},
+      {"technique_id": "AML.T0050", "name": "Command Injection via AI"}
+    ],
+    "CWE-639": [
+      {"technique_id": "AML.T0040", "name": "ML Model Inference API Access"},
+      {"technique_id": "AML.T0044", "name": "Full ML Model Access"}
+    ],
+    "CWE-942": [
+      {"technique_id": "AML.T0049", "name": "Exploit Public-Facing ML Application"}
+    ],
+    "CWE-601": [
+      {"technique_id": "AML.T0052", "name": "Phishing via LLM"}
+    ],
+    "CWE-74": [
+      {"technique_id": "AML.T0051", "name": "LLM Prompt Injection"},
+      {"technique_id": "AML.T0050", "name": "Command Injection via AI"}
+    ],
+    "CWE-285": [
+      {"technique_id": "AML.T0040", "name": "ML Model Inference API Access"},
+      {"technique_id": "AML.T0053", "name": "LLM Jailbreak"}
     ]
   },
   "atlas_techniques": {

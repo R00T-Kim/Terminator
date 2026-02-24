@@ -3,7 +3,7 @@
 ## ⚠️ 필수 규칙 (절대 위반 금지)
 
 1. **CTF 문제를 풀 때 반드시 Agent Teams를 사용하라.**
-   - 직접 풀지 말고 TeamCreate → @reverser → @trigger → @chain → @verifier → @reporter 순서로 에이전트를 spawn하라.
+   - 직접 풀지 말고 TeamCreate → @reverser → @trigger → @chain → @critic → @verifier → @reporter 순서로 에이전트를 spawn하라.
    - 각 에이전트는 `.claude/agents/<역할명>.md`에 정의된 커스텀 에이전트를 사용하여 spawn.
    - **스폰 방법**: `Task(subagent_type="<역할명>", mode="bypassPermissions", name="<역할명>", team_name="<팀이름>")` — 예: `subagent_type="reverser"`, `subagent_type="exploiter"` 등
    - **general-purpose 사용 금지** — 반드시 `.claude/agents/`에 정의된 커스텀 에이전트 타입을 사용할 것
@@ -31,7 +31,7 @@ elif 문제_유형 == "pwn" and 취약점_불명확:
 elif 문제_유형 == "reversing" or "crypto":
     reverser → solver → critic → verifier → reporter  (4-agent)
 elif 문제_유형 == "web":
-    scanner → analyst → exploiter → reporter  (4-agent)
+    scout → analyst → exploiter → reporter  (4-agent)
 ```
 **6-agent 풀 파이프라인을 무조건 쓰지 말 것.** 불필요한 에이전트 = 토큰 낭비.
 
@@ -576,10 +576,10 @@ analyst 대신 N개 병렬 헌터 스폰 (각각 vuln-category 전문):
 - **ExploitDB**: `~/exploitdb/searchsploit <query>` — 47K+ 익스플로잇 DB
 - **PoC-in-GitHub**: `~/PoC-in-GitHub/<year>/CVE-*.json` — 8K+ GitHub PoC
 - 서비스/버전 발견 시 반드시 searchsploit 조회할 것
-- **Knowledge FTS5 DB**: `python3 tools/knowledge_indexer.py search "<query>"` — 84K+ 문서 BM25 검색 (내부 기법 + 25개 외부 레포 + ExploitDB + nuclei + PoC)
+- **Knowledge FTS5 DB**: `python3 tools/knowledge_indexer.py search "<query>"` — 242K+ 문서 BM25 검색 (내부 기법 + 25개 외부 레포 + ExploitDB + nuclei + PoC)
   - MCP Server: `knowledge-fts` (technique_search, exploit_search, challenge_search, search_all, get_technique_content, knowledge_stats)
   - CLI: `python3 tools/knowledge_indexer.py {build|search|search-all|search-exploits|stats|get}`
-  - DB: `knowledge/knowledge.db` (93MB, zero-dep SQLite FTS5)
+  - DB: `knowledge/knowledge.db` (~245MB, zero-dep SQLite FTS5)
 
 ## Local Security Tools
 - **RE**: radare2 (r2), objdump, strings, readelf, nm, file, wabt 1.0.39 (wasm2wat, wasm-decompile — WASM RE), ImHex (바이너리 패턴 분석 + YARA), Apktool v2.11.1 (APK 디컴파일)
@@ -599,8 +599,13 @@ analyst 대신 N개 병렬 헌터 스폰 (각각 vuln-category 전문):
 - **GitHub**: gh CLI (PRs, issues, API — `/usr/bin/gh`)
 - **Workflow/OSINT**: osmedeus (~/gopath/bin/osmedeus — YAML 정찰 워크플로우), web-check (Docker, 33 API 엔드포인트, port 3001)
 - **Knowledge Repos (~/tools/)**: MBE, HEVD, google-ctf, exploit-writeups, how2heap, CTF-All-In-One, linux-kernel-exploitation, awesome-list-systems, paper_collection, owasp-mastg, ad-exploitation
-- **Knowledge DB**: knowledge-fts MCP (84K+ docs — techniques, ExploitDB 47K, nuclei 15K, PoC 18K, HackTricks, GTFOBins, PayloadsAllTheThings)
-- **MCP Servers**: mcp-gdb (GDB), radare2-mcp (r2 디스어셈블/디컴파일), pentest-mcp (nmap/nikto/john), pentest-thinking (공격경로계획), context7 (문서조회), frida-mcp (동적계측), ghidra-mcp (디컴파일), knowledge-fts (기법+익스플로잇 검색)
+- **Knowledge DB**: knowledge-fts MCP (242K+ docs — techniques, ExploitDB 47K, nuclei 15K, PoC 18K, trickest-cve 154K, HackTricks, GTFOBins, PayloadsAllTheThings)
+- **Competitor-Adopted Tools (P0)**:
+  - `tools/web_chain_engine.py` — Web exploit chain engine (NeuroSploit 포팅): SSRF→내부, SQLi→DB타입별 자동 체인. `on_finding()` → `List[ChainableTarget]`
+  - `tools/flag_detector.py` — CTF 플래그 감지 (PentestGPT 포팅): 6+ regex 패턴, strict 모드, DH/FLAG/CTF/GoN/CYAI/HTB 포맷
+  - `tools/validation_prompts.py` — Anti-hallucination 프롬프트 (NeuroSploit 포팅): 8개 조합형 프롬프트, speculative language 감지, AI slop 감지, 0-100 confidence scoring
+  - `tools/mitre_mapper.py` — MITRE 매핑 (확장): 36 CWEs, `get_context_for_finding("CWE-79")` → 에이전트 프롬프트 주입용 컨텍스트
+- **MCP Servers (12)**: mcp-gdb (GDB), radare2-mcp (r2 디스어셈블/디컴파일), pentest-mcp (nmap/nikto/john), pentest-thinking (공격경로계획), context7 (문서조회), frida-mcp (동적계측), ghidra-mcp (디컴파일), knowledge-fts (기법+익스플로잇 검색), nuclei-mcp (취약점 스캔), codeql-mcp (시맨틱 분석), semgrep-mcp (정적 분석), graphrag-security (보안 지식 그래프)
 
 ### Installed Skill Plugins (Trail of Bits + Sentry + Anthropic)
 에이전트가 `Skill("plugin:skill")` 형태로 호출 가능:

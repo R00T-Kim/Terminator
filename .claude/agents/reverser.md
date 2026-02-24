@@ -231,6 +231,22 @@ Before saving reversal_map.md, you MUST perform a structured self-check:
 - reversal_map.md에 "Recommended Solver Strategy"가 있으면 충분하다
 - 단, trivial한 역연산 (상수 XOR, 단순 치환 등)은 reversal_map.md 안에 solve.py 포함 가능
 
+## Context Preservation (Compact 시 보존 필수)
+
+컨텍스트 윈도우 압축 시 다음 정보는 반드시 보존하라:
+- **주소/오프셋**: 발견된 모든 함수 주소, 버퍼 오프셋, 취약 지점 주소 (예: `vuln @ 0x401234, buf=0x40`)
+- **보호기법 상태**: PIE/ASLR/NX/Canary/RELRO 결과 — checksec 전체 출력
+- **함수명 매핑**: 핵심 함수 목록 (주소 → 역할, 예: `0x4011a0 = read_input`)
+- **취약점 유형**: 확인된 취약점 분류 (BOF/UAF/format string/heap/etc), 트리거 조건
+- **상수/키**: GDB로 검증된 하드코딩 값, 룩업 테이블, XOR 키 (hex)
+- **실패한 분석 시도**: 오인식한 함수/패턴과 이유 (반복 방지)
+- **현재 진행 상태**: 완료 단계, reversal_map.md 저장 여부, 다음 작업
+
+`<remember priority>` 태그로 핵심 주소/오프셋을 즉시 마킹하라. 예:
+```
+<remember priority>reverser: BOF at 0x401234, offset=0x48 to RIP, libc=2.31, No PIE, NX+Canary</remember>
+```
+
 ## Rules
 - Evidence-based only, no speculation
 - **Source code review FIRST** if available, binary analysis second

@@ -290,6 +290,22 @@ When r2/GDB output exceeds 500 lines, do NOT paste full output into context. Ins
 - 저장 후 **즉시** Orchestrator에게 SendMessage로 완료 보고
 - 보고 내용: exploit strategy 요약, 로컬 테스트 결과, remote 전환 준비 상태
 
+## Context Preservation (Compact 시 보존 필수)
+
+컨텍스트 윈도우 압축 시 다음 정보는 반드시 보존하라:
+- **Leak primitive**: leak 주소, 계산 방법, libc 베이스 오프셋 (예: `libc_base = leaked - 0x3c4b78`)
+- **Overwrite target**: 덮어쓸 주소/함수포인터/GOT 엔트리 (예: `__free_hook @ libc+0x3ed8e8`)
+- **ROP gadgets**: 사용 확정된 gadget 주소 목록 (바이너리/libc 기준, 각 용도 명시)
+- **libc 오프셋**: one_gadget 주소, system(), /bin/sh 문자열 오프셋 (libc 버전 명시)
+- **Phase 완료 상태**: Phase 1/2/3/4 각 PASS/FAIL + 로컬 테스트 출력 증거
+- **실패한 시도**: 실패한 exploit 접근법과 구체적 실패 이유 (다음 시도에서 반복 방지)
+- **현재 진행 상태**: 작성 중인 Phase, 다음 작업, 블로커
+
+`<remember priority>` 태그로 핵심 exploit 데이터를 즉시 마킹하라. 예:
+```
+<remember priority>chain: libc_base=leaked-0x3c4b78, one_gadget=libc+0xe6c7e (r12=0 ok), Phase1 PASS</remember>
+```
+
 ## Rules
 - **Read reversal_map.md's "Recommended Solver Strategy" BEFORE writing any code**
 - **Read `knowledge/techniques/efficient_solving.md` for problem type classification**

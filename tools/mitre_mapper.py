@@ -41,6 +41,23 @@ KNOWN_CVE_CWE: dict[str, list[str]] = {
     "CVE-2023-4966":  ["CWE-119"],                                   # Citrix Bleed
     "CVE-2023-34362": ["CWE-89"],                                    # MOVEit SQLi
     "CVE-2024-3400":  ["CWE-77"],                                    # PAN-OS command injection
+    # Web vulnerabilities (v1.1 additions)
+    "CVE-2021-41773": ["CWE-22", "CWE-78"],                          # Apache path traversal/RCE
+    "CVE-2021-42013": ["CWE-22"],                                    # Apache path traversal follow-up
+    "CVE-2022-22963": ["CWE-94"],                                    # Spring Cloud Function SPEL injection
+    "CVE-2023-46604": ["CWE-502"],                                   # Apache ActiveMQ deserialization RCE
+    "CVE-2021-22986": ["CWE-306"],                                   # F5 BIG-IP/BIG-IQ SSRF+auth bypass
+    "CVE-2023-50164": ["CWE-434"],                                   # Apache Struts file upload RCE
+    "CVE-2022-36804": ["CWE-78"],                                    # Bitbucket Server command injection
+    "CVE-2024-23897": ["CWE-22"],                                    # Jenkins path traversal LFI
+    "CVE-2023-27163": ["CWE-918"],                                   # request-baskets SSRF
+    "CVE-2022-0540":  ["CWE-862"],                                   # Jira auth bypass
+    "CVE-2022-26923": ["CWE-863"],                                   # AD CS cert template privesc
+    "CVE-2021-40438": ["CWE-918"],                                   # Apache mod_proxy SSRF
+    "CVE-2023-22515": ["CWE-639"],                                   # Confluence broken access control
+    "CVE-2024-21626": ["CWE-22"],                                    # runc container escape
+    "CVE-2022-3786":  ["CWE-787"],                                   # OpenSSL X.509 buffer overflow
+    "CVE-2023-0386":  ["CWE-269"],                                   # Linux OverlayFS privesc
 }
 
 
@@ -290,6 +307,145 @@ def format_text(chain: dict) -> str:
                 tactic = atech.get("tactic", "")
                 tactic_str = f" [{tactic}]" if tactic else ""
                 lines.append(f"    ATLAS: {atech['technique_id']} ({atech['name']}){tactic_str}")
+
+    return "\n".join(lines)
+
+
+# CWE metadata for get_context_for_finding() — sinks, techniques, related patterns
+_CWE_CONTEXT: dict[str, dict] = {
+    "CWE-79":   {"name": "Cross-Site Scripting (XSS)",
+                 "related": ["Stored XSS", "Reflected XSS", "DOM XSS"],
+                 "sinks": ["innerHTML", "document.write", "eval", "location.href", "setAttribute"]},
+    "CWE-89":   {"name": "SQL Injection",
+                 "related": ["Blind SQLi", "Union-based SQLi", "Error-based SQLi"],
+                 "sinks": ["execute()", "query()", "cursor.execute", "raw SQL string concat"]},
+    "CWE-918":  {"name": "Server-Side Request Forgery (SSRF)",
+                 "related": ["Blind SSRF", "SSRF via redirect", "Cloud metadata SSRF"],
+                 "sinks": ["fetch()", "urllib.request", "requests.get", "curl", "file:// scheme"]},
+    "CWE-22":   {"name": "Path Traversal",
+                 "related": ["Directory traversal", "Zip slip", "LFI"],
+                 "sinks": ["open()", "readFile()", "sendFile()", "include()", "require()"]},
+    "CWE-502":  {"name": "Deserialization of Untrusted Data",
+                 "related": ["Java deserialization", "pickle RCE", "YAML load RCE"],
+                 "sinks": ["pickle.loads", "yaml.load", "ObjectInputStream", "unserialize()", "JSON gadget chain"]},
+    "CWE-862":  {"name": "Missing Authorization",
+                 "related": ["Broken access control", "Privilege escalation"],
+                 "sinks": ["API endpoint without authz check", "missing @RequiresPermission", "no role validation"]},
+    "CWE-863":  {"name": "Incorrect Authorization",
+                 "related": ["Horizontal privesc", "Vertical privesc", "IDOR"],
+                 "sinks": ["role check on wrong object", "cached auth state", "JWT without server validation"]},
+    "CWE-352":  {"name": "Cross-Site Request Forgery (CSRF)",
+                 "related": ["State-changing GET request", "Missing SameSite cookie", "Token bypass"],
+                 "sinks": ["form action without CSRF token", "fetch() without origin check", "missing Referer validation"]},
+    "CWE-611":  {"name": "XML External Entity Injection (XXE)",
+                 "related": ["File read XXE", "SSRF via XXE", "Blind XXE"],
+                 "sinks": ["XMLParser with external entities", "etree.parse()", "DOMParser", "SAXParser"]},
+    "CWE-94":   {"name": "Code Injection",
+                 "related": ["SSTI", "eval injection", "Remote code inclusion"],
+                 "sinks": ["eval()", "exec()", "Function() constructor", "compile()", "template engine with raw input"]},
+    "CWE-78":   {"name": "OS Command Injection",
+                 "related": ["Shell injection", "Blind OS cmdi", "Command chaining"],
+                 "sinks": ["os.system()", "subprocess with shell=True", "Runtime.exec()", "backtick execution"]},
+    "CWE-434":  {"name": "Unrestricted File Upload",
+                 "related": ["WebShell upload", "MIME type bypass", "Extension bypass"],
+                 "sinks": ["move_uploaded_file()", "multer dest without validation", "content-type not checked"]},
+    "CWE-601":  {"name": "Open Redirect",
+                 "related": ["Header injection redirect", "URL redirect abuse", "Phishing via redirect"],
+                 "sinks": ["Location header with user input", "res.redirect(req.query.url)", "window.location = param"]},
+    "CWE-639":  {"name": "IDOR / Insecure Direct Object Reference",
+                 "related": ["Horizontal privesc", "Mass assignment", "Broken object-level auth"],
+                 "sinks": ["findById(req.params.id) without ownership check", "WHERE id=? no user binding", "path param in DB query"]},
+    "CWE-347":  {"name": "Improper JWT Verification",
+                 "related": ["alg:none attack", "Key confusion HS256/RS256", "Missing signature check"],
+                 "sinks": ["jwt.decode(verify=False)", "jose without verify flag", "alg header trusted from token itself"]},
+    "CWE-798":  {"name": "Hardcoded Credentials",
+                 "related": ["Hardcoded API key", "Default password", "Embedded secret in binary"],
+                 "sinks": ["string literal in auth check", "const SECRET = '...'", "config file with plaintext creds"]},
+    "CWE-327":  {"name": "Use of Broken or Risky Cryptographic Algorithm",
+                 "related": ["MD5/SHA1 for passwords", "ECB mode encryption", "DES/RC4 usage"],
+                 "sinks": ["hashlib.md5()", "Cipher.getInstance('AES/ECB')", "DES.new()", "Math.random() for security tokens"]},
+    "CWE-1321": {"name": "Prototype Pollution",
+                 "related": ["__proto__ pollution", "constructor.prototype override", "Object.assign gadget"],
+                 "sinks": ["Object.assign with user data", "_.merge() with untrusted input", "bracket notation with __proto__ key"]},
+    "CWE-942":  {"name": "Permissive CORS Policy",
+                 "related": ["Wildcard CORS", "Reflected Origin header", "Credentialed CORS abuse"],
+                 "sinks": ["Access-Control-Allow-Origin: *", "origin reflected without allowlist", "credentials:true with wildcard"]},
+    "CWE-1336": {"name": "Server-Side Template Injection (SSTI)",
+                 "related": ["Jinja2 SSTI", "Twig SSTI", "AngularJS CSTI"],
+                 "sinks": ["render_template_string(user_input)", "Jinja2 Environment().from_string()", "ng-bind-html with raw input"]},
+    "CWE-77":   {"name": "Command Injection (Improper Neutralization)",
+                 "related": ["Shell metachar injection", "Argument injection"],
+                 "sinks": ["os.popen()", "Runtime.exec()", "shell=True subprocess", "backtick execution"]},
+    "CWE-20":   {"name": "Improper Input Validation",
+                 "related": ["Type confusion", "Integer overflow trigger", "Null byte injection"],
+                 "sinks": ["any unsanitized user input reaching logic or memory ops"]},
+    "CWE-287":  {"name": "Improper Authentication",
+                 "related": ["Auth bypass", "NTLM relay", "Session fixation"],
+                 "sinks": ["token comparison without timing-safe equals", "auth header not verified server-side", "session not invalidated on logout"]},
+    "CWE-306":  {"name": "Missing Authentication for Critical Function",
+                 "related": ["Unauthenticated API endpoint", "Auth bypass on admin route"],
+                 "sinks": ["route handler without auth middleware", "function callable without session check"]},
+}
+
+
+def get_context_for_finding(cwe_id: str, mapping: dict | None = None) -> str:
+    """
+    Return a formatted MITRE context string suitable for injecting into an agent prompt.
+
+    Usage (standalone):
+        from tools.mitre_mapper import get_context_for_finding, load_cwe_capec_map
+        mapping = load_cwe_capec_map()
+        print(get_context_for_finding("CWE-79", mapping))
+
+    Usage (without mapping — metadata only):
+        print(get_context_for_finding("CWE-79"))
+
+    Example output:
+        MITRE Context: CWE-79 (XSS) → CAPEC-86 (XSS via HTTP Headers) → T1059.007 (JavaScript)
+        Related techniques: Stored XSS, Reflected XSS, DOM XSS
+        Common sinks: innerHTML, document.write, eval
+        ATT&CK techniques: T1059.007, T1189
+    """
+    cwe_id = cwe_id.upper().strip()
+    meta = _CWE_CONTEXT.get(cwe_id, {})
+    cwe_name = meta.get("name", "Unknown weakness")
+    related = meta.get("related", [])
+    sinks = meta.get("sinks", [])
+
+    lines: list[str] = []
+
+    if mapping is not None:
+        cwe_to_capec = mapping.get("cwe_to_capec", {})
+        capec_to_attack = mapping.get("capec_to_attack", {})
+        capecs = cwe_to_capec.get(cwe_id, [])
+
+        all_techniques: list[str] = []
+        first_chain = ""
+        for capec in capecs[:2]:
+            capec_id = capec["capec_id"]
+            capec_name = capec["name"]
+            techs = capec_to_attack.get(capec_id, [])
+            if techs and not first_chain:
+                t = techs[0]
+                first_chain = (
+                    f"MITRE Context: {cwe_id} ({cwe_name})"
+                    f" → {capec_id} ({capec_name})"
+                    f" → {t['technique_id']} ({t['name']})"
+                )
+            for t in techs:
+                if t["technique_id"] not in all_techniques:
+                    all_techniques.append(t["technique_id"])
+
+        lines.append(first_chain if first_chain else f"MITRE Context: {cwe_id} ({cwe_name}) → [no CAPEC mapping]")
+        if all_techniques:
+            lines.append(f"ATT&CK techniques: {', '.join(all_techniques)}")
+    else:
+        lines.append(f"MITRE Context: {cwe_id} ({cwe_name})")
+
+    if related:
+        lines.append(f"Related techniques: {', '.join(related)}")
+    if sinks:
+        lines.append(f"Common sinks: {', '.join(sinks)}")
 
     return "\n".join(lines)
 

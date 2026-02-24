@@ -138,6 +138,22 @@ If ANY answer is NO → fix before reporting.
 - 완료 즉시 Orchestrator에게 SendMessage로 결과 보고
 - 보고 내용: 사용 도구, 접근법, FLAG_FOUND 또는 실패 사유
 
+## Context Preservation (Compact 시 보존 필수)
+
+컨텍스트 윈도우 압축 시 다음 정보는 반드시 보존하라:
+- **알고리즘 역연산 상태**: 구현한 역연산 알고리즘, 라운드 수, 현재 정확도
+- **중간 결과**: 부분적으로 해결된 값, 검증된 테스트 벡터 (forward/backward 쌍)
+- **수학적 관계**: 방정식 시스템, z3 constraint 모델, 검증된 상수 목록
+- **도구 선택 근거**: z3/GDB Oracle/angr 중 선택한 이유, 실패한 도구와 이유
+- **상수/키 검증 상태**: GDB로 검증 완료된 값 (✅) vs 미검증 가정 (⚠️)
+- **실패한 시도**: 시도한 접근법과 왜 실패했는지 (under-constrained? 잘못된 알고리즘?)
+- **현재 진행 상태**: Phase 1/2/3 완료 여부, solve.py 바이너리 검증 결과
+
+`<remember priority>` 태그로 핵심 수학적 발견을 즉시 마킹하라. 예:
+```
+<remember priority>solver: Feistel 16r, keys=[0x1234,...], z3 SAT confirmed, Phase2 PASS with binary</remember>
+```
+
 ## Rules
 - reversal_map.md만 읽고, **바이너리 재분석 금지** (reverser 역할 침범 금지)
 - reversal_map.md가 불충분하면 Orchestrator에게 "reverser 재실행 요청" 메시지

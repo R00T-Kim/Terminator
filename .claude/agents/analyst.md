@@ -876,6 +876,22 @@ For smart contract findings, apply these modifiers to the standard 10-point ques
 **⚠️ "수동 리뷰 범위" 초과 금지.** 도구가 커버하지 못하는 부분만 수동으로 분석.
 **⚠️ Smart contract에서 Slither/Mythril 미실행 = ABANDON 불가** (Olympus DAO 교훈)
 
+## Context Preservation (Compact 시 보존 필수)
+
+컨텍스트 윈도우 압축 시 다음 정보는 반드시 보존하라:
+- **CVE 매칭 결과**: 발견된 CVE ID, CVSS 점수, ExploitDB 엔트리, PoC 가용성 (URL)
+- **코드 패턴**: 확인된 취약 코드 위치 (파일:라인), CWE 분류, source→sink 경로
+- **Taint source→sink 경로**: 사용자 입력 진입점 → 검증 없는 경로 → 취약 함수 (3-pass 결과)
+- **도구 실행 결과**: Slither/Mythril/Semgrep/CodeQL HIGH+ 시그널 요약 (finding 수, 핵심 항목)
+- **분석 깊이 현황**: 완료된 Level (0-4), 수동 리뷰 완료 컨트랙트 수 (최대 3개)
+- **실패한 분석**: 조사했으나 FP로 판명된 패턴 (반복 조사 방지)
+- **현재 진행 상태**: Confidence Score 5점+ finding 목록, exploiter 전달 준비 상태
+
+`<remember priority>` 태그로 HIGH+ 시그널을 즉시 마킹하라. 예:
+```
+<remember priority>analyst: CWE-89 SQLi at routes.ts:145 (score 8/10), CVE-2024-1234 PoC available, Semgrep confirmed</remember>
+```
+
 ## Rules
 - **Search EVERY service/version** — not just the obvious ones. That obscure service on port 9090 might be the way in
 - **Always check ExploitDB AND PoC-in-GitHub** — they complement each other

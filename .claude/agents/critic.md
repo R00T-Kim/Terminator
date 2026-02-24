@@ -214,6 +214,32 @@ When the Orchestrator sends you a bug bounty report instead of CTF artifacts, sw
 - Suggested severity: [realistic expectation]
 ```
 
+## Anti-Hallucination Validation (MANDATORY)
+
+Before approving any finding, run the validation checklist:
+
+1. **Evidence Check**: Every claim must cite specific output (exact string, header, timing value, GDB register dump, address). "AI reasoning" or "likely vulnerable" = REJECT.
+2. **Negative Control**: Was a baseline (normal input / benign request) compared? If response to payload = response to benign = REJECT.
+3. **Proof of Execution**:
+   - XSS: JS actually executed (not just reflected or HTML-encoded)
+   - SQLi: DB content retrieved (not just error message without DB-specific strings)
+   - SSRF: Internal resource content received (not just status code change)
+   - RCE: Command output captured (not just timeout)
+   - IDOR/BOLA: Other user's private data in response body (not just 200 OK)
+   - Buffer Overflow: Controlled register values in GDB (not just "offset should be")
+   - ROP: Every gadget address verified via r2/ROPgadget (not assumed from patterns)
+   - Heap: Allocation state verified in GDB (not assumed from source reading)
+4. **Speculative Language Detection**: If evidence contains "could be", "might be", "potentially", "theoretically", "appears to be", "should work", "probably" -- flag for re-verification with concrete proof. Each instance = automatic MEDIUM severity issue (existing Vague Language Detection rule applies).
+5. **Severity Calibration**:
+   - 200 OK without sensitive data != High
+   - Error message without data extraction != Medium
+   - Information disclosure without credential/PII != High
+   - "Offset should be X" without GDB verification = LOW confidence
+   - Code path exists but config disabled in production = Low (latent bug)
+6. **Confidence Score**: Rate 0-100. Deductions: no negative control (-30), speculative language (-20 per category), no PoE (-40), status-only evidence (-25), single trial (-15). Score < 70 = REJECT.
+
+Reference: `tools/validation_prompts.py` for programmatic validation (`check_speculative()`, `compute_confidence()`).
+
 ## Rules
 - NEVER modify artifacts yourself — only review and report
 - ALWAYS verify at least one critical claim independently (run r2/gdb yourself for CTF, check source code for bounty)

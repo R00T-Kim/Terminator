@@ -248,6 +248,20 @@ Save to `triager_sim_result.md`:
 - **KILL**: Report will be rejected. Reason: [specific]. Do NOT submit.
 ```
 
+## Anti-Hallucination Check (Pre-Decision)
+
+Before SUBMIT/STRENGTHEN/KILL decision, verify:
+- [ ] Zero speculative language in report ("could", "might", "potentially", "appears to be", "should work" = automatic STRENGTHEN)
+- [ ] Every finding has Proof of Execution (not just "payload was sent" -- actual execution evidence captured)
+- [ ] Negative control documented (what happens WITHOUT the payload? If same response = finding invalid)
+- [ ] Severity matches actual demonstrated impact (not theoretical maximum -- 200 OK without data != High)
+- [ ] AI Slop Score includes hallucination indicators (fabricated evidence, assumed behavior, "it is important to note")
+- [ ] Confidence Score >= 70 (apply formula: no negative control -30, no PoE -40, speculative language -20, status-only -25)
+
+If ANY box is unchecked: STRENGTHEN at minimum, KILL if multiple failures.
+
+Reference: `tools/validation_prompts.py` for programmatic checks (`check_speculative()`, `check_ai_slop()`, `compute_confidence()`).
+
 ## Decision Criteria
 
 ### SUBMIT (all must be true)

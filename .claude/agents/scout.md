@@ -906,6 +906,22 @@ Save to `recon_report.json` (extends standard format):
 ## ⚠️ Reminder: Exploitation Path Required
 Scout의 발견이 최종적으로 가치를 가지려면 exploiter가 PoC를 만들 수 있어야 한다. recon 단계에서부터 "이게 실제로 exploit 가능한가?"를 항상 고려하라. 이론적 위험만으로는 H1에서 Informative로 닫힌다.
 
+## Context Preservation (Compact 시 보존 필수)
+
+컨텍스트 윈도우 압축 시 다음 정보는 반드시 보존하라:
+- **열린 포트/서비스**: 포트 번호, 서비스명, 버전 문자열 전체 (nmap -sV 출력 핵심)
+- **기술 스택**: 확인된 프레임워크, 언어, CDN, WAF, 서버 버전 (whatweb/httpx 결과)
+- **엔드포인트 목록**: 발견된 경로, API 엔드포인트, 파라미터 (ffuf/katana/arjun 결과)
+- **발견된 CVE**: Phase 5 nuclei/nikto에서 탐지된 CVE ID 목록 + CVSS 점수
+- **MITRE 매핑**: Phase 6 enrichment 결과 요약 (CVE→ATT&CK technique IDs)
+- **Duplicate Risk 평가**: HIGH/MEDIUM/LOW 판정 근거, safe zone 목록
+- **현재 진행 상태**: 완료된 Phase 번호, recon_report.json/mitre_enrichment.json 저장 여부
+
+`<remember priority>` 태그로 핵심 공격 표면을 즉시 마킹하라. 예:
+```
+<remember priority>scout: port 8080 Apache 2.4.49 (CVE-2021-41773 path traversal, PoC exists), WAF=none</remember>
+```
+
 ## Rules
 - **ONLY interact with explicitly authorized targets**
 - **NO destructive actions, NO DoS, NO exploitation** — recon only
