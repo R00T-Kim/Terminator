@@ -15,6 +15,7 @@ import sqlite3
 import sys
 import time
 from pathlib import Path
+from urllib.parse import unquote
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DB_PATH = PROJECT_ROOT / "knowledge" / "knowledge.db"
@@ -50,6 +51,12 @@ CREATE VIRTUAL TABLE IF NOT EXISTS nuclei USING fts5(
 
 CREATE VIRTUAL TABLE IF NOT EXISTS poc_github USING fts5(
     cve_id, repo_name, description, github_url UNINDEXED,
+    year UNINDEXED,
+    tokenize = 'porter ascii'
+);
+
+CREATE VIRTUAL TABLE IF NOT EXISTS trickest_cve USING fts5(
+    cve_id, description, products, cwe, poc_urls,
     year UNINDEXED,
     tokenize = 'porter ascii'
 );
@@ -194,6 +201,7 @@ class KnowledgeIndexer:
         n3_exp = self._index_exploitdb(conn)
         n3_nuc = self._index_nuclei(conn)
         n3_poc = self._index_poc_github(conn)
+        n3_tri = self._index_tier3_trickest(conn)
 
         ts = time.strftime("%Y-%m-%dT%H:%M:%S")
         conn.execute("INSERT OR REPLACE INTO db_metadata VALUES (?, ?)", ("build_timestamp", ts))
@@ -202,7 +210,7 @@ class KnowledgeIndexer:
         conn.commit()
         conn.close()
 
-        total = n1 + n2 + n3_exp + n3_nuc + n3_poc
+        total = n1 + n2 + n3_exp + n3_nuc + n3_poc + n3_tri
         elapsed = time.time() - t0
         print(f"\n{'='*60}")
         print(f"Build complete: {total:,} rows in {elapsed:.1f}s")
@@ -211,7 +219,31 @@ class KnowledgeIndexer:
         print(f"  exploitdb:           {n3_exp:>8,}")
         print(f"  nuclei:              {n3_nuc:>8,}")
         print(f"  poc_github:          {n3_poc:>8,}")
+        print(f"  trickest_cve:        {n3_tri:>8,}")
         print(f"  DB size: {self.db_path.stat().st_size / (1024*1024):.1f} MB")
+
+    def update_internal(self):
+        """Fast incremental re-index of Tier 1 only (knowledge/techniques + challenges).
+        Drops and rebuilds techniques table. <1 second."""
+        if not self.db_path.exists():
+            print("DB not found. Run 'build' first.")
+            return
+        conn = self._connect()
+        t0 = time.time()
+        try:
+            conn.execute("BEGIN")
+            conn.execute("DELETE FROM techniques")
+            n = self._index_tier1(conn)
+            ts = time.strftime("%Y-%m-%dT%H:%M:%S")
+            conn.execute("INSERT OR REPLACE INTO db_metadata VALUES (?, ?)",
+                         ("last_internal_update", ts))
+            conn.commit()
+            print(f"Internal update: {n} docs in {time.time()-t0:.2f}s")
+        except Exception as e:
+            conn.rollback()
+            print(f"Update error: {e}", file=sys.stderr)
+        finally:
+            conn.close()
 
     def _index_tier1(self, conn: sqlite3.Connection) -> int:
         count = 0
@@ -277,6 +309,17 @@ class KnowledgeIndexer:
             title = extract_md_title(text) or f.stem
             cat = cfg.get("category_fn", lambda p: "")(f)
             tags = extract_md_tags(text)
+            # Auto-split large markdown files (>10KB) into sections
+            if len(text) > 10240:
+                sections = split_sections(text)
+                if len(sections) > 1:
+                    results = []
+                    for sec_title, sec_body in sections:
+                        if len(sec_body.strip()) < 20:
+                            continue
+                        combined_title = f"{title} — {sec_title}"
+                        results.append((combined_title, sec_body, cat, tags, "", cfg["name"], str(f)))
+                    return results
             return [(title, text, cat, tags, "", cfg["name"], str(f))]
 
         def _section_split(f: Path, text: str, cfg: dict) -> list[tuple]:
@@ -529,7 +572,112 @@ class KnowledgeIndexer:
             print(f"[Tier 3] Indexed PoC-in-GitHub — {len(rows):,} repos")
         return len(rows)
 
-    VALID_TABLES = {"techniques", "external_techniques", "exploitdb", "nuclei", "poc_github"}
+    def _index_tier3_trickest(self, conn: sqlite3.Connection) -> int:
+        """Index ~/trickest-cve — 154K+ CVE markdown files."""
+        base = HOME / "trickest-cve"
+        if not base.is_dir():
+            print(f"[Tier 3] Skipping trickest-cve — {base} not found")
+            return 0
+
+        # Pre-compiled regexes for speed
+        re_product = re.compile(r"label=Product&message=(.+?)&")
+        re_vuln = re.compile(r"label=Vulnerability&message=(.+?)&")
+        re_desc_start = re.compile(r"^### Description\s*$", re.MULTILINE)
+        re_poc_start = re.compile(r"^### POC\s*$", re.MULTILINE)
+        re_urls = re.compile(r"https?://[^\s)>\]]+")
+
+        MAX_READ = 5120  # 5KB per file — useful info is at the top
+        BATCH_SIZE = 10_000
+
+        rows = []
+        total = 0
+        file_count = 0
+
+        # Use os.scandir for speed over glob
+        year_dirs = []
+        try:
+            for entry in os.scandir(str(base)):
+                if entry.is_dir() and re.match(r"^\d{4}$", entry.name):
+                    year_dirs.append(entry)
+        except OSError:
+            print(f"[Tier 3] Error scanning {base}")
+            return 0
+
+        year_dirs.sort(key=lambda e: e.name)
+
+        for year_entry in year_dirs:
+            year = year_entry.name
+            try:
+                for fentry in os.scandir(year_entry.path):
+                    if not fentry.name.startswith("CVE-") or not fentry.name.endswith(".md"):
+                        continue
+                    file_count += 1
+
+                    cve_id = fentry.name[:-3]  # strip .md
+
+                    try:
+                        with open(fentry.path, "r", encoding="utf-8", errors="replace") as fh:
+                            text = fh.read(MAX_READ)
+                    except (OSError, PermissionError):
+                        continue
+
+                    # Extract products
+                    products = ", ".join(
+                        unquote(m.replace("+", " "))
+                        for m in re_product.findall(text)
+                    )
+
+                    # Extract CWE/vulnerability
+                    cwe = ", ".join(
+                        unquote(m.replace("+", " "))
+                        for m in re_vuln.findall(text)
+                    )
+
+                    # Extract description (between ### Description and ### POC)
+                    description = ""
+                    desc_m = re_desc_start.search(text)
+                    if desc_m:
+                        desc_start = desc_m.end()
+                        poc_m = re_poc_start.search(text, desc_start)
+                        if poc_m:
+                            description = text[desc_start:poc_m.start()].strip()
+                        else:
+                            description = text[desc_start:].strip()
+
+                    # Extract PoC URLs (everything after ### POC)
+                    poc_urls = ""
+                    poc_m2 = re_poc_start.search(text)
+                    if poc_m2:
+                        poc_section = text[poc_m2.end():]
+                        poc_urls = " ".join(re_urls.findall(poc_section))
+
+                    rows.append((cve_id, description, products, cwe, poc_urls, year))
+
+                    if len(rows) >= BATCH_SIZE:
+                        conn.executemany(
+                            "INSERT INTO trickest_cve "
+                            "(cve_id,description,products,cwe,poc_urls,year) "
+                            "VALUES (?,?,?,?,?,?)", rows
+                        )
+                        total += len(rows)
+                        rows.clear()
+                        print(f"[Tier 3] trickest-cve: {total:,}/{file_count:,}...")
+            except OSError:
+                continue
+
+        # Flush remaining
+        if rows:
+            conn.executemany(
+                "INSERT INTO trickest_cve "
+                "(cve_id,description,products,cwe,poc_urls,year) "
+                "VALUES (?,?,?,?,?,?)", rows
+            )
+            total += len(rows)
+
+        print(f"[Tier 3] Indexed trickest-cve — {total:,} CVEs ({file_count:,} files)")
+        return total
+
+    VALID_TABLES = {"techniques", "external_techniques", "exploitdb", "nuclei", "poc_github", "trickest_cve"}
 
     def search(self, query: str, table: str = "techniques",
                category: str = "", limit: int = 5) -> list[dict]:
@@ -559,7 +707,7 @@ class KnowledgeIndexer:
         return results
 
     def search_all(self, query: str, limit: int = 10) -> list[dict]:
-        tables = ["techniques", "external_techniques", "exploitdb", "nuclei", "poc_github"]
+        tables = ["techniques", "external_techniques", "exploitdb", "nuclei", "poc_github", "trickest_cve"]
         all_results = []
         for table in tables:
             results = self.search(query, table=table, limit=limit)
@@ -603,6 +751,11 @@ class KnowledgeIndexer:
                        "WHERE poc_github MATCH ? ORDER BY rank LIMIT ?")
             cur = conn.execute(poc_sql, (escaped, limit))
             results.extend(dict(row) for row in cur.fetchall())
+
+            tri_sql = ("SELECT *, rank, 'trickest_cve' as _source_table FROM trickest_cve "
+                       "WHERE trickest_cve MATCH ? ORDER BY rank LIMIT ?")
+            cur = conn.execute(tri_sql, (escaped, limit))
+            results.extend(dict(row) for row in cur.fetchall())
         except sqlite3.OperationalError as e:
             print(f"Search error: {e}", file=sys.stderr)
         finally:
@@ -631,7 +784,7 @@ class KnowledgeIndexer:
             return {"error": "Database not found. Run 'build' first."}
         conn = self._connect()
         info = {}
-        for table in ["techniques", "external_techniques", "exploitdb", "nuclei", "poc_github"]:
+        for table in ["techniques", "external_techniques", "exploitdb", "nuclei", "poc_github", "trickest_cve"]:
             try:
                 cur = conn.execute(f"SELECT COUNT(*) FROM {table}")
                 info[table] = cur.fetchone()[0]
@@ -686,12 +839,14 @@ def main():
     sub = parser.add_subparsers(dest="command")
 
     sub.add_parser("build", help="Full rebuild of the knowledge database")
+    sub.add_parser("update-internal", help="Fast re-index of internal docs only (<1s)")
 
     sp_search = sub.add_parser("search", help="Search a specific table")
     sp_search.add_argument("query", help="Search query")
     sp_search.add_argument("--table", "-t", default="techniques",
                            choices=["techniques", "external_techniques",
-                                    "exploitdb", "nuclei", "poc_github"])
+                                    "exploitdb", "nuclei", "poc_github",
+                                    "trickest_cve"])
     sp_search.add_argument("--category", "-c", default="")
     sp_search.add_argument("--limit", "-n", type=int, default=5)
     sp_search.add_argument("--verbose", "-v", action="store_true")
@@ -719,6 +874,8 @@ def main():
 
     if args.command == "build":
         indexer.build()
+    elif args.command == "update-internal":
+        indexer.update_internal()
     elif args.command == "search":
         results = indexer.search(args.query, table=args.table,
                                 category=args.category, limit=args.limit)
