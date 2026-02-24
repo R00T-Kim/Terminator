@@ -19,9 +19,9 @@ Built on [Claude Code Agent Teams](https://docs.anthropic.com/en/docs/claude-cod
 
 <br>
 
-| CTF Solved | Bug Bounty Targets | AI Agents | MCP Servers | Security Tools |
-|:----------:|:------------------:|:---------:|:-----------:|:--------------:|
-| **20** | **28+** | **17** | **10** | **30+** |
+| CTF Solved | Bug Bounty Targets | AI Agents | MCP Servers | Knowledge Docs | Security Tools |
+|:----------:|:------------------:|:---------:|:-----------:|:--------------:|:--------------:|
+| **20** | **30+** | **17** | **12** | **242K+** | **40+** |
 
 <br>
 
@@ -77,12 +77,12 @@ Terminator:
                         │Verifier │→ FLAG_FOUND
                         └─────────┘
 
-          ┌──────────────────────────────────────────────┐
-          │            Infrastructure Layer               │
-          ├──────────┬───────────┬──────────┬────────────┤
-          │ 10 MCP   │ Dashboard │ 30+      │ Knowledge  │
-          │ Servers  │ (Web UI)  │ Tools    │ Base       │
-          └──────────┴───────────┴──────────┴────────────┘
+          ┌──────────────────────────────────────────────────────────┐
+          │                  Infrastructure Layer                     │
+          ├──────────┬──────────┬───────────┬──────────┬─────────────┤
+          │ 12 MCP   │Knowledge │ Dashboard │ 40+      │ Anti-       │
+          │ Servers  │ DB 242K+ │ (Web UI)  │ Tools    │ Hallucinate │
+          └──────────┴──────────┴───────────┴──────────┴─────────────┘
 ```
 
 ### Structured Handoffs
@@ -109,7 +109,7 @@ Agents communicate through structured artifact passing — no context is lost be
 | **Reversing / Crypto** — math inverse needed | `reverser → solver → critic → verifier → reporter` | 5 |
 | **Pwn (clear vuln)** — obvious overflow/fmt | `reverser → chain → critic → verifier → reporter` | 5 |
 | **Pwn (unclear vuln)** — crash discovery needed | `reverser → trigger → chain → critic → verifier → reporter` | 6 |
-| **Web** — injection, SSRF, auth bypass | `scanner → analyst → exploiter → reporter` | 4 |
+| **Web** — injection, SSRF, auth bypass | `scout → analyst → exploiter → reporter` | 4 |
 | **Firmware** — ARM binary diff, emulated PoC | `fw_profiler → fw_inventory → fw_surface → fw_validator → reporter` | 5 |
 
 ### Bug Bounty — v3 Pipeline (7 Phases)
@@ -180,8 +180,8 @@ A real-time web UI for monitoring all operations — runs in **standalone mode**
 ├──────────┴──────────────┴──────────────┴──────────┴─────────────┤
 │                                                                  │
 │  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐           │
-│  │ 20      │  │ 28+     │  │ 114+    │  │ 16      │           │
-│  │ FLAGS   │  │ TARGETS │  │ FINDINGS│  │ TOOLS   │           │
+│  │ 20      │  │ 30+     │  │ 114+    │  │ 242K+   │           │
+│  │ FLAGS   │  │ TARGETS │  │ FINDINGS│  │ KB DOCS │           │
 │  └─────────┘  └─────────┘  └─────────┘  └─────────┘           │
 │                                                                  │
 │  Severity Distribution     Tool Health         Live Log          │
@@ -232,7 +232,7 @@ docker compose up -d
 
 ### MCP Servers — AI-Native Tool Integration
 
-10 MCP servers give agents direct programmatic access to security tools:
+12 MCP servers give agents direct programmatic access to security tools:
 
 | Server | Capability |
 |:-------|:-----------|
@@ -246,6 +246,8 @@ docker compose up -d
 | **semgrep-mcp** | Pattern-based static analysis |
 | **playwright** | Browser automation for web exploitation |
 | **context7** | Up-to-date library documentation lookup |
+| **graphrag-security** | Security knowledge graph: exploit lookup, similar findings, drift detection |
+| **knowledge-fts** | 242K+ document BM25 search across techniques, ExploitDB, nuclei, PoC, trickest-cve |
 
 ### Security Tools
 
@@ -273,6 +275,7 @@ docker compose up -d
 | Recon | ffuf, subfinder, katana, httpx, gau, waybackurls, arjun |
 | Scanning | nuclei (12K+ templates), trufflehog (800+ secret types) |
 | Upload | fuxploider |
+| Crawling | crawl4ai (Playwright-based, JS rendering, stealth mode) |
 
 </details>
 
@@ -306,10 +309,11 @@ docker compose up -d
 | Database | Coverage |
 |:---------|:---------|
 | ExploitDB | 47K+ exploits |
-| PoC-in-GitHub | 8K+ CVE PoCs |
+| PoC-in-GitHub | 18K+ CVE PoCs |
 | PayloadsAllTheThings | 70+ vuln categories |
 | trickest-cve | 154K+ CVE PoCs |
 | SecLists | Wordlists, passwords, discovery |
+| HackTricks + GTFOBins | Privilege escalation, post-exploitation |
 
 </details>
 
@@ -333,6 +337,60 @@ docker compose up -d
 
 ---
 
+## Knowledge Search Engine
+
+A unified full-text search over **242,934 security documents** — zero external dependencies, built on SQLite FTS5 with BM25 ranking.
+
+| Source | Documents | Content |
+|:-------|----------:|:--------|
+| Internal techniques | 71 | Attack patterns, CTF writeups |
+| External repos (25) | 8,666 | HackTricks, GTFOBins, PayloadsAllTheThings, how2heap, OWASP MASTG |
+| ExploitDB | 46,960 | Exploit descriptions, platforms, CVEs |
+| Nuclei templates | 14,693 | Vulnerability detection templates with severity |
+| PoC-in-GitHub | 18,077 | CVE proof-of-concept repositories |
+| trickest-cve | 154,467 | CVE details with products, CWE, PoC links |
+
+### MCP Integration
+
+Agents query the knowledge base via the `knowledge-fts` MCP server:
+
+```python
+technique_search("heap tcache poisoning")     # → top 5 technique docs
+exploit_search("apache struts rce")            # → ExploitDB + nuclei + PoC
+search_all("race condition double spend")      # → all 242K docs ranked
+```
+
+### Auto-Rebuild
+
+A PostToolUse hook automatically re-indexes when `knowledge/techniques/` or `knowledge/challenges/` files are modified. Full rebuild: ~4 minutes. Incremental update: 0.13 seconds.
+
+---
+
+## Competitor-Adopted Patterns
+
+Patterns ported from analysis of [10 open-source security AI frameworks](knowledge/techniques/competitor_analysis.md):
+
+| Pattern | Source | Implementation | Impact |
+|:--------|:-------|:---------------|:-------|
+| **Web Exploit Chain Engine** | NeuroSploit | `tools/web_chain_engine.py` (820 LOC) | SSRF→internal, SQLi→DB-type, 10 auto-chain rules |
+| **Flag Pattern Detector** | PentestGPT | `tools/flag_detector.py` (275 LOC) | 8+ regex patterns, strict validation, DH/FLAG/CTF/GoN/CYAI formats |
+| **Anti-Hallucination Prompts** | NeuroSploit | `tools/validation_prompts.py` (486 LOC) | 8 composable prompts, speculative language detection, 0-100 confidence scoring |
+| **Security-Aware Context Preservation** | CyberStrikeAI | 6 agent definitions updated | Credentials, exploit primitives, failed attempts survive context compression |
+| **MITRE Auto-Mapping** | RedAmon | `tools/mitre_mapper.py` extended | 36 CWE→CAPEC→ATT&CK mappings, `get_context_for_finding()` for agent injection |
+
+### Anti-Hallucination System
+
+The `critic` and `triager_sim` agents enforce a 6-point validation checklist:
+
+1. **Evidence Check** — Every claim must cite specific output (exact string, header, timing)
+2. **Negative Controls** — Baseline comparison mandatory (normal vs payload response)
+3. **Proof of Execution** — Per-vuln-type: XSS must fire JS, SQLi must extract DB content
+4. **Speculative Language Detection** — "could be", "might be", "potentially" → auto-flag
+5. **Severity Calibration** — 200 OK without data ≠ High
+6. **Confidence Score** — 0-100, below 70 = REJECT
+
+---
+
 ## Infrastructure
 
 ### Standalone Mode (Default)
@@ -341,9 +399,10 @@ No Docker required. The dashboard reads directly from the filesystem:
 
 | Source | What It Reads |
 |:-------|:-------------|
-| `targets/` | 28+ mission directories with assessments, findings, reports |
+| `targets/` | 30+ mission directories with assessments, findings, reports |
 | `reports/` | CTF session logs, flags, writeups |
 | `~/.claude/teams/` | Agent team configs for run history |
+| `knowledge/knowledge.db` | 242K+ document FTS5 search index |
 | System `$PATH` | 16 security tools auto-detected via `shutil.which()` |
 
 Aggregates **114+ findings** with automatic CVSS extraction from markdown reports. Builds D3-compatible attack graphs from vulnerability candidates, recon data, and report files — no Neo4j needed.
@@ -367,7 +426,11 @@ docker compose up -d
 
 | Tool | Purpose |
 |:-----|:--------|
-| **MITRE Mapper** | CVE → CWE → CAPEC → ATT&CK mapping (27 CWEs) |
+| **MITRE Mapper** | CVE → CWE → CAPEC → ATT&CK mapping (36 CWEs) |
+| **Knowledge FTS5 DB** | 242K+ document unified search with BM25 ranking |
+| **Web Chain Engine** | Exploit chain composition (10 rules, NeuroSploit port) |
+| **Validation Prompts** | Anti-hallucination prompt library (8 composable prompts) |
+| **Flag Detector** | CTF flag pattern detection (8+ formats, strict mode) |
 | **Attack Graph** | Neo4j or filesystem-backed attack surface visualization |
 | **DAG Orchestrator** | Pipeline scheduling (CTF pwn/rev, bounty, firmware) |
 | **Pipeline Controller** | Claude CLI handler for deterministic DAG→agent execution |
@@ -376,13 +439,19 @@ docker compose up -d
 | **SARIF Generator** | GitHub Code Scanning compatible output |
 | **PDF Generator** | Report PDF generation |
 
-### Recent Hardening (2026-02)
+### Recent Updates (2026-02)
 
+- **Knowledge FTS5 DB** — 242K+ documents unified search (techniques, ExploitDB, nuclei, PoC, trickest-cve, HackTricks, GTFOBins)
+- **Competitor Pattern Adoption** — 5 P0 patterns ported from NeuroSploit, PentestGPT, CyberStrikeAI, RedAmon
+- **Anti-Hallucination System** — 8 composable validation prompts, speculative language detection, confidence scoring
+- **Context Preservation** — Security-aware compression for 6 combat agents
+- **Auto-rebuild hooks** — Knowledge DB auto-re-indexes on technique file changes
 - **Secrets externalized** — All docker-compose.yml credentials use `${VAR:-default}` pattern
 - **Custom agent types** — terminator.sh autonomous mode uses proper agent definitions (not generic)
 - **Deterministic pipeline** — DAG engine connected to Claude CLI via `claude_handler.py`
 - **E2E replay benchmark** — Automated solve.py re-execution for regression detection
 - **Heap exploitation protocol** — chain.md sub-protocol for allocator fingerprinting, glibc-version-aware techniques
+- **GraphRAG knowledge graph** — Exploit lookup, similar findings, drift detection via MCP
 
 ---
 
@@ -397,12 +466,13 @@ docker compose up -d
 | Crypto | 2 | AES-ECB, z3 constraint solving |
 | Misc (logic, filter bypass) | 2 | Operator precedence, binary search |
 
-### Bug Bounty — 28+ Targets Assessed
+### Bug Bounty — 30+ Targets Assessed
 
 | Metric | Count |
 |:-------|------:|
-| Programs assessed | 28+ |
-| Platforms | Immunefi, HackerOne, Bugcrowd |
+| Programs assessed | 30+ |
+| Knowledge documents indexed | 242K+ |
+| Platforms | Immunefi, HackerOne, Bugcrowd, PSIRT |
 | Categories | Smart Contract (DeFi), Web App, VPN, IoT/Firmware, AI/SDK |
 | Smart contracts analyzed | 50+ |
 | Vulnerability leads investigated | 100+ |
@@ -416,18 +486,22 @@ docker compose up -d
 
 Agent definitions incorporate patterns from 10+ LLM security frameworks:
 
-| Pattern | Origin |
-|:--------|:-------|
-| Variant Analysis — CVE patch diffs as seeds | Google Big Sleep (Project Zero + DeepMind) |
-| LLM-first PoV Generation | RoboDuck (AIxCC 3rd place) |
-| Symbolic + Neural Hybrid | ATLANTIS (AIxCC 1st place) |
-| No Exploit, No Report | Shannon, XBOW |
-| Iterative Context Gathering — 3-pass backtracing | Vulnhuntr |
-| Dual-Approach Parallel — 2 strategies after 3 failures | RoboDuck |
-| OWASP Parallel Hunters | Shannon |
-| PoC Quality Tier Gate (1-4) | XBOW |
-| Adversarial Triage Simulation | Internal |
-| Prompt Injection Guardrails | CAI (300+ LLM agents) |
+| Pattern | Origin | Implemented In |
+|:--------|:-------|:---------------|
+| Variant Analysis — CVE patch diffs as seeds | Google Big Sleep (Project Zero + DeepMind) | analyst |
+| LLM-first PoV Generation | RoboDuck (AIxCC 3rd place) | chain, solver |
+| Symbolic + Neural Hybrid | ATLANTIS (AIxCC 1st place) | solver |
+| No Exploit, No Report | Shannon, XBOW | Orchestrator gate |
+| Iterative Context Gathering — 3-pass backtracing | Vulnhuntr | analyst |
+| Dual-Approach Parallel — 2 strategies after 3 failures | RoboDuck | Orchestrator |
+| OWASP Parallel Hunters | Shannon | analyst (Phase 1.5) |
+| PoC Quality Tier Gate (1-4) | XBOW | exploiter |
+| Adversarial Triage Simulation | Internal | triager_sim |
+| Prompt Injection Guardrails | CAI (300+ LLM agents) | All agents |
+| 4-Layer Validation | NeuroSploit | critic, triager_sim |
+| Security-Aware Compression | CyberStrikeAI | All agents (context preservation) |
+| Shadow Graph (planned P1) | PentestAgent | Cross-agent knowledge synthesis |
+| Exploit Chain Rules | NeuroSploit | exploiter (web targets) |
 
 ---
 
@@ -483,22 +557,27 @@ Terminator/
 │   ├── critic.md            #   Cross-verification
 │   ├── fw_*.md              #   Firmware analysis (4 agents)
 │   └── ...                  #   + 10 more specialists
-├── knowledge/               # Accumulated experience (20 writeups, 16 techniques)
+├── knowledge/               # Accumulated experience
 │   ├── index.md             #   Master index
+│   ├── knowledge.db         #   FTS5 search DB (242K docs, ~245MB)
 │   ├── challenges/          #   Per-challenge writeups
-│   └── techniques/          #   Reusable attack patterns
+│   └── techniques/          #   Reusable attack patterns + competitor analysis
 ├── research/                # LLM security framework analysis (14 docs)
 ├── tools/                   # Pipeline tooling
-│   ├── mitre_mapper.py      #   CVE→CWE→CAPEC→ATT&CK
+│   ├── knowledge_indexer.py #   FTS5 DB builder (6 tables, zero dependencies)
+│   ├── web_chain_engine.py  #   Web exploit chain engine (10 rules)
+│   ├── flag_detector.py     #   CTF flag pattern detector (8+ formats)
+│   ├── validation_prompts.py#   Anti-hallucination prompt library
+│   ├── mitre_mapper.py      #   CVE→CWE→CAPEC→ATT&CK (36 CWEs)
 │   ├── recon_pipeline.py    #   6-phase recon orchestrator
 │   ├── attack_graph/        #   Neo4j + filesystem attack surface graphs
 │   ├── dag_orchestrator/    #   DAG pipeline scheduling + Claude CLI handler
 │   ├── sarif_generator.py   #   SARIF 2.1.0 output
-│   └── mcp-servers/         #   nuclei, codeql, semgrep MCP
+│   └── mcp-servers/         #   nuclei, codeql, semgrep, knowledge-fts, graphrag
 ├── web/                     # FastAPI + D3 dashboard (standalone + Docker)
 │   ├── app.py               #   REST API + WebSocket backend (1,255 lines)
 │   └── static/index.html    #   Single-page dashboard (5 tabs, 1,231 lines)
-├── targets/                 # Bug bounty workspaces (28+ missions)
+├── targets/                 # Bug bounty workspaces (30+ missions)
 ├── tests/                   # CTF files + E2E replay benchmarks
 ├── CLAUDE.md                # Orchestrator instructions
 ├── terminator.sh            # Autonomous mode launcher
