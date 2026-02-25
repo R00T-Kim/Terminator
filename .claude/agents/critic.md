@@ -166,6 +166,20 @@ These indicate UNVERIFIED ASSUMPTIONS. Each instance must be replaced with eithe
 
 When the Orchestrator sends you a bug bounty report instead of CTF artifacts, switch to this checklist:
 
+### Round 0: Program Rules Compliance (MANDATORY — before any other round)
+- [ ] **`program_rules_summary.md` exists** in target directory
+- [ ] **Auth header format**: ALL curl commands in report match the format in program_rules_summary.md (e.g., `IdToken:` not `Authorization: Bearer`)
+- [ ] **Mandatory headers**: ALL requests include required headers with EXACT values (e.g., full bugbounty UUID, not just `bugbounty: true`)
+- [ ] **Known Issues overlap**: NONE of the findings overlap with Known Issues listed in program_rules_summary.md
+- [ ] **Already Submitted overlap**: NONE of the findings duplicate previously submitted reports
+- [ ] **Exclusion List**: NONE of the findings match OOS vulnerability types
+- [ ] **Verified Curl Template**: Report's curl commands match the verified working template
+- [ ] **CVSS version**: Matches program requirement from program_rules_summary.md
+
+**If ANY Round 0 check fails → REJECT immediately.** These are fatal errors that will cause instant rejection by the platform.
+
+**Why Round 0 exists**: In NAMUHX, critic caught 3 fatal errors (wrong auth header, incomplete bugbounty header, overstatement) that would have caused instant rejection. Round 0 systematizes this check so it NEVER depends on critic's ad-hoc attention.
+
 ### Round 1: Fact-Check (MANDATORY)
 - [ ] **CWE accuracy**: Is the CWE number correct for this vulnerability type?
 - [ ] **File paths**: Do referenced `file.ts:line` actually contain the claimed code?

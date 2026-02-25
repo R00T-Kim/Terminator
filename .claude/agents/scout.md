@@ -161,6 +161,56 @@ arjun -u https://<target>/api/endpoint
 
 **HARD RULE**: Reporter agent MUST receive `program_context.md`. No report submission without confirmed CVSS version and scope.
 
+#### Phase 1E: Program Rules Summary (MANDATORY — NAMUHX retrospective fix)
+
+**This generates `program_rules_summary.md` — the SINGLE SOURCE OF TRUTH for all technical details that every agent MUST follow.**
+
+```bash
+# 1. Initialize template
+python3 tools/bb_preflight.py init targets/<target>/
+
+# 2. Fill ALL <REQUIRED> fields by extracting from:
+#    - Program page (auth format, mandatory headers, exclusions)
+#    - Actual API traffic (intercept via Frida/mitmproxy/curl)
+#    - Known Issues list from program
+#    - Already-submitted reports (if any)
+
+# 3. CRITICAL: Test the auth header format
+#    - Send actual API request with discovered auth format
+#    - Confirm 200 response (not 401/403)
+#    - Save working curl command to "Verified Curl Template" section
+
+# 4. Validate completeness
+python3 tools/bb_preflight.py rules-check targets/<target>/
+# MUST return PASS before ANY other agent is spawned
+```
+
+**Output**: `program_rules_summary.md` — auth header format, mandatory headers, known issues, exclusion list, submission rules, verified curl template.
+
+**HARD RULE**: `bb_preflight.py rules-check` MUST return PASS before Phase 1 agents (analyst) are spawned. Orchestrator verifies this.
+
+**Why this exists**: In NAMUHX, reporter used `Authorization: Bearer` (wrong) instead of `IdToken:` (correct), and `bugbounty: true` instead of full UUID. Critic caught these — without critic, both reports would have been rejected instantly. This file prevents the error at source.
+
+#### Phase 1F: Endpoint Map Generation (MANDATORY for Web/API targets)
+
+**Generates `endpoint_map.md` — tracks which endpoints have been tested.**
+
+```bash
+# During Phase 2-5 recon, populate endpoint_map.md:
+# For EVERY discovered endpoint:
+#   | /api/path | METHOD | Auth_Required | UNTESTED | description |
+
+# After initial population:
+python3 tools/bb_preflight.py coverage-check targets/<target>/
+# Reports coverage % — Orchestrator checks before Phase 2
+```
+
+**Output**: `endpoint_map.md` — all discovered endpoints with status tracking.
+
+**HARD RULE**: Coverage must reach 80% before Orchestrator declares "analysis complete". If UNTESTED > 20%, spawn additional analyst/exploiter rounds for remaining endpoints.
+
+**Why this exists**: In NAMUHX, 182 endpoints discovered but only ~40% tested in first round. The actual IDOR findings came from the second round that user had to manually request.
+
 **Phase 1 Output**: `phase1_domains.json`
 ```json
 {

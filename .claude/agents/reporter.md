@@ -104,6 +104,19 @@ Explanation + key code snippet + output
 - What to do differently next time
 ```
 
+## ⚠️ Program Rules Compliance (MANDATORY — read BEFORE writing)
+
+Before writing ANY bug bounty report:
+1. **Read `program_rules_summary.md`** in the target directory
+2. **ALL curl commands** in the report MUST use the auth header format from that file (NOT `Authorization: Bearer` unless that IS the correct format)
+3. **ALL headers** (bugbounty, test-id, etc.) MUST use the exact values from that file
+4. **Use the Verified Curl Template** from that file as the base for all PoC commands
+5. **Check Known Issues** — do NOT include findings that overlap with known issues
+6. **Check Already Submitted Reports** — do NOT duplicate previously submitted findings
+7. If `program_rules_summary.md` does NOT exist: **STOP and report [ENV BLOCKER] to Orchestrator**
+
+**Why**: In NAMUHX, reporter used wrong auth header format + incomplete bugbounty header. Critic caught these — without critic, both reports would have been rejected. This rule prevents the error at source.
+
 ## Bug Bounty Report Format (v2 — Vercel Experience)
 ```markdown
 # [Finding Title — Concise, Under 70 chars]

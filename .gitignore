@@ -37,6 +37,7 @@ tests/wargames/hunter/
 
 # --- Bug bounty targets (sensitive data + large cloned repos) ---
 targets/
+namuhx*
 
 # --- Knowledge: sensitive operational data ---
 knowledge/bugbounty/

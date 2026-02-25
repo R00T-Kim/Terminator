@@ -476,6 +476,24 @@ Level 4: Smart contract 분석 — Slither + Mythril + Foundry fork (Web3 전용
      - **발견 후보 취약점 유형이 OOS에 해당하면 즉시 NO-GO** (PoC 품질과 무관하게 거절됨)
      - 예: oracle staleness → OOS by default (manipulation/flash loan 제외), admin-gated → downgrade 확실
 
+### Phase 0.2: Program Rules Generation (v8 — NAMUHX retrospective fix, MANDATORY)
+1.2. Orchestrator가 **직접** 실행 (에이전트 아님):
+   ```bash
+   # 1. 템플릿 생성
+   python3 tools/bb_preflight.py init targets/<target>/
+
+   # 2. scout 스폰 전에 program_rules_summary.md 채우기:
+   #    - 프로그램 페이지에서 auth 헤더 형식, 필수 헤더, Known Issues, 배제 목록 추출
+   #    - 실제 API 트래픽에서 auth 형식 확인 (Frida/mitmproxy/curl)
+   #    - 이전 제출 보고서 목록 추가 (overlap 방지)
+
+   # 3. 검증 — PASS 아니면 Phase 1 진행 금지
+   python3 tools/bb_preflight.py rules-check targets/<target>/
+   ```
+   - **PASS** → Phase 0.5/1 진행
+   - **FAIL** → placeholder 채울 때까지 반복. **에이전트 스폰 금지.**
+   - **이유**: NAMUHX에서 reporter가 `Authorization: Bearer`(오류) 대신 `IdToken:`(정답)을 사용, `bugbounty: true` 대신 전체 UUID 필요. Critic이 잡았지만 Critic 없었으면 두 보고서 모두 즉시 거절됨.
+
 ### Phase 0.5: Automated Tool Scan (NEW — Quality-First Gate)
 1.5. **scout**가 Slither/Semgrep 자동 스캔 실행 (DeFi 타겟 시):
    - `slither . --detect reentrancy-eth,arbitrary-send-eth,...` → `slither_results.json`
@@ -497,10 +515,12 @@ Level 4: Smart contract 분석 — Slither + Mythril + Foundry fork (Web3 전용
    - **Kiln 교훈**: 5개 배포 vault 전부 offset=0 → "not in production, already known" → CLOSED ($0)
    - **코드에 존재하지만 프로덕션에서 사용 안 하는 코드 경로의 버그 = 거의 확실히 거절됨**
 
-### Phase 1: Discovery (target_evaluator GO 후에만 진행)
+### Phase 1: Discovery (target_evaluator GO + rules-check PASS 후에만 진행)
 2. 병렬 spawn (Task tool, mode=bypassPermissions):
-   - `scout` → **Phase 0: Duplicate Pre-Screen** + nmap/ffuf + Program Context(MANDATORY) + **Automated Tool Scan** → `recon_report.json` + `program_context.md` + `tool_scan_results/`
-   - `analyst` → **도구 결과 먼저 분석** → searchsploit, PoC-in-GitHub, 소스코드 심층 분석 → `vulnerability_candidates.md` (각 finding에 **Duplicate Risk** 플래그 포함)
+   - `scout` → **Phase 0: Duplicate Pre-Screen** + nmap/ffuf + Program Context(MANDATORY) + **Automated Tool Scan** + **endpoint_map.md 생성** → `recon_report.json` + `program_context.md` + `endpoint_map.md` + `tool_scan_results/`
+   - `analyst` → **program_rules_summary.md 읽고 exclusion filter 적용** → **도구 결과 먼저 분석** → searchsploit, PoC-in-GitHub, 소스코드 심층 분석 → `vulnerability_candidates.md` (각 finding에 **Duplicate Risk** 플래그 포함)
+   - **⚠️ HANDOFF에 program rules 주입 필수**: 모든 에이전트 스폰 시 `python3 tools/bb_preflight.py inject-rules targets/<target>/` 출력을 프롬프트 **맨 앞 3줄**에 포함
+   - **⚠️ analyst에게 exclusion filter 전달 필수**: `python3 tools/bb_preflight.py exclusion-filter targets/<target>/` 출력을 analyst 프롬프트에 포함
 
 ### Phase 1.5: Parallel Vulnerability Hunting (Shannon Pattern — 대형 코드베이스 전용)
 선택적 단계. 코드베이스 10K줄+ 또는 monorepo일 때 Orchestrator가 활성화:
@@ -524,12 +544,25 @@ analyst 대신 N개 병렬 헌터 스폰 (각각 vuln-category 전문):
 - `mode=bizlogic`: `grep -rn "price\|amount\|quantity\|discount\|coupon\|payment\|checkout\|cart\|order\|balance\|credit\|refund\|race\|mutex\|lock\|atomic" src/`
 - `mode=fileupload`: `grep -rn "upload\|file\|path\|directory\|include\|require\|fopen\|readFile\|writeFile\|multer\|formidable\|busboy\|mimetype\|content-type\|extension" src/`
 
+### Phase 1→2 Gate: Coverage Check (v8 — NAMUHX retrospective fix, MANDATORY for Web/API)
+```bash
+# Phase 1 완료 후, Phase 2 진행 전 필수 실행:
+python3 tools/bb_preflight.py coverage-check targets/<target>/
+# PASS (≥80%) → Phase 2 진행
+# FAIL (<80%) → 추가 analyst/exploiter 라운드 스폰 (UNTESTED 엔드포인트 대상)
+```
+- **threshold 80%**: UNTESTED 엔드포인트가 20% 이상이면 Phase 2 진행 금지
+- **"analysis complete" 조기 선언 방지**: NAMUHX에서 182개 엔드포인트 중 40%만 테스트 후 넘어갔고, 실제 IDOR은 나머지 60%에서 발견됨
+- **예외**: 소규모 타겟(< 10 엔드포인트)에서는 coverage 100% 필수
+
 ### Phase 2: PoC Validation (PoC 먼저, 보고서 나중!)
 3. `exploiter` → 각 후보별 PoC 개발 + 런타임 검증
+   - **program_rules_summary.md의 auth 형식/헤더 사용 필수** (Orchestrator가 inject-rules 출력을 프롬프트에 포함)
    - **Duplicate Risk HIGH인 finding은 exploiter에게 보내지 않음** (analyst가 필터링)
    - Integration Test 필수: `npm install <pkg>` → 실제 API → listener 캡처
    - **PoC Quality Tier 분류 필수**: Tier 1(Gold), 2(Silver) → Phase 3 / Tier 3-4 → **삭제**
    - **Post-PoC Self-Validation** 5문항 통과 필수
+   - **endpoint_map.md 업데이트**: 테스트한 엔드포인트의 Status를 VULN/SAFE/TESTED로 변경
    - PASS → Phase 3 / FAIL → **후보 삭제 (No Exploit, No Report)**
 
 ### Phase 3: Report Writing
@@ -583,6 +616,8 @@ analyst 대신 N개 병렬 헌터 스폰 (각각 vuln-category 전문):
 
 ## Local Security Tools
 - **RE**: radare2 (r2), objdump, strings, readelf, nm, file, wabt 1.0.39 (wasm2wat, wasm-decompile — WASM RE), ImHex (바이너리 패턴 분석 + YARA), Apktool v2.11.1 (APK 디컴파일)
+- **Mobile**: jadx 1.5.1 (~/tools/jadx/bin/jadx — APK→Java 디컴파일), frida 17.7.3 + frida-tools (런타임 후킹/SSL pinning 우회), objection 1.12.3 (모바일 보안 테스팅), androguard 4.1.3 (Python APK 분석), adb 1.0.41 (Android 기기 연결), mitmproxy 12.2.1 (~/tools/mitmproxy/ — API 트래픽 캡처)
+- **Mobile References**: owasp-mastg (~/tools/owasp-mastg — MASVS 테스팅 가이드), awesome-android-security (~/tools/awesome-android-security — Android 보안 리소스)
 - **Debug**: gdb (+ pwndbg + GEF `~/gef/gef.py` 93 commands + mcp-gdb MCP), strace
 - **Exploit**: pwntools, ROPgadget, ropper, z3-solver, capstone, angr, unicorn, rp++ (~/tools/rp++ — ARM64 ROP gadget finder), linux-exploit-suggester (~/tools/linux-exploit-suggester.sh), routersploit (~/tools/routersploit — 임베디드 exploit)
 - **Crypto**: pycryptodome, sympy, ~/collisions (corkami hash collision reference), RSACTFTool (~/tools/rsactftool — RSA 약한키 공격)
@@ -600,6 +635,7 @@ analyst 대신 N개 병렬 헌터 스폰 (각각 vuln-category 전문):
 - **Workflow/OSINT**: osmedeus (~/gopath/bin/osmedeus — YAML 정찰 워크플로우), web-check (Docker, 33 API 엔드포인트, port 3001)
 - **Knowledge Repos (~/tools/)**: MBE, HEVD, google-ctf, exploit-writeups, how2heap, CTF-All-In-One, linux-kernel-exploitation, awesome-list-systems, paper_collection, owasp-mastg, ad-exploitation
 - **Knowledge DB**: knowledge-fts MCP (242K+ docs — techniques, ExploitDB 47K, nuclei 15K, PoC 18K, trickest-cve 154K, HackTricks, GTFOBins, PayloadsAllTheThings)
+- **BB Pipeline Gate**: `tools/bb_preflight.py` — Phase 게이트 검증 (v8, NAMUHX retrospective). `init` 템플릿 생성, `rules-check` 규칙 검증, `coverage-check` 엔드포인트 커버리지, `inject-rules` HANDOFF 주입, `exclusion-filter` 분석 제외 목록
 - **Competitor-Adopted Tools (P0)**:
   - `tools/web_chain_engine.py` — Web exploit chain engine (NeuroSploit 포팅): SSRF→내부, SQLi→DB타입별 자동 체인. `on_finding()` → `List[ChainableTarget]`
   - `tools/flag_detector.py` — CTF 플래그 감지 (PentestGPT 포팅): 6+ regex 패턴, strict 모드, DH/FLAG/CTF/GoN/CYAI/HTB 포맷
