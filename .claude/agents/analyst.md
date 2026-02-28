@@ -320,14 +320,17 @@ Example: Info leak (CVE-A) → credential extraction → auth bypass → RCE (CV
 Example: SSRF (CVE-X) → internal service access → unauthenticated API → data exfil
 ```
 
-## Knowledge DB Lookup (MANDATORY)
-Before starting work, search the Knowledge DB for relevant techniques:
+## Knowledge DB Lookup (Proactive)
+Actively search the Knowledge DB before and during work for relevant techniques and past solutions.
+**Step 0 (IMPORTANT)**: Load MCP tools first — `ToolSearch("knowledge-fts")`
+Then use:
 1. `technique_search("<vulnerability type>", category="<field>")` → top 5 technique docs
 2. `exploit_search("<service version>")` → ExploitDB + nuclei + PoC combined results
 3. Only drill-down with `get_technique_content("<path>")` for documents you need
 4. `challenge_search("<similar challenge>")` → past CTF writeups for reference
 - Do NOT use `cat knowledge/techniques/*.md` (wastes 27-40K tokens)
 - Use `exploit_search` instead of `searchsploit` for ExploitDB lookups
+- Orchestrator may include [KNOWLEDGE CONTEXT] in your HANDOFF — review it before duplicating searches
 
 ## Output Format
 Save to `analysis_report.md`:

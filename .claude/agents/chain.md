@@ -222,14 +222,17 @@ python3 solve.py  # process('./binary')로 로컬 테스트
 2. 필요한 라이브러리 설치 요청 (예: `libc6:i386`)
 3. **Python-only 검증으로 "완료" 선언 금지** — 이것은 검증이 아니다
 
-## Knowledge DB Lookup (MANDATORY)
-Before starting work, search the Knowledge DB for relevant techniques:
+## Knowledge DB Lookup (Proactive)
+Actively search the Knowledge DB before and during work for relevant techniques and past solutions.
+**Step 0 (IMPORTANT)**: Load MCP tools first — `ToolSearch("knowledge-fts")`
+Then use:
 1. `technique_search("<vulnerability type>", category="<field>")` → top 5 technique docs
 2. `exploit_search("<service version>")` → ExploitDB + nuclei + PoC combined results
 3. Only drill-down with `get_technique_content("<path>")` for documents you need
 4. `challenge_search("<similar challenge>")` → past CTF writeups for reference
 - Do NOT use `cat knowledge/techniques/*.md` (wastes 27-40K tokens)
 - Use `exploit_search` instead of `searchsploit` for ExploitDB lookups
+- Orchestrator may include [KNOWLEDGE CONTEXT] in your HANDOFF — review it before duplicating searches
 
 ## Output Format
 ```markdown

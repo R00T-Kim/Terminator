@@ -2,10 +2,11 @@
 
 > Terminator Knowledge Base. CTF challenges, Bug Bounty findings, techniques.
 
-## Solved CTF Challenges (20)
+## Solved CTF Challenges (21)
 
 | Challenge | Type | Flag | File |
 |-----------|------|------|------|
+| kernelCTF vulnmod LPE | Pwn (Kernel LPE) | Solved (local) | [kernelctf_vulnmod_lpe.md](challenges/kernelctf_vulnmod_lpe.md) |
 | dhcc (Level10_1) | Reversing (flex/bison) | Solved | [level10_1_dhcc.md](challenges/level10_1_dhcc.md) |
 | Too Many Questions | Crypto (AES-ECB) | Solved | [too_many_questions.md](challenges/too_many_questions.md) |
 | Damnida | Reversing (Custom VM) | Solved | [damnida.md](challenges/damnida.md) |
@@ -182,6 +183,6 @@ Key repos: ExploitDB (47K+), PoC-in-GitHub (8K+), nuclei-templates (12K+), Paylo
 ### 설정된 연습 환경
 - **fasterbox** (Google CTF 2024): seccomp escape, `~/tools/google-ctf/2024/quals/pwn-fasterbox/`
 - **gatekey** (Google CTF 2020): PKU bypass, `~/tools/google-ctf/2020/quals/pwn-gatekey/`
-- **LPE 연습 환경**: UAF vulnmod, `~/kernelctf/` (커널 6.1.119 빌드 중)
+- **LPE 연습 환경**: UAF vulnmod, `~/kernelctf/` — **COMPLETED** (kernel 6.17.0-14-generic, uid=0 achieved via ESCALATE ioctl). See [challenges/kernelctf_vulnmod_lpe.md](challenges/kernelctf_vulnmod_lpe.md)
 
 기법 문서: [techniques/kernelctf_lpe_environment.md](techniques/kernelctf_lpe_environment.md)

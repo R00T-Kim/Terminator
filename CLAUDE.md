@@ -181,6 +181,27 @@ Agent definitions: `.claude/agents/*.md`
 - Attempt 1: ret2libc failed (stack alignment issue)
 ```
 
+### Knowledge DB Pre-Search Protocol (Orchestrator + Agent)
+
+**Orchestrator (에이전트 스폰 전):**
+에이전트 스폰 전에 `knowledge-fts` MCP로 관련 기법/exploit을 사전 검색하여 HANDOFF에 포함:
+1. `technique_search("<취약점 유형>")` → 관련 기법 문서
+2. `exploit_search("<서비스/CVE>")` → ExploitDB + nuclei + PoC
+3. `challenge_search("<유사 챌린지>")` → 과거 CTF 풀이 참조
+4. 검색 결과 상위 3-5건 요약을 HANDOFF의 `[KNOWLEDGE CONTEXT]` 섹션에 포함
+
+```
+[KNOWLEDGE CONTEXT — from knowledge-fts]
+- technique: "Heap UAF exploitation" (custom_allocator_exploitation.md) — custom allocator bypass patterns
+- exploit: CVE-2021-20173 (NETGEAR command injection via update) — similar SOAP injection
+- challenge: "hunter" (pwnable.kr) — heap UAF with custom allocator, partial solve
+```
+
+**에이전트 (작업 중):**
+- 작업 시작 시 `ToolSearch("knowledge-fts")`로 MCP 도구 로드 후 적극적으로 검색
+- Orchestrator가 제공한 KNOWLEDGE CONTEXT 외에 추가 검색 권장
+- `cat knowledge/techniques/*.md` 금지 (토큰 낭비) → MCP 검색 사용
+
 ### Observation Masking Protocol (Context Efficiency)
 
 에이전트가 r2/GDB/strings 등의 대용량 출력을 생성할 때:
