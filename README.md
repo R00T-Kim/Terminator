@@ -8,11 +8,11 @@
 
 **Multi-agent AI system that autonomously solves CTF challenges and hunts bug bounties.**
 
-Built on [Claude Code Agent Teams](https://docs.anthropic.com/en/docs/claude-code) — 17 specialized agents orchestrated through sequential pipelines with structured handoffs.
+Built on [Claude Code Agent Teams](https://docs.anthropic.com/en/docs/claude-code) — 22 specialized agents orchestrated through sequential pipelines with structured handoffs.
 
 <br>
 
-[![Claude Code](https://img.shields.io/badge/Claude_Code-Agent_Teams-7C3AED?style=flat-square&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0id2hpdGUiIGQ9Ik0xMiAyQzYuNDggMiAyIDYuNDggMiAxMnM0LjQ4IDEwIDEwIDEwIDEwLTQuNDggMTAtMTBTMTcuNTIgMiAxMiAyem0wIDE4Yy00LjQyIDAtOC0zLjU4LTgtOHMzLjU4LTggOC04IDggMy41OCA4IDgtMy41OCA4LTggNHoiLz48L3N2Zz4=)](https://docs.anthropic.com/en/docs/claude-code)
+[![Claude Code](https://img.shields.io/badge/Claude_Code-Agent_Teams-7C3AED?style=flat-square&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0id2hpdGUiIGQ9Ik0xMiAyQzYuNDggMiAyIDYuNDggMiAxMnM0LjQ4IDEwIDEwIDEwIDEwLTQuNDggMTAtMTBTMTcuNTIgMiAxMiAyem0wIDE4Yy00LjQyIDAtOC0zLjU4LTgtOHMzLjU4LTggOC04IDggMy41OCA4IDgtMy41OCA0LTggNHoiLz48L3N2Zz4=)](https://docs.anthropic.com/en/docs/claude-code)
 [![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)](https://python.org)
 [![Solidity](https://img.shields.io/badge/Solidity-Foundry-363636?style=flat-square&logo=solidity&logoColor=white)](https://book.getfoundry.sh/)
 [![License](https://img.shields.io/badge/License-MIT-22c55e?style=flat-square)](LICENSE)
@@ -21,7 +21,7 @@ Built on [Claude Code Agent Teams](https://docs.anthropic.com/en/docs/claude-cod
 
 | CTF Solved | Bug Bounty Targets | AI Agents | MCP Servers | Knowledge Docs | Security Tools |
 |:----------:|:------------------:|:---------:|:-----------:|:--------------:|:--------------:|
-| **20** | **30+** | **17** | **12** | **242K+** | **40+** |
+| **20** | **30+** | **22** | **12** | **242K+** | **40+** |
 
 <br>
 
@@ -31,24 +31,42 @@ Built on [Claude Code Agent Teams](https://docs.anthropic.com/en/docs/claude-cod
 
 ---
 
-## What It Does
-
-Terminator doesn't just find vulnerabilities — it **verifies** them.
-
-- Every CTF exploit is tested **3x locally** before remote execution
-- Every bug bounty finding requires a **working PoC** before report generation
-- Every report passes **adversarial triage simulation** before submission
+## Demo
 
 ```
-You: "pwnable.kr fd 풀어줘. SSH: fd@pwnable.kr -p2222 (pw: guest)"
+You: "Solve pwnable.kr fd. SSH: fd@pwnable.kr -p2222 (pw: guest)"
 
 Terminator:
-  → spawns @reverser  → analyzes binary, produces attack map
-  → spawns @chain     → builds exploit from attack map
-  → spawns @critic    → cross-verifies offsets with gdb/r2
-  → spawns @verifier  → runs exploit 3x locally, then remote
-  → FLAG_FOUND: mama, are you prout of me?
+  -> spawns @reverser  -> analyzes binary, produces attack map
+  -> spawns @chain     -> builds exploit from attack map
+  -> spawns @critic    -> cross-verifies offsets with gdb/r2
+  -> spawns @verifier  -> runs exploit 3x locally, then remote
+  -> FLAG_FOUND: mama, are you prout of me?
 ```
+
+```
+You: "Hunt high-critical bugs on Immunefi until you find one"
+
+Terminator:
+  -> spawns @target_evaluator  -> scores ROI, returns GO
+  -> spawns @scout + @analyst  -> parallel recon + CVE matching
+  -> spawns @exploiter         -> develops working PoC
+  -> spawns @critic            -> fact-checks report
+  -> spawns @triager_sim       -> attacks report before submission
+  -> SUBMIT: CWE-306 ATO chain, CVSS 7.4 High
+```
+
+---
+
+## How It Works
+
+Terminator is not a single model prompt. It is a **team of 22 AI agents** coordinated by an orchestrator through sequential pipelines.
+
+- **Adaptive pipeline selection** -- the orchestrator picks the right agent sequence based on challenge type (pwn, reversing, web, firmware, smart contract)
+- **Structured handoffs** -- each agent produces a typed artifact (attack map, trigger report, exploit script) that feeds into the next stage
+- **Verification-first** -- every exploit is tested 3x locally before remote execution; every bug bounty report requires a working PoC
+- **Anti-hallucination** -- a dedicated critic agent cross-verifies all addresses, offsets, and constants with independent tool runs (gdb, r2)
+- **Crash recovery** -- checkpoint protocol lets agents resume from exact point of failure after context compaction
 
 ---
 
@@ -85,9 +103,7 @@ Terminator:
           └──────────┴──────────┴───────────┴──────────┴─────────────┘
 ```
 
-### Structured Handoffs
-
-Agents communicate through structured artifact passing — no context is lost between stages:
+Agents communicate through structured artifact passing -- no context is lost between stages:
 
 ```
 [HANDOFF from @reverser to @chain]
@@ -99,64 +115,130 @@ Agents communicate through structured artifact passing — no context is lost be
 
 ---
 
+## Quick Start
+
+### Prerequisites
+
+- [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) with Anthropic API key
+- Python 3.10+ with pwntools, z3-solver, angr
+- gdb with pwndbg or GEF, radare2
+- Docker (optional, for full infrastructure stack)
+
+### Interactive Mode
+
+```bash
+cd Terminator && claude
+
+# CTF:
+# "Solve pwnable.kr fd. SSH: fd@pwnable.kr -p2222 (pw: guest)"
+
+# Bug Bounty:
+# "Hunt high-critical bugs on Immunefi"
+```
+
+### Autonomous Mode
+
+```bash
+./terminator.sh ctf /path/to/challenge.zip     # CTF
+./terminator.sh bounty https://target.com       # Bug bounty
+./terminator.sh status                          # Monitor
+```
+
+### Dashboard
+
+```bash
+# Standalone (no Docker)
+cd web && pip install -r requirements.txt && uvicorn app:app --port 3000
+
+# Full stack (6 Docker services)
+docker compose up -d
+# Open http://localhost:3000
+```
+
+---
+
 ## Pipelines
 
-### CTF — Adaptive Pipeline Selection
+### CTF -- Adaptive Pipeline Selection
 
 | Condition | Pipeline | Agents |
 |:----------|:---------|:------:|
-| **Trivial** — source provided, 1-3 line bug | Direct solve | 0 |
-| **Reversing / Crypto** — math inverse needed | `reverser → solver → critic → verifier → reporter` | 5 |
-| **Pwn (clear vuln)** — obvious overflow/fmt | `reverser → chain → critic → verifier → reporter` | 5 |
-| **Pwn (unclear vuln)** — crash discovery needed | `reverser → trigger → chain → critic → verifier → reporter` | 6 |
-| **Web** — injection, SSRF, auth bypass | `scout → analyst → exploiter → reporter` | 4 |
-| **Firmware** — ARM binary diff, emulated PoC | `fw_profiler → fw_inventory → fw_surface → fw_validator → reporter` | 5 |
+| **Trivial** -- source provided, 1-3 line bug | Direct solve | 0 |
+| **Reversing / Crypto** -- math inverse needed | `reverser -> solver -> critic -> verifier -> reporter` | 5 |
+| **Pwn (clear vuln)** -- obvious overflow/fmt | `reverser -> chain -> critic -> verifier -> reporter` | 5 |
+| **Pwn (unclear vuln)** -- crash discovery needed | `reverser -> trigger -> chain -> critic -> verifier -> reporter` | 6 |
+| **Web** -- injection, SSRF, auth bypass | `scout -> analyst -> exploiter -> reporter` | 4 |
+| **Firmware** -- ARM binary diff, emulated PoC | `fw_profiler -> fw_inventory -> fw_surface -> fw_validator -> reporter` | 5 |
 
-### Bug Bounty — v3 Pipeline (7 Phases)
+### Bug Bounty -- v3 Pipeline
+
+> [!IMPORTANT]
+> **Iron Rule**: No Exploit, No Report. Findings without a working PoC are automatically discarded.
+
+<details>
+<summary><b>7-Phase Pipeline Details</b></summary>
 
 ```
 Phase 0   @target_evaluator     GO / NO-GO assessment (ROI, competition, tech stack)
-          ─── GO gate ────────────────────────────────────────────────
+          --- GO gate --------------------------------------------------------
 Phase 0.5 @scout                Automated tool scan (Slither, Semgrep, Mythril)
 Phase 1   @scout + @analyst     Parallel recon + duplicate pre-screen + CVE matching
 Phase 1.5 @analyst (N parallel) OWASP-category hunting (large codebases only)
 Phase 2   @exploiter            PoC development + Quality Tier gate (Tier 1-2 only)
 Phase 3   @reporter             Report draft + CVSS
-Phase 4   @critic + @architect  2-round review: facts → framing
+Phase 4   @critic + @architect  2-round review: facts -> framing
 Phase 4.5 @triager_sim          Adversarial triage (SUBMIT / STRENGTHEN / KILL)
 Phase 5   @reporter             Final report + ZIP packaging
 Phase 6   TeamDelete            Cleanup
 ```
 
-> **Iron Rule**: No Exploit, No Report. Findings without a working PoC are automatically discarded.
+**Quality gates at every transition:**
+- Phase 0 GO/NO-GO prevents wasted effort on over-audited targets
+- Phase 2 PoC Tier gate discards theoretical-only findings (Tier 3-4)
+- Phase 4.5 triager simulation attacks the report before submission
+- Coverage check ensures 80%+ endpoint testing before Phase 2
+
+</details>
 
 ---
 
 ## Agents
 
-### CTF Agents
+22 specialized agents defined in `.claude/agents/` (~7,900 lines of definitions).
+
+<details>
+<summary><b>CTF Agents (8)</b></summary>
 
 | Agent | Role | Model | Output |
 |:------|:-----|:-----:|:-------|
 | **reverser** | Binary analysis, protection detection, attack surface mapping | Sonnet | `reversal_map.md` |
 | **trigger** | Crash discovery, input minimization, primitive identification | Sonnet | `trigger_report.md` |
 | **solver** | Reverse computation for reversing/crypto challenges | Opus | `solve.py` |
-| **chain** | Multi-stage exploit: leak → overwrite → shell | Opus | `solve.py` |
+| **chain** | Multi-stage exploit: leak -> overwrite -> shell | Opus | `solve.py` |
 | **critic** | Cross-verification of offsets, constants, logic | Opus | `critic_review.md` |
-| **verifier** | Local 3x reproduction → remote execution | Sonnet | `FLAG_FOUND` |
+| **verifier** | Local 3x reproduction -> remote execution | Sonnet | `FLAG_FOUND` |
 | **reporter** | Writeup with failed attempts and techniques | Sonnet | `knowledge/challenges/<name>.md` |
+| **ctf-solver** | Legacy single-agent for trivial challenges | Sonnet | `solve.py` |
 
-### Bug Bounty Agents
+</details>
+
+<details>
+<summary><b>Bug Bounty Agents (7)</b></summary>
 
 | Agent | Role | Model | Output |
 |:------|:-----|:-----:|:-------|
 | **target_evaluator** | Program ROI scoring, GO/NO-GO gate | Sonnet | `target_assessment.md` |
 | **scout** | Recon + duplicate pre-screen + automated tool scanning | Sonnet | `recon_report.json` |
-| **analyst** | CVE matching, source→sink tracing, confidence scoring | Sonnet | `vulnerability_candidates.md` |
+| **analyst** | CVE matching, source->sink tracing, confidence scoring | Sonnet | `vulnerability_candidates.md` |
 | **exploiter** | PoC development, quality tier classification | Opus | PoC scripts + evidence |
-| **triager_sim** | Adversarial triage — attacks report before submission | Opus | SUBMIT / STRENGTHEN / KILL |
+| **triager_sim** | Adversarial triage -- attacks report before submission | Opus | SUBMIT / STRENGTHEN / KILL |
+| **source-auditor** | Deep source code audit, cross-file taint analysis | Opus | `audit_findings.md` |
+| **defi-auditor** | Smart contract analysis, DeFi-specific vulnerability patterns | Opus | `defi_audit.md` |
 
-### Firmware Agents
+</details>
+
+<details>
+<summary><b>Firmware Agents (4)</b></summary>
 
 | Agent | Role | Model | Output |
 |:------|:-----|:-----:|:-------|
@@ -165,96 +247,80 @@ Phase 6   TeamDelete            Cleanup
 | **fw_surface** | Attack surface mapping, binary diff analysis | Sonnet | `attack_surface.md` |
 | **fw_validator** | QEMU emulation, dynamic PoC validation | Sonnet | `validation_results.md` |
 
-### Agent Resilience
+</details>
 
-All work agents implement a **checkpoint protocol** for crash/compaction recovery:
+<details>
+<summary><b>Specialized Agents (3)</b></summary>
 
-| Mechanism | Purpose | How |
-|:----------|:--------|:----|
-| **checkpoint.json** | State persistence across compaction | Agent writes JSON at every phase transition with status, completed steps, critical facts |
-| **Fake Idle Detection** | Catch agents that stopped mid-work | Orchestrator reads `checkpoint.status` — `"in_progress"` + idle = fake idle, re-spawn with context |
-| **Resume on Re-spawn** | No duplicate work | New agent reads existing checkpoint.json, skips completed phases |
-| **Error Reporting** | Environment blockers | `checkpoint.status: "error"` with description — Orchestrator fixes before re-spawn |
+| Agent | Role | Model | Output |
+|:------|:-----|:-----:|:-------|
+| **mobile-analyst** | Android/iOS app analysis, API interception | Sonnet | `mobile_findings.md` |
+| **recon-scanner** | Automated reconnaissance, subdomain/port discovery | Sonnet | `recon_results.json` |
+| **web-tester** | Web application testing, auth bypass, injection | Sonnet | `web_findings.md` |
 
-```
-Orchestrator idle recovery flow:
-  1. Read checkpoint.json
-  2. status=="completed" + all artifacts exist → next pipeline stage
-  3. status=="in_progress" → fake idle → message 1x → still idle → re-spawn with checkpoint
-  4. status=="error" → fix environment → re-spawn
-  5. No checkpoint → agent never started → re-spawn immediately
-```
+</details>
 
-**Key Rule**: Never assume "artifact exists = work complete." Only `checkpoint.status == "completed"` is trustworthy.
+<details>
+<summary><b>Agent Resilience -- Checkpoint Protocol</b></summary>
+
+All work agents implement a checkpoint protocol for crash/compaction recovery:
+
+- **checkpoint.json** -- Agent writes state at every phase transition (status, completed steps, critical facts)
+- **Fake Idle Detection** -- Orchestrator reads checkpoint status; `in_progress` + idle = re-spawn with context
+- **Resume on Re-spawn** -- New agent reads existing checkpoint, skips completed phases
+- **Error Reporting** -- `status: "error"` with description; orchestrator fixes environment before re-spawn
+
+> [!NOTE]
+> Never assume "artifact exists = work complete." Only `checkpoint.status == "completed"` is trustworthy.
+
+</details>
 
 ---
 
-## Dashboard
+## Knowledge Engine
 
-A real-time web UI for monitoring all operations — runs in **standalone mode** with zero external dependencies.
+A unified full-text search over **242K+ security documents** -- zero external dependencies, built on SQLite FTS5 with BM25 ranking.
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│  TERMINATOR                                        ● WebSocket  │
-├──────────┬──────────────┬──────────────┬──────────┬─────────────┤
-│ CTF      │ Bug Bounty   │ Infra-       │ Findings │ Attack      │
-│ Sessions │ Missions     │ structure    │          │ Graph       │
-├──────────┴──────────────┴──────────────┴──────────┴─────────────┤
-│                                                                  │
-│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐           │
-│  │ 20      │  │ 30+     │  │ 114+    │  │ 242K+   │           │
-│  │ FLAGS   │  │ TARGETS │  │ FINDINGS│  │ KB DOCS │           │
-│  └─────────┘  └─────────┘  └─────────┘  └─────────┘           │
-│                                                                  │
-│  Severity Distribution     Tool Health         Live Log          │
-│  ████ CRITICAL  12         ● Radare2    up     [session.log     │
-│  ██████ HIGH    18         ● GDB        up      tail -f ...]    │
-│  ████████ MED   34         ● Nuclei     up                      │
-│  ██ LOW         8          ● Slither    up                      │
-│  █ INFO         42         ● CodeQL     up                      │
-│                            ● Foundry    up                      │
-│  D3 Force-Directed Attack Graph                                  │
-│  ┌──────────────────────────────────────────────────┐           │
-│  │  (target) ──→ (finding) ──→ (technique)          │           │
-│  │     ↓             ↓              ↓               │           │
-│  │  (service)    (exploit)     (report)             │           │
-│  └──────────────────────────────────────────────────┘           │
-└──────────────────────────────────────────────────────────────────┘
+| Source | Documents | Content |
+|:-------|----------:|:--------|
+| Internal techniques | 71 | Attack patterns, CTF writeups |
+| External repos (25) | 8,666 | HackTricks, GTFOBins, PayloadsAllTheThings, how2heap, OWASP MASTG |
+| ExploitDB | 46,960 | Exploit descriptions, platforms, CVEs |
+| Nuclei templates | 14,693 | Vulnerability detection templates with severity |
+| PoC-in-GitHub | 18,077 | CVE proof-of-concept repositories |
+| trickest-cve | 154,467 | CVE details with products, CWE, PoC links |
+
+Agents query via the `knowledge-fts` MCP server:
+
+```python
+technique_search("heap tcache poisoning")     # top 5 technique docs
+exploit_search("apache struts rce")            # ExploitDB + nuclei + PoC
+search_all("race condition double spend")      # all 242K docs ranked
 ```
 
-### 5 Tabs
+<details>
+<summary><b>Auto-Rebuild and CLI</b></summary>
 
-| Tab | Data Source | Features |
-|:----|:-----------|:---------|
-| **CTF Sessions** | `reports/` directory | Session list, flags, writeups, live log tailing via WebSocket |
-| **Bug Bounty Missions** | `targets/` directory | Pipeline phase tracker, GO/NO-GO status, findings per mission |
-| **Infrastructure** | System + Docker | 16+ tool health checks, Docker service status, RAG stats |
-| **Findings** | Filesystem + DB | Aggregated findings with CVSS auto-extraction, severity breakdown |
-| **Attack Graph** | Neo4j or filesystem | D3 force-directed graph — targets, findings, techniques, services |
-
-### Two Operating Modes
-
-| Mode | Requirements | Capabilities |
-|:-----|:-------------|:-------------|
-| **Standalone** (default) | Python + FastAPI only | Filesystem-based findings aggregation, tool health, attack graph from markdown, agent history from team configs |
-| **Full Stack** (optional) | Docker Compose | All standalone features + pgvector RAG, Neo4j graph DB, Ollama embeddings, LiteLLM multi-model proxy |
+A PostToolUse hook automatically re-indexes when `knowledge/techniques/` or `knowledge/challenges/` files are modified. Full rebuild: ~4 minutes. Incremental update: 0.13 seconds.
 
 ```bash
-# Standalone — no Docker needed
-cd web && uvicorn app:app --host 0.0.0.0 --port 3000
-
-# Full Stack — 6 Docker services
-cp .env.example .env  # Configure credentials before production use
-docker compose up -d
+python tools/knowledge_indexer.py --rebuild    # Full rebuild
+python tools/knowledge_indexer.py --search "reentrancy flash loan"
+python tools/knowledge_indexer.py --stats
 ```
+
+</details>
 
 ---
 
 ## Toolchain
 
-### MCP Servers — AI-Native Tool Integration
+### MCP Servers -- AI-Native Tool Integration
 
-12 MCP servers give agents direct programmatic access to security tools:
+12 MCP servers give agents direct programmatic access to security tools.
+
+<details>
+<summary><b>All 12 MCP Servers</b></summary>
 
 | Server | Capability |
 |:-------|:-----------|
@@ -271,71 +337,41 @@ docker compose up -d
 | **graphrag-security** | Security knowledge graph: exploit lookup, similar findings, drift detection |
 | **knowledge-fts** | 242K+ document BM25 search across techniques, ExploitDB, nuclei, PoC, trickest-cve |
 
-### Security Tools
-
-<details>
-<summary><b>Reverse Engineering & Exploit Dev</b></summary>
-
-| Category | Tools |
-|:---------|:------|
-| Disassembly | radare2, objdump, strings, readelf, nm |
-| Decompilation | Ghidra (MCP), jadx |
-| Debugging | gdb + pwndbg + GEF (93 commands), strace |
-| Symbolic | angr, unicorn, z3-solver, keystone |
-| Exploit | pwntools, ROPgadget, ropper, one_gadget |
-| Crypto | pycryptodome, sympy, z3-solver |
-
 </details>
 
 <details>
-<summary><b>Web Security</b></summary>
+<summary><b>Security Tools (40+)</b></summary>
 
-| Category | Tools |
-|:---------|:------|
-| Injection | sqlmap, commix, dalfox (XSS) |
-| SSRF | SSRFmap (18+ modules) |
-| Recon | ffuf, subfinder, katana, httpx, gau, waybackurls, arjun |
-| Scanning | nuclei (12K+ templates), trufflehog (800+ secret types) |
-| Upload | fuxploider |
-| Crawling | crawl4ai (Playwright-based, JS rendering, stealth mode) |
+**Reverse Engineering & Exploit Dev**
+- Disassembly: radare2, objdump, strings, readelf, nm
+- Decompilation: Ghidra (MCP), jadx
+- Debugging: gdb + pwndbg + GEF (93 commands), strace
+- Symbolic: angr, unicorn, z3-solver, keystone
+- Exploit: pwntools, ROPgadget, ropper, one_gadget
+- Crypto: pycryptodome, sympy, z3-solver
 
-</details>
+**Web Security**
+- Injection: sqlmap, commix, dalfox (XSS)
+- SSRF: SSRFmap (18+ modules)
+- Recon: ffuf, subfinder, katana, httpx, gau, waybackurls, arjun
+- Scanning: nuclei (12K+ templates), trufflehog (800+ secret types)
+- Crawling: crawl4ai (Playwright-based, JS rendering, stealth mode)
 
-<details>
-<summary><b>Code Analysis & Smart Contracts</b></summary>
+**Code Analysis & Smart Contracts**
+- Semantic: CodeQL (taint tracking, variant analysis)
+- Static: Semgrep (custom rule authoring)
+- Smart Contract: Slither (100+ detectors), Mythril (EVM symbolic), Foundry 1.5.1
+- AI: Gemini CLI (gemini-3-pro-preview)
 
-| Category | Tools |
-|:---------|:------|
-| Semantic | CodeQL (taint tracking, variant analysis) |
-| Static | Semgrep (custom rule authoring) |
-| Smart Contract | Slither (100+ detectors), Mythril (EVM symbolic), Foundry 1.5.1 |
-| AI | Gemini CLI (gemini-3-pro-preview) |
+**Firmware Analysis**
+- QEMU ARM user-mode emulation, rootfs mounting
+- Binary diff across firmware versions
+- Architecture detection, library inventory
 
-</details>
-
-<details>
-<summary><b>Firmware Analysis</b></summary>
-
-| Category | Tools |
-|:---------|:------|
-| Emulation | QEMU ARM user-mode, rootfs mounting |
-| Diffing | Binary diff across firmware versions |
-| Profiling | Architecture detection, library inventory |
-| Validation | Dynamic PoC on emulated environment |
-
-</details>
-
-<details>
-<summary><b>Reference Databases</b></summary>
-
-| Database | Coverage |
-|:---------|:---------|
-| ExploitDB | 47K+ exploits |
-| PoC-in-GitHub | 18K+ CVE PoCs |
-| PayloadsAllTheThings | 70+ vuln categories |
-| trickest-cve | 154K+ CVE PoCs |
-| SecLists | Wordlists, passwords, discovery |
-| HackTricks + GTFOBins | Privilege escalation, post-exploitation |
+**Reference Databases**
+- ExploitDB (47K+ exploits), PoC-in-GitHub (18K+ CVE PoCs)
+- PayloadsAllTheThings (70+ vuln categories), trickest-cve (154K+ CVE PoCs)
+- HackTricks + GTFOBins, SecLists
 
 </details>
 
@@ -359,127 +395,9 @@ docker compose up -d
 
 ---
 
-## Knowledge Search Engine
-
-A unified full-text search over **242,934 security documents** — zero external dependencies, built on SQLite FTS5 with BM25 ranking.
-
-| Source | Documents | Content |
-|:-------|----------:|:--------|
-| Internal techniques | 71 | Attack patterns, CTF writeups |
-| External repos (25) | 8,666 | HackTricks, GTFOBins, PayloadsAllTheThings, how2heap, OWASP MASTG |
-| ExploitDB | 46,960 | Exploit descriptions, platforms, CVEs |
-| Nuclei templates | 14,693 | Vulnerability detection templates with severity |
-| PoC-in-GitHub | 18,077 | CVE proof-of-concept repositories |
-| trickest-cve | 154,467 | CVE details with products, CWE, PoC links |
-
-### MCP Integration
-
-Agents query the knowledge base via the `knowledge-fts` MCP server:
-
-```python
-technique_search("heap tcache poisoning")     # → top 5 technique docs
-exploit_search("apache struts rce")            # → ExploitDB + nuclei + PoC
-search_all("race condition double spend")      # → all 242K docs ranked
-```
-
-### Auto-Rebuild
-
-A PostToolUse hook automatically re-indexes when `knowledge/techniques/` or `knowledge/challenges/` files are modified. Full rebuild: ~4 minutes. Incremental update: 0.13 seconds.
-
----
-
-## Competitor-Adopted Patterns
-
-Patterns ported from analysis of [10 open-source security AI frameworks](knowledge/techniques/competitor_analysis.md):
-
-| Pattern | Source | Implementation | Impact |
-|:--------|:-------|:---------------|:-------|
-| **Web Exploit Chain Engine** | NeuroSploit | `tools/web_chain_engine.py` (820 LOC) | SSRF→internal, SQLi→DB-type, 10 auto-chain rules |
-| **Flag Pattern Detector** | PentestGPT | `tools/flag_detector.py` (275 LOC) | 8+ regex patterns, strict validation, DH/FLAG/CTF/GoN/CYAI formats |
-| **Anti-Hallucination Prompts** | NeuroSploit | `tools/validation_prompts.py` (486 LOC) | 8 composable prompts, speculative language detection, 0-100 confidence scoring |
-| **Security-Aware Context Preservation** | CyberStrikeAI | 6 agent definitions updated | Credentials, exploit primitives, failed attempts survive context compression |
-| **MITRE Auto-Mapping** | RedAmon | `tools/mitre_mapper.py` extended | 36 CWE→CAPEC→ATT&CK mappings, `get_context_for_finding()` for agent injection |
-
-### Anti-Hallucination System
-
-The `critic` and `triager_sim` agents enforce a 6-point validation checklist:
-
-1. **Evidence Check** — Every claim must cite specific output (exact string, header, timing)
-2. **Negative Controls** — Baseline comparison mandatory (normal vs payload response)
-3. **Proof of Execution** — Per-vuln-type: XSS must fire JS, SQLi must extract DB content
-4. **Speculative Language Detection** — "could be", "might be", "potentially" → auto-flag
-5. **Severity Calibration** — 200 OK without data ≠ High
-6. **Confidence Score** — 0-100, below 70 = REJECT
-
----
-
-## Infrastructure
-
-### Standalone Mode (Default)
-
-No Docker required. The dashboard reads directly from the filesystem:
-
-| Source | What It Reads |
-|:-------|:-------------|
-| `targets/` | 30+ mission directories with assessments, findings, reports |
-| `reports/` | CTF session logs, flags, writeups |
-| `~/.claude/teams/` | Agent team configs for run history |
-| `knowledge/knowledge.db` | 242K+ document FTS5 search index |
-| System `$PATH` | 16 security tools auto-detected via `shutil.which()` |
-
-Aggregates **114+ findings** with automatic CVSS extraction from markdown reports. Builds D3-compatible attack graphs from vulnerability candidates, recon data, and report files — no Neo4j needed.
-
-### Full Stack Mode (Optional)
-
-```bash
-docker compose up -d
-```
-
-| Service | Port | Purpose |
-|:--------|:----:|:--------|
-| **pgvector** | 5433 | RAG vector database |
-| **ollama** | 11434 | Local embedding models |
-| **rag-api** | 8100 | ExploitDB/PoC knowledge search |
-| **neo4j** | 7474 | Attack surface graph database |
-| **litellm** | 4000 | Multi-model proxy (Claude/Gemini/DeepSeek) |
-| **web-ui** | 3000 | Dashboard with full DB-backed features |
-
-### Pipeline Tooling
-
-| Tool | Purpose |
-|:-----|:--------|
-| **MITRE Mapper** | CVE → CWE → CAPEC → ATT&CK mapping (36 CWEs) |
-| **Knowledge FTS5 DB** | 242K+ document unified search with BM25 ranking |
-| **Web Chain Engine** | Exploit chain composition (10 rules, NeuroSploit port) |
-| **Validation Prompts** | Anti-hallucination prompt library (8 composable prompts) |
-| **Flag Detector** | CTF flag pattern detection (8+ formats, strict mode) |
-| **Attack Graph** | Neo4j or filesystem-backed attack surface visualization |
-| **DAG Orchestrator** | Pipeline scheduling (CTF pwn/rev, bounty, firmware) |
-| **Pipeline Controller** | Claude CLI handler for deterministic DAG→agent execution |
-| **E2E Replay Benchmark** | solve.py re-execution for regression detection |
-| **Recon Pipeline** | 6-phase automated reconnaissance |
-| **SARIF Generator** | GitHub Code Scanning compatible output |
-| **PDF Generator** | Report PDF generation |
-
-### Recent Updates (2026-02)
-
-- **Knowledge FTS5 DB** — 242K+ documents unified search (techniques, ExploitDB, nuclei, PoC, trickest-cve, HackTricks, GTFOBins)
-- **Competitor Pattern Adoption** — 5 P0 patterns ported from NeuroSploit, PentestGPT, CyberStrikeAI, RedAmon
-- **Anti-Hallucination System** — 8 composable validation prompts, speculative language detection, confidence scoring
-- **Context Preservation** — Security-aware compression for 6 combat agents
-- **Auto-rebuild hooks** — Knowledge DB auto-re-indexes on technique file changes
-- **Secrets externalized** — All docker-compose.yml credentials use `${VAR:-default}` pattern
-- **Custom agent types** — terminator.sh autonomous mode uses proper agent definitions (not generic)
-- **Deterministic pipeline** — DAG engine connected to Claude CLI via `claude_handler.py`
-- **E2E replay benchmark** — Automated solve.py re-execution for regression detection
-- **Heap exploitation protocol** — chain.md sub-protocol for allocator fingerprinting, glibc-version-aware techniques
-- **GraphRAG knowledge graph** — Exploit lookup, similar findings, drift detection via MCP
-
----
-
 ## Track Record
 
-### CTF Challenges — 20 Solved
+### CTF Challenges -- 20 Solved
 
 | Category | Count | Techniques Used |
 |:---------|:-----:|:----------------|
@@ -488,12 +406,11 @@ docker compose up -d
 | Crypto | 2 | AES-ECB, z3 constraint solving |
 | Misc (logic, filter bypass) | 2 | Operator precedence, binary search |
 
-### Bug Bounty — 30+ Targets Assessed
+### Bug Bounty -- 30+ Targets Assessed
 
 | Metric | Count |
 |:-------|------:|
 | Programs assessed | 30+ |
-| Knowledge documents indexed | 242K+ |
 | Platforms | Immunefi, HackerOne, Bugcrowd, PSIRT |
 | Categories | Smart Contract (DeFi), Web App, VPN, IoT/Firmware, AI/SDK |
 | Smart contracts analyzed | 50+ |
@@ -504,81 +421,62 @@ docker compose up -d
 
 ---
 
-## Research Foundations
+<details>
+<summary><b>Research Foundations</b></summary>
 
 Agent definitions incorporate patterns from 10+ LLM security frameworks:
 
 | Pattern | Origin | Implemented In |
 |:--------|:-------|:---------------|
-| Variant Analysis — CVE patch diffs as seeds | Google Big Sleep (Project Zero + DeepMind) | analyst |
+| Variant Analysis -- CVE patch diffs as seeds | Google Big Sleep (Project Zero + DeepMind) | analyst |
 | LLM-first PoV Generation | RoboDuck (AIxCC 3rd place) | chain, solver |
 | Symbolic + Neural Hybrid | ATLANTIS (AIxCC 1st place) | solver |
 | No Exploit, No Report | Shannon, XBOW | Orchestrator gate |
-| Iterative Context Gathering — 3-pass backtracing | Vulnhuntr | analyst |
-| Dual-Approach Parallel — 2 strategies after 3 failures | RoboDuck | Orchestrator |
+| Iterative Context Gathering -- 3-pass backtracing | Vulnhuntr | analyst |
+| Dual-Approach Parallel -- 2 strategies after 3 failures | RoboDuck | Orchestrator |
 | OWASP Parallel Hunters | Shannon | analyst (Phase 1.5) |
 | PoC Quality Tier Gate (1-4) | XBOW | exploiter |
 | Adversarial Triage Simulation | Internal | triager_sim |
 | Prompt Injection Guardrails | CAI (300+ LLM agents) | All agents |
 | 4-Layer Validation | NeuroSploit | critic, triager_sim |
 | Security-Aware Compression | CyberStrikeAI | All agents (context preservation) |
-| Shadow Graph (planned P1) | PentestAgent | Cross-agent knowledge synthesis |
 | Exploit Chain Rules | NeuroSploit | exploiter (web targets) |
 
----
+**Anti-Hallucination System** -- The `critic` and `triager_sim` agents enforce a 6-point validation:
 
-## Quick Start
+1. **Evidence Check** -- Every claim must cite specific output (exact string, header, timing)
+2. **Negative Controls** -- Baseline comparison mandatory (normal vs payload response)
+3. **Proof of Execution** -- Per-vuln-type: XSS must fire JS, SQLi must extract DB content
+4. **Speculative Language Detection** -- "could be", "might be", "potentially" auto-flagged
+5. **Severity Calibration** -- 200 OK without data is not High
+6. **Confidence Score** -- 0-100, below 70 = REJECT
 
-### Prerequisites
+**Competitor-Adopted Patterns** -- Ported from [10 open-source security AI frameworks](knowledge/techniques/competitor_analysis.md):
 
-- [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) with Anthropic API key
-- Python 3.10+ with pwntools, z3-solver, angr
-- gdb with pwndbg or GEF, radare2
-- Docker (optional, for full infrastructure stack)
+| Pattern | Source | Implementation |
+|:--------|:-------|:---------------|
+| Web Exploit Chain Engine | NeuroSploit | `tools/web_chain_engine.py` -- SSRF->internal, SQLi->DB-type auto-chain |
+| Flag Pattern Detector | PentestGPT | `tools/flag_detector.py` -- 8+ regex patterns, strict validation |
+| Anti-Hallucination Prompts | NeuroSploit | `tools/validation_prompts.py` -- 8 composable prompts, 0-100 confidence |
+| MITRE Auto-Mapping | RedAmon | `tools/mitre_mapper.py` -- 36 CWE->CAPEC->ATT&CK mappings |
 
-### Interactive Mode
-
-```bash
-cd Terminator && claude
-
-# CTF:
-# "Solve pwnable.kr fd. SSH: fd@pwnable.kr -p2222 (pw: guest)"
-
-# Bug Bounty:
-# "이뮤니파이에서 하이~크리티컬 취약점 찾을때까지 ㄱㄱ"
-```
-
-### Autonomous Mode
-
-```bash
-./terminator.sh ctf /path/to/challenge.zip     # CTF
-./terminator.sh bounty https://target.com       # Bug bounty
-./terminator.sh status                          # Monitor
-```
-
-### Dashboard
-
-```bash
-# Standalone (no Docker)
-cd web && pip install -r requirements.txt && uvicorn app:app --port 3000
-
-# Full stack
-docker compose up -d
-# Open http://localhost:3000
-```
+</details>
 
 ---
 
-## Project Structure
+<details>
+<summary><b>Project Structure</b></summary>
 
 ```
 Terminator/
-├── .claude/agents/          # 17 agent definitions (~4,300 lines)
+├── .claude/agents/          # 22 agent definitions (~7,900 lines)
 │   ├── reverser.md          #   Binary analysis
 │   ├── chain.md             #   Exploit chain building
 │   ├── critic.md            #   Cross-verification
+│   ├── defi-auditor.md      #   Smart contract / DeFi audit
+│   ├── mobile-analyst.md    #   Mobile app analysis
 │   ├── fw_*.md              #   Firmware analysis (4 agents)
-│   └── ...                  #   + 10 more specialists
+│   └── ...                  #   + 13 more specialists
 ├── knowledge/               # Accumulated experience
 │   ├── index.md             #   Master index
 │   ├── knowledge.db         #   FTS5 search DB (242K docs, ~245MB)
@@ -590,15 +488,15 @@ Terminator/
 │   ├── web_chain_engine.py  #   Web exploit chain engine (10 rules)
 │   ├── flag_detector.py     #   CTF flag pattern detector (8+ formats)
 │   ├── validation_prompts.py#   Anti-hallucination prompt library
-│   ├── mitre_mapper.py      #   CVE→CWE→CAPEC→ATT&CK (36 CWEs)
+│   ├── mitre_mapper.py      #   CVE->CWE->CAPEC->ATT&CK (36 CWEs)
 │   ├── recon_pipeline.py    #   6-phase recon orchestrator
 │   ├── attack_graph/        #   Neo4j + filesystem attack surface graphs
 │   ├── dag_orchestrator/    #   DAG pipeline scheduling + Claude CLI handler
 │   ├── sarif_generator.py   #   SARIF 2.1.0 output
 │   └── mcp-servers/         #   nuclei, codeql, semgrep, knowledge-fts, graphrag
 ├── web/                     # FastAPI + D3 dashboard (standalone + Docker)
-│   ├── app.py               #   REST API + WebSocket backend (1,255 lines)
-│   └── static/index.html    #   Single-page dashboard (5 tabs, 1,231 lines)
+│   ├── app.py               #   REST API + WebSocket backend
+│   └── static/index.html    #   Single-page dashboard (5 tabs)
 ├── targets/                 # Bug bounty workspaces (30+ missions)
 ├── tests/                   # CTF files + E2E replay benchmarks
 ├── CLAUDE.md                # Orchestrator instructions
@@ -607,15 +505,17 @@ Terminator/
 └── README.md
 ```
 
+</details>
+
 ---
 
 ## Security & Ethics
 
 This system is designed exclusively for **authorized** security work:
 
-- **CTF / Wargames** — Practice environments designed for learning
-- **Bug bounty programs** — Only targets with explicit authorization
-- **Security research** — Controlled environments with proper scope
+- **CTF / Wargames** -- Practice environments designed for learning
+- **Bug bounty programs** -- Only targets with explicit authorization
+- **Security research** -- Controlled environments with proper scope
 
 All findings follow responsible disclosure. Prompt injection guardrails protect agents from malicious code in analysis targets.
 
@@ -624,5 +524,9 @@ All findings follow responsible disclosure. Prompt injection guardrails protect 
 <div align="center">
 
 MIT License
+
+<br>
+
+[![Star History Chart](https://api.star-history.com/svg?repos=R00T-Kim/Terminator&type=Date)](https://star-history.com/#R00T-Kim/Terminator&Date)
 
 </div>
