@@ -8,7 +8,7 @@
 
 **Multi-agent AI system that autonomously solves CTF challenges and hunts bug bounties.**
 
-Built on [Claude Code Agent Teams](https://docs.anthropic.com/en/docs/claude-code) — 22 specialized agents orchestrated through sequential pipelines with structured handoffs.
+Built on [Claude Code Agent Teams](https://docs.anthropic.com/en/docs/claude-code) — 22 specialized agents orchestrated through sequential pipelines with structured handoffs and 6 automated quality gates.
 
 <br>
 
@@ -19,9 +19,9 @@ Built on [Claude Code Agent Teams](https://docs.anthropic.com/en/docs/claude-cod
 
 <br>
 
-| CTF Solved | Bug Bounty Targets | AI Agents | MCP Servers | Knowledge Docs | Security Tools |
-|:----------:|:------------------:|:---------:|:-----------:|:--------------:|:--------------:|
-| **20** | **30+** | **22** | **12** | **242K+** | **40+** |
+| CTF Solved | Bug Bounty Targets | AI Agents | MCP Servers | Pipeline Skills | Knowledge Docs | Security Tools |
+|:----------:|:------------------:|:---------:|:-----------:|:--------------:|:--------------:|:--------------:|
+| **20** | **30+** | **22** | **12** | **8** | **242K+** | **40+** |
 
 <br>
 
@@ -67,6 +67,7 @@ Terminator is not a single model prompt. It is a **team of 22 AI agents** coordi
 - **Verification-first** -- every exploit is tested 3x locally before remote execution; every bug bounty report requires a working PoC
 - **Anti-hallucination** -- a dedicated critic agent cross-verifies all addresses, offsets, and constants with independent tool runs (gdb, r2)
 - **Crash recovery** -- checkpoint protocol lets agents resume from exact point of failure after context compaction
+- **Automated quality gates** -- 6 pipeline skills (v6) automatically block OOS findings, weak PoCs, unrealistic threat models, and AI-generated template language before submission
 
 ---
 
@@ -81,7 +82,7 @@ Terminator is not a single model prompt. It is a **team of 22 AI agents** coordi
                   ┌──────────────────┼──────────────────┐
                   │                                      │
         ┌────────▼─────────┐                  ┌─────────▼────────┐
-        │   CTF Pipeline   │                  │  Bug Bounty v3   │
+        │   CTF Pipeline   │                  │  Bug Bounty v6   │
         │   (Sequential)   │                  │   (7 Phases)     │
         └────────┬─────────┘                  └─────────┬────────┘
                  │                                      │
@@ -170,7 +171,7 @@ docker compose up -d
 | **Web** -- injection, SSRF, auth bypass | `scout -> analyst -> exploiter -> reporter` | 4 |
 | **Firmware** -- ARM binary diff, emulated PoC | `fw_profiler -> fw_inventory -> fw_surface -> fw_validator -> reporter` | 5 |
 
-### Bug Bounty -- v3 Pipeline
+### Bug Bounty -- v6 Pipeline
 
 > [!IMPORTANT]
 > **Iron Rule**: No Exploit, No Report. Findings without a working PoC are automatically discarded.
@@ -179,24 +180,39 @@ docker compose up -d
 <summary><b>7-Phase Pipeline Details</b></summary>
 
 ```
-Phase 0   @target_evaluator     GO / NO-GO assessment (ROI, competition, tech stack)
+Phase 0   @target_evaluator     GO / NO-GO assessment + Hard NO-GO rules (v6)
+          oos-check skill       OOS pattern pre-screening (12 patterns)
           --- GO gate --------------------------------------------------------
+Phase 0.2 bb_preflight.py       Program rules generation + validation (MANDATORY)
 Phase 0.5 @scout                Automated tool scan (Slither, Semgrep, Mythril)
-Phase 1   @scout + @analyst     Parallel recon + duplicate pre-screen + CVE matching
+Phase 1   @scout + @analyst     Parallel recon + OOS cross-check per finding
+          coverage-gate skill   80%+ endpoint coverage required
 Phase 1.5 @analyst (N parallel) OWASP-category hunting (large codebases only)
-Phase 2   @exploiter            PoC development + Quality Tier gate (Tier 1-2 only)
+Phase 2   @exploiter            PoC development + poc-tier skill (Tier 1-2 only)
+          threat-model-check    Attack prerequisite validation
 Phase 3   @reporter             Report draft + CVSS
-Phase 4   @critic + @architect  2-round review: facts -> framing
-Phase 4.5 @triager_sim          Adversarial triage (SUBMIT / STRENGTHEN / KILL)
+Phase 4   @critic + @architect  2-round review: facts -> framing -> evidence fidelity
+Phase 4.5 @triager_sim          Adversarial triage + JSON feedback loop (max 3 iter)
+          slop-check skill      AI slop score (<=2 PASS, 3-5 STRENGTHEN, >5 KILL)
 Phase 5   @reporter             Final report + ZIP packaging
 Phase 6   TeamDelete            Cleanup
 ```
 
-**Quality gates at every transition:**
-- Phase 0 GO/NO-GO prevents wasted effort on over-audited targets
-- Phase 2 PoC Tier gate discards theoretical-only findings (Tier 3-4)
-- Phase 4.5 triager simulation attacks the report before submission
-- Coverage check ensures 80%+ endpoint testing before Phase 2
+**6 automated pipeline skills (v6 NEW):**
+
+| Skill | Gate | Blocks |
+|:------|:-----|:-------|
+| `oos-check` | Phase 0 + per-finding | OOS patterns (oracle staleness, admin-gated, etc.) |
+| `coverage-gate` | Phase 1->2 | <80% endpoint coverage (100% for small targets) |
+| `poc-tier` | Phase 2->3 | Tier 3-4 PoC (no live execution capture) |
+| `threat-model-check` | Phase 2 | Unrealistic attack prerequisites (2+ controlled) |
+| `slop-check` | Phase 4.5 | AI template language score >5 |
+| `checkpoint-validate` | Any phase | Fake idle / fake completion detection |
+
+**Additional quality gates:**
+- Phase 0 Hard NO-GO: 3+ audits, 2+ reputable audits, 100+ reports, 3yr+, source inaccessible
+- Phase 0.2 Program rules must pass validation before any agent spawns
+- Phase 4.5 triager_sim outputs structured JSON for automated reporter feedback loop
 
 </details>
 
@@ -480,14 +496,24 @@ The Interrogator has **asymmetric veto power**: any critical claim without live 
 
 ```
 Terminator/
-├── .claude/agents/          # 22 agent definitions (~7,900 lines)
-│   ├── reverser.md          #   Binary analysis
-│   ├── chain.md             #   Exploit chain building
-│   ├── critic.md            #   Cross-verification
-│   ├── defi-auditor.md      #   Smart contract / DeFi audit
-│   ├── mobile-analyst.md    #   Mobile app analysis
-│   ├── fw_*.md              #   Firmware analysis (4 agents)
-│   └── ...                  #   + 13 more specialists
+├── .claude/
+│   ├── agents/              # 22 agent definitions (~7,900 lines)
+│   │   ├── reverser.md      #   Binary analysis
+│   │   ├── chain.md         #   Exploit chain building
+│   │   ├── critic.md        #   Cross-verification + Security Council
+│   │   ├── target_evaluator.md  # GO/NO-GO + Hard NO-GO rules
+│   │   ├── triager_sim.md   #   Adversarial triage + JSON feedback
+│   │   ├── fw_*.md          #   Firmware analysis (4 agents)
+│   │   └── ...              #   + 16 more specialists
+│   └── skills/              # 8 pipeline skills (v6 NEW)
+│       ├── bounty/          #   Bug bounty pipeline orchestration
+│       ├── ctf/             #   CTF pipeline orchestration
+│       ├── oos-check/       #   Out-of-Scope pre-screening (12 patterns)
+│       ├── poc-tier/        #   PoC quality classification (Tier 1-4)
+│       ├── coverage-gate/   #   Endpoint coverage gate (80%+)
+│       ├── threat-model-check/  # Attack prerequisite validation
+│       ├── slop-check/      #   AI slop detection (0-10 score)
+│       └── checkpoint-validate/ # Agent idle/completion verification
 ├── knowledge/               # Accumulated experience
 │   ├── index.md             #   Master index
 │   ├── knowledge.db         #   FTS5 search DB (242K docs, ~245MB)
@@ -495,12 +521,12 @@ Terminator/
 │   └── techniques/          #   Reusable attack patterns + competitor analysis
 ├── research/                # LLM security framework analysis (14 docs)
 ├── tools/                   # Pipeline tooling
+│   ├── bb_preflight.py      #   Pipeline gate validator (rules, coverage, --json)
 │   ├── knowledge_indexer.py #   FTS5 DB builder (6 tables, zero dependencies)
 │   ├── web_chain_engine.py  #   Web exploit chain engine (10 rules)
 │   ├── flag_detector.py     #   CTF flag pattern detector (8+ formats)
 │   ├── validation_prompts.py#   Anti-hallucination prompt library
 │   ├── mitre_mapper.py      #   CVE->CWE->CAPEC->ATT&CK (36 CWEs)
-│   ├── recon_pipeline.py    #   6-phase recon orchestrator
 │   ├── attack_graph/        #   Neo4j + filesystem attack surface graphs
 │   ├── dag_orchestrator/    #   DAG pipeline scheduling + Claude CLI handler
 │   ├── sarif_generator.py   #   SARIF 2.1.0 output
@@ -510,7 +536,7 @@ Terminator/
 │   └── static/index.html    #   Single-page dashboard (5 tabs)
 ├── targets/                 # Bug bounty workspaces (30+ missions)
 ├── tests/                   # CTF files + E2E replay benchmarks
-├── CLAUDE.md                # Orchestrator instructions
+├── CLAUDE.md                # Orchestrator instructions (v6)
 ├── terminator.sh            # Autonomous mode launcher
 ├── docker-compose.yml       # Full stack infrastructure
 └── README.md

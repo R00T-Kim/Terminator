@@ -106,6 +106,7 @@
 | AXIS OS (Q3536-LVE) | Bugcrowd | Firmware (aarch64, D-Bus services) | **READY TO SUBMIT** — Systemic D-Bus Authorization Bypass (CWE-863). 5 services, 17 methods, CVSS 8.1 High. Incomplete patch of CVE-2025-0359/0360. PoC Tier 1 Gold. Critic+Architect+Triager_sim all SUBMIT. ~6hr. | `targets/axis-os/submission/` |
 | T-Mobile | Bugcrowd | Web/API (54 targets, Akamai WAF) | ABANDONED (unauth surface exhausted) — 200+ subdomains probed, 4 SSRF vectors tested, Adobe Campaign XXE deep-tested. All P4-P5 info disclosure only. P1/P2 requires account registration. ~4hr/$0. | `targets/t-mobile/` |
 | NAMUHX | FindTheGap | Mobile/API (Android IoT app) | **2 SUBMITTED** — #74190: CWE-306 ATO chain, CVSS 7.4 High. #74191: CWE-639 IDOR chain (3 endpoints, PII), CVSS 6.5 Medium. ~8hr total. | `targets/namuhx/` |
+| Keeper Security | Bugcrowd | Password Manager/PAM (20+ targets, Electron/Java/.NET/Python) | **CONDITIONAL GO (6.2/10)** — 신규 제품 라인(Connection Manager/AD Bridge/EPM/PAM) 집중. Guacamole CVE 체인 가능. Commander CLI 오픈소스 감사. 평가 완료 (2026-03-04). | `targets/keeper-security/target_assessment.md` |
 
 ### H1 Account Status (2026-02-17)
 - **API 제출 차단**: 계정 레벨 403 (모든 프로그램)

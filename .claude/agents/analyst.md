@@ -28,9 +28,18 @@ Before starting analysis:
    - Exclusion List (OOS vulnerability types)
 4. If `program_rules_summary.md` does NOT exist: **WARN Orchestrator** (not a hard block for analyst, but findings may overlap)
 
+### OOS 교차검증 (MANDATORY — 각 finding별, D3)
+**모든 finding 생성 시 `oos-check` skill 결과를 포함해야 함.**
+Orchestrator가 finding별로 OOS 체크를 수행하거나, analyst가 직접 패턴 매칭:
+- `scripts/oos_patterns.json`의 패턴과 finding 유형 교차 매칭
+- **OOS BLOCK** → vulnerability_candidates.md에서 자동 제외 + 제외 이유 기록
+- **OOS WARN** → bypass 리프레이밍 가능 여부 평가 후 포함/제외 결정
+- vulnerability_candidates.md의 각 finding에 `OOS Check: PASS/WARN/BLOCK` 필드 추가
+
 After analysis:
 - **Update `endpoint_map.md`** → mark analyzed endpoints as TESTED or EXCLUDED
 - Findings matching Known Issues = do NOT include in vulnerability_candidates.md
+- **OOS BLOCK findings = do NOT include in vulnerability_candidates.md**
 
 ## Mission
 1. **Read program rules** — extract exclusion filter (Known Issues, OOS types, already submitted)

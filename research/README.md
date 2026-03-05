@@ -49,6 +49,9 @@ Terminator의 Agent Teams 아키텍처를 개선하기 위해 분석한 외부 �
 | Structured Handoffs (CAI) | CAI/Shannon | CLAUDE.md (handoff protocol) |
 | Variant Analysis Seeds | Big Sleep | scout.md (CVE diff → seed) |
 | Dual-Approach Parallel | RoboDuck | CLAUDE.md (3 failures → 2 parallel) |
+| Pipeline Skills (v6) | Internal retrospective | `.claude/skills/` (6 automated gates: oos-check, poc-tier, coverage-gate, threat-model-check, slop-check, checkpoint-validate) |
+| Hard NO-GO Rules (v6) | 37-case retrospective | target_evaluator.md (3+ audits, 2+ reputable, 100+ reports = auto block) |
+| Triager JSON Feedback Loop | Internal retrospective | triager_sim.md → reporter.md (max 3 iterations) |
 
 ## Reading Guide
 

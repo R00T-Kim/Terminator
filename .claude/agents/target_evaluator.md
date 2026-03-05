@@ -249,12 +249,30 @@ AVOID (lowest ROI):
 |-----------|-----------------|
 | 0 audits | +2 (unaudited = gold) |
 | 1 audit | +0 (standard) |
-| 2 audits | -1 (well-covered) |
-| 3+ audits | **-3** (heavily picked) |
-| Reports Resolved 100+ | **-2** (crowded) |
-| Reports Resolved 500+ | **-3** (avoid) |
+| 2 audits (reputable: Nethermind, OZ, Trail of Bits, Zellic) | **AUTO NO-GO** |
+| 2 audits (other firms) | -1 (well-covered) |
+| 3+ audits | **AUTO NO-GO — 점수 계산 생략** |
+| Reports Resolved 100+ | **AUTO NO-GO** |
+| Reports Resolved 500+ | **AUTO NO-GO** |
 | Dedicated security team | -1 |
 | Recent scope expansion (< 3 months) | +2 (fresh code!) |
+| Last commit > 6개월 + 2+ audits | **AUTO NO-GO** |
+| Source private/inaccessible | **AUTO NO-GO** |
+
+### Hard NO-GO Rules (MANDATORY — override 불가, 점수제 무시)
+```
+if audit_count >= 3:
+    → AUTO NO-GO (점수 계산 생략)
+if audit_count >= 2 and auditors in [Nethermind, OZ, Trail of Bits, Zellic, Spearbit]:
+    → AUTO NO-GO (reputable 2+ = heavily covered)
+if reports_resolved >= 100:
+    → AUTO NO-GO
+if program_age > 3_years:
+    → AUTO NO-GO
+if source_inaccessible:
+    → AUTO NO-GO
+```
+**이 규칙은 점수와 무관하게 즉시 NO-GO.** CLAUDE.md와 동일한 기준.
 
 **Score interpretation (adjusted)**:
 - **8-10**: STRONG GO — high-value target, allocate full pipeline
@@ -387,6 +405,17 @@ if python3 /home/rootk1m/01_CYAI_Lab/01_Projects/Terminator/tools/infra_client.p
     --summary "Score: $SCORE/10, Decision: $DECISION" 2>/dev/null || true
 fi
 ```
+
+## Knowledge Pre-Search (MANDATORY — Orchestrator에게 suggested_searches 제공)
+
+target_assessment.md 출력 시 `suggested_searches` 필드를 반드시 포함:
+```markdown
+## Suggested Knowledge Searches (for Orchestrator HANDOFF injection)
+- technique_search: ["<취약점 유형1>", "<기술스택 관련>"]
+- exploit_search: ["<서비스/CVE>", "<프로토콜명>"]
+- challenge_search: ["<유사 타겟>"]
+```
+Orchestrator가 이 검색어로 `knowledge-fts` MCP를 실행하여 에이전트 HANDOFF에 `[KNOWLEDGE CONTEXT]` 섹션을 자동 주입.
 
 ## Knowledge Graph (Phase 0 Enhancement)
 - Use `mcp__graphrag-security__similar_findings` — check past analysis of similar targets

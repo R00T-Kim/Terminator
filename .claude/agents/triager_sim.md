@@ -279,6 +279,30 @@ If any YES → note "Novelty Bonus candidate" in output.
 - **KILL**: Report will be rejected. Reason: [specific]. Do NOT submit.
 ```
 
+## Structured JSON Output (MANDATORY — reporter 자동 피드백 루프용)
+
+triager_sim_result.md 외에 `triager_sim_result.json` 도 반드시 저장:
+```json
+{
+  "decision": "SUBMIT|STRENGTHEN|KILL",
+  "slop_score": 3,
+  "poc_tier": 2,
+  "issues": [
+    {
+      "severity": "HIGH|MEDIUM|LOW",
+      "category": "framing|poc|duplicate|oos|slop|severity",
+      "description": "구체적 문제 설명",
+      "fix_suggestion": "구체적 수정 방법",
+      "line_reference": "보고서 내 해당 위치 (선택)"
+    }
+  ],
+  "quality_rating": "LOW|GOOD|EXCEPTIONAL",
+  "predicted_multiplier": 1.0,
+  "bounty_estimate": {"min": 500, "max": 2000}
+}
+```
+**reporter는 이 JSON을 파싱하여 자동 수정 → triager_sim 재실행 (최대 3회)**
+
 ## Anti-Hallucination Check (Pre-Decision)
 
 Before SUBMIT/STRENGTHEN/KILL decision, verify:
@@ -314,7 +338,7 @@ Reference: `tools/validation_prompts.py` for programmatic checks (`check_specula
 - "Intended behavior" with no abuse-risk framing
 - Out of scope
 - Duplicate Risk HIGH with no differentiation
-- AI Slop Score > 5
+- AI Slop Score > 5 (use `slop-check` skill for measurement — 통일 기준: ≤2 PASS, 3-5 STRENGTHEN, >5 KILL)
 - Severity inflation > 2.0 CVSS points
 - No clear exploitation path
 

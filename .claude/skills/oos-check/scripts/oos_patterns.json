@@ -1,0 +1,134 @@
+{
+  "patterns": [
+    {
+      "id": "oracle-staleness",
+      "name": "Oracle Staleness / Stale Price Data",
+      "description": "Incorrect data supplied by third party oracles (Chainlink, etc.)",
+      "platforms": ["immunefi", "all"],
+      "keywords": ["oracle staleness", "stale price", "latestRoundData", "answeredInRound", "heartbeat"],
+      "severity": "BLOCK",
+      "bypass_possible": "Only if manipulation (flash loan, sandwich) — not simple staleness",
+      "lesson": "CapyFi: oracle staleness = auto OOS on Immunefi"
+    },
+    {
+      "id": "admin-gated",
+      "name": "Admin/Governance-Only Functions",
+      "description": "Bugs requiring admin/owner/governance access to trigger",
+      "platforms": ["immunefi", "all"],
+      "keywords": ["onlyOwner", "onlyAdmin", "governance", "admin-only", "restricted", "onlyGuardian"],
+      "severity": "BLOCK",
+      "bypass_possible": "Only if non-admin can trigger via proxy/delegation",
+      "lesson": "Most Immunefi programs: admin trust assumed"
+    },
+    {
+      "id": "dbus-local",
+      "name": "D-Bus / Local Access Authorization Bypass",
+      "description": "D-Bus authorization bypasses without privilege escalation to root",
+      "platforms": ["all"],
+      "keywords": ["D-Bus", "dbus", "local access", "authorization bypass"],
+      "severity": "BLOCK",
+      "bypass_possible": "Only if vertical privilege escalation to root is demonstrated",
+      "lesson": "AXIS: D-Bus auth bypass OOS unless root escalation chain"
+    },
+    {
+      "id": "gas-optimization",
+      "name": "Gas Optimization / Efficiency",
+      "description": "Gas inefficiency or optimization suggestions",
+      "platforms": ["immunefi", "code4rena", "sherlock"],
+      "keywords": ["gas optimization", "gas efficiency", "gas saving"],
+      "severity": "BLOCK",
+      "bypass_possible": false,
+      "lesson": "Never a valid finding on bug bounty platforms"
+    },
+    {
+      "id": "informational-only",
+      "name": "Informational / Best Practice",
+      "description": "Missing headers, best practice violations without exploitation path",
+      "platforms": ["all"],
+      "keywords": ["missing header", "best practice", "defense in depth", "informational"],
+      "severity": "BLOCK",
+      "bypass_possible": "Only if concrete exploit chain demonstrated",
+      "lesson": "Informational = $0 always"
+    },
+    {
+      "id": "frontend-only",
+      "name": "Frontend-Only Bugs",
+      "description": "Bugs that only affect the frontend/UI without backend impact",
+      "platforms": ["immunefi"],
+      "keywords": ["frontend", "UI only", "display bug", "cosmetic"],
+      "severity": "BLOCK",
+      "bypass_possible": false,
+      "lesson": "Immunefi: smart contract bugs only for most programs"
+    },
+    {
+      "id": "known-issues",
+      "name": "Known Issues / Acknowledged Risks",
+      "description": "Issues already listed in program's known issues or audit reports",
+      "platforms": ["all"],
+      "keywords": ["known issue", "acknowledged", "accepted risk", "won't fix"],
+      "severity": "BLOCK",
+      "bypass_possible": "Only if NEW exploitation path beyond known scope",
+      "lesson": "Kiln: 'already known' → CLOSED. Always check known issues list"
+    },
+    {
+      "id": "latent-bug",
+      "name": "Latent Bug / Inactive Code Path",
+      "description": "Vulnerability in code path that is not active in production (config disabled)",
+      "platforms": ["all"],
+      "keywords": ["latent bug", "inactive", "disabled", "offset=0", "not in production"],
+      "severity": "WARN",
+      "bypass_possible": "Frame as 'growing risk' if config can be changed, but severity likely Low",
+      "lesson": "Kiln DeFi: 5 vaults all offset=0 → 'not in production' → CLOSED"
+    },
+    {
+      "id": "self-xss",
+      "name": "Self-XSS / Self-Inflicted Attacks",
+      "description": "XSS that only affects the user who injects the payload",
+      "platforms": ["all"],
+      "keywords": ["self-XSS", "self xss", "CSRF on logout"],
+      "severity": "BLOCK",
+      "bypass_possible": false,
+      "lesson": "Classic non-issue on all platforms"
+    },
+    {
+      "id": "third-party-services",
+      "name": "Third-Party Service Issues",
+      "description": "Vulnerabilities in third-party services/dependencies not maintained by target",
+      "platforms": ["immunefi", "h1"],
+      "keywords": ["third party", "external service", "dependency vuln", "npm audit"],
+      "severity": "WARN",
+      "bypass_possible": "Only if target's usage of the dependency creates unique risk",
+      "lesson": "Many programs exclude third-party service issues"
+    },
+    {
+      "id": "theoretical-dos",
+      "name": "Theoretical DoS Without PoC",
+      "description": "DoS claims without demonstrating actual service disruption",
+      "platforms": ["all"],
+      "keywords": ["theoretical DoS", "potential DoS", "resource exhaustion"],
+      "severity": "WARN",
+      "bypass_possible": "Only with actual service disruption proof (measured response time)",
+      "lesson": "DoS requires measurable impact proof"
+    },
+    {
+      "id": "already-patched",
+      "name": "Already Patched / Fixed Version",
+      "description": "Vulnerability that exists only in older, unsupported versions",
+      "platforms": ["all"],
+      "keywords": ["old version", "patched", "fixed in", "deprecated version"],
+      "severity": "BLOCK",
+      "bypass_possible": false,
+      "lesson": "Must affect LATEST released version"
+    }
+  ],
+  "immunefi_common_exclusions": [
+    "Incorrect data supplied by third party oracles",
+    "Impacts requiring basic economic and governance attacks",
+    "Lack of liquidity",
+    "Best practice recommendations",
+    "Impacts requiring attacks that the reporter combats themselves",
+    "Impacts caused by external/third party exploits",
+    "Smart contract gas optimizations",
+    "Centralization risks"
+  ]
+}

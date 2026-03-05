@@ -148,16 +148,18 @@ Agent definitions: `.claude/agents/*.md`
 ```
 **Orchestrator가 freeform 메시지 대신 이 형식으로 전달.** 에이전트는 자기 산출물 파일 + SendMessage로 보고.
 
-### Context Positioning Rule (Lost-in-Middle Prevention)
+### Context Positioning Rule (Lost-in-Middle Prevention, v6 — 위치 명확화)
 
 에이전트 프롬프트 구성 시 정보 배치 순서가 성능에 직접 영향:
 
 **프롬프트 구조 (MANDATORY)**:
 ```
-[맨 앞] 핵심 산출물 (주소, 오프셋, 취약점 유형, FLAG 조건)
+[줄 1-2] Critical Facts — 핵심 산출물 (주소, 오프셋, 취약점 유형, FLAG 조건)
+[줄 3-5] Program Rules — auth 형식, exclusion list (Bug Bounty 전용, inject-rules 출력)
 [중간] 에이전트 정의 (자동 로드)
 [맨 뒤] HANDOFF 상세 (전체 컨텍스트, 이전 실패 내역)
 ```
+**A5 명확화**: Critical Facts(줄 1-2)와 Program Rules(줄 3-5)는 겹치지 않음.
 
 - 컨텍스트 중간에 있는 정보는 **10-40% recall 저하** (Lost-in-Middle 현상)
 - 핵심 주소/오프셋은 HANDOFF 맨 앞 3줄에 배치
@@ -181,14 +183,15 @@ Agent definitions: `.claude/agents/*.md`
 - Attempt 1: ret2libc failed (stack alignment issue)
 ```
 
-### Knowledge DB Pre-Search Protocol (Orchestrator + Agent)
+### Knowledge DB Pre-Search Protocol (Orchestrator + Agent, v6 — 자동 주입)
 
 **Orchestrator (에이전트 스폰 전):**
 에이전트 스폰 전에 `knowledge-fts` MCP로 관련 기법/exploit을 사전 검색하여 HANDOFF에 포함:
-1. `technique_search("<취약점 유형>")` → 관련 기법 문서
-2. `exploit_search("<서비스/CVE>")` → ExploitDB + nuclei + PoC
-3. `challenge_search("<유사 챌린지>")` → 과거 CTF 풀이 참조
-4. 검색 결과 상위 3-5건 요약을 HANDOFF의 `[KNOWLEDGE CONTEXT]` 섹션에 포함
+1. target_evaluator 출력의 `suggested_searches` 필드 사용 (C5)
+2. `technique_search("<취약점 유형>")` → 관련 기법 문서
+3. `exploit_search("<서비스/CVE>")` → ExploitDB + nuclei + PoC
+4. `challenge_search("<유사 챌린지>")` → 과거 CTF 풀이 참조
+5. 검색 결과 상위 3-5건 요약을 HANDOFF의 `[KNOWLEDGE CONTEXT]` 섹션에 **자동** 포함
 
 ```
 [KNOWLEDGE CONTEXT — from knowledge-fts]
@@ -196,6 +199,9 @@ Agent definitions: `.claude/agents/*.md`
 - exploit: CVE-2021-20173 (NETGEAR command injection via update) — similar SOAP injection
 - challenge: "hunter" (pwnable.kr) — heap UAF with custom allocator, partial solve
 ```
+
+**v6 변경**: target_evaluator가 `suggested_searches`를 제공하므로 Orchestrator가 수동 검색을 잊는 문제 해결.
+**`[KNOWLEDGE CONTEXT]` 섹션은 HANDOFF 템플릿에 고정** — 검색 결과가 없어도 섹션 헤더는 유지 ("no relevant results").
 
 **에이전트 (작업 중):**
 - 작업 시작 시 `ToolSearch("knowledge-fts")`로 MCP 도구 로드 후 적극적으로 검색
@@ -415,12 +421,16 @@ Step 5: 위 도구 결과에서 HIGH+ 시그널만 수동 심층 분석
   5. peripheral/bridge/distributor 등 unaudited 컴포넌트 존재
 ```
 
-#### Hard NO-GO Rules (v5 — override 불가)
+#### Hard NO-GO Rules (v6 — override 불가)
 ```
 3+ audits = AUTO NO-GO (penalty가 아니라 hard block)
+2+ reputable audits (Nethermind, OZ, Trail of Bits, Zellic, Spearbit) = AUTO NO-GO
 100+ resolved reports = AUTO NO-GO
 운영 3년+ = AUTO NO-GO
+Last commit > 6개월 + 2+ audits = AUTO NO-GO
+Source private/inaccessible = AUTO NO-GO
 Fork 타겟 → 원본 감사 보고서 + fix commits 확인 → 전부 적용됨 = AUTO NO-GO
+DeFi 타겟 → cast call 필수 (offset, fee, config flag 확인) Phase 0에서
 ```
 
 #### 즉시 제출 규칙 (v5-1 — Submission Bottleneck 해결)
@@ -430,33 +440,52 @@ submission/ 폴더 + ZIP은 reporter agent가 Phase 5에서 자동 생성
 "나중에 정리" 금지. 정리는 reporter가 한다.
 ```
 
-#### Anti-AI Detection Protocol (v5-3 — stake.link 교훈)
+#### Anti-AI Detection Protocol (v6 — stake.link 교훈 + 통일 기준)
 ```
 Phase 5 (reporter) 추가 체크리스트:
 □ 보고서에 specific block number 또는 tx hash 포함?
 □ 보고서 구조가 이전 제출과 다름? (매번 섹션 순서 변경)
 □ "reviewed implementation" 등 관찰적 언어 사용?
 □ 템플릿 문구 0개? ("It is important to note", "comprehensive", "robust")
-□ AI Slop Score ≤ 2/10? (triager_sim 체크)
+□ AI Slop Score ≤ 2/10? (`slop-check` skill로 측정 — 통일 기준)
 □ 최소 1개 unique analysis element? (커스텀 다이어그램, 독특한 공격 시나리오명 등)
+
+AI Slop Score 통일 기준 (triager_sim, reporter, CLAUDE.md 공통):
+  ≤2: PASS (제출 가능)
+  3-5: STRENGTHEN (재작성 필요)
+  >5: KILL (제출 불가)
 ```
 
-#### Time-Box Enforcement (v5-4)
+#### Time-Box Enforcement (v6)
 ```
-Phase 0 (target eval):      30분 MAX
+Phase 0 (target eval):      45분 MAX (v6: DeFi fork 분석 포함하여 확장)
 Phase 0.5 (tool scan):      30분 MAX
 Phase 1 (discovery):        2시간 MAX
 Phase 2 (exploit dev):      3시간 MAX
 Phase 3-5 (report+review):  2시간 MAX
 ─────────────────────────────────────
-Total per target:            8시간 MAX
+Total per target (일반):     8시간 MAX
+Total per target (DeFi):     12시간 MAX (v6: fork+온체인 분석 시간 반영)
 2시간 시점에 HIGH+ signal 없으면 → ABANDON (체크리스트 통과 후)
 ```
 
-#### Platform Priority (v5-6)
+#### Platform Priority (v6 — 데이터 기반 조정)
 ```
-Immunefi (Web3) > Bugcrowd > H1 (H1은 계정 복구 후에만)
-이유: H1 계정 파괴 + AI 탐지 정책 불확실
+Bugcrowd (40% 성공률, PRIMARY) > HackenProof (Web3, 100% 1건) > PSIRT Direct (CVE 발급)
+> Immunefi (<6개월 + ≤1 audit만, 밴 해제 후) > Intigriti/YesWeHack (신규 등록)
+> H1 (API 복구 후, PAUSE)
+이유: Bugcrowd 시그널 패널티 없음 + 펌웨어/IoT 강점. H1 API 403 미복구.
+```
+
+#### 성공 패턴 기반 타겟 우선순위 (v6 — 37건 분석)
+성공한 6건의 공통점:
+```
+□ 코드 공개? (GitHub/npm/pip)
+□ 로컬 환경에서 테스트 가능? (pip install, local API)
+□ 외부 인프라 의존도 낮음? (독립 PoC 가능)
+□ Business logic / code logic 카테고리 존재?
+□ 최근 6개월 내 출시 또는 스코프 확장?
+□ 1개 타겟에서 다중 root cause 가능? (Keeper 3건, Synology 12건)
 ```
 
 ## Analysis Depth Guidelines (v4.0 — Quality-First)
@@ -646,6 +675,9 @@ python3 tools/bb_preflight.py coverage-check targets/<target>/
 - **RE**: radare2 (r2), objdump, strings, readelf, nm, file, wabt 1.0.39 (wasm2wat, wasm-decompile — WASM RE), ImHex (바이너리 패턴 분석 + YARA), Apktool v2.11.1 (APK 디컴파일)
 - **Mobile**: jadx 1.5.1 (~/tools/jadx/bin/jadx — APK→Java 디컴파일), frida 17.7.3 + frida-tools (런타임 후킹/SSL pinning 우회), objection 1.12.3 (모바일 보안 테스팅), androguard 4.1.3 (Python APK 분석), adb 1.0.41 (Android 기기 연결), mitmproxy 12.2.1 (~/tools/mitmproxy/ — API 트래픽 캡처)
 - **Mobile References**: owasp-mastg (~/tools/owasp-mastg — MASVS 테스팅 가이드), awesome-android-security (~/tools/awesome-android-security — Android 보안 리소스)
+- **Mobile Device**: Galaxy S20 Ultra (SM-G988N, Android 13, Magisk root) — ADB via Tailscale (포트 변동), frida-server 17.6.2 port 27043
+- **Kernel Fuzzing**: Syzkaller (`~/syzkaller/` — syz-manager, kernel 6.1.128 KCOV+KASAN, `workdir/syz-config.json`, dashboard :56741), OSS-Fuzz (`~/oss-fuzz/` — 1,340 프로젝트, `python3 infra/helper.py build_fuzzers/run_fuzzer`)
+- **Firmware Emulation**: FirmAE (`~/FirmAE/` — 79% 성공률, `sudo ~/FirmAE/run.sh -r <brand> <fw.bin>`, PostgreSQL DB 설정 완료)
 - **Debug**: gdb (+ pwndbg + GEF `~/gef/gef.py` 93 commands + mcp-gdb MCP), strace
 - **Exploit**: pwntools, ROPgadget, ropper, z3-solver, capstone, angr, unicorn, rp++ (~/tools/rp++ — ARM64 ROP gadget finder), linux-exploit-suggester (~/tools/linux-exploit-suggester.sh), routersploit (~/tools/routersploit — 임베디드 exploit)
 - **Crypto**: pycryptodome, sympy, ~/collisions (corkami hash collision reference), RSACTFTool (~/tools/rsactftool — RSA 약한키 공격)
@@ -663,7 +695,8 @@ python3 tools/bb_preflight.py coverage-check targets/<target>/
 - **Workflow/OSINT**: osmedeus (~/gopath/bin/osmedeus — YAML 정찰 워크플로우), web-check (Docker, 33 API 엔드포인트, port 3001)
 - **Knowledge Repos (~/tools/)**: MBE, HEVD, google-ctf, exploit-writeups, how2heap, CTF-All-In-One, linux-kernel-exploitation, awesome-list-systems, paper_collection, owasp-mastg, ad-exploitation
 - **Knowledge DB**: knowledge-fts MCP (242K+ docs — techniques, ExploitDB 47K, nuclei 15K, PoC 18K, trickest-cve 154K, HackTricks, GTFOBins, PayloadsAllTheThings)
-- **BB Pipeline Gate**: `tools/bb_preflight.py` — Phase 게이트 검증 (v8, NAMUHX retrospective). `init` 템플릿 생성, `rules-check` 규칙 검증, `coverage-check` 엔드포인트 커버리지, `inject-rules` HANDOFF 주입, `exclusion-filter` 분석 제외 목록
+- **BB Pipeline Gate**: `tools/bb_preflight.py` — Phase 게이트 검증 (v8, NAMUHX retrospective). `init` 템플릿 생성, `rules-check` 규칙 검증, `coverage-check` 엔드포인트 커버리지 (`--json` 옵션), `inject-rules` HANDOFF 주입, `exclusion-filter` 분석 제외 목록
+- **Pipeline Skills (v6)**: `.claude/skills/` — `oos-check` (OOS 사전 체크), `checkpoint-validate` (에이전트 상태 검증), `poc-tier` (PoC 품질 분류), `coverage-gate` (커버리지 게이트), `threat-model-check` (위협 모델 정합성), `slop-check` (AI 슬롭 감지)
 - **Competitor-Adopted Tools (P0)**:
   - `tools/web_chain_engine.py` — Web exploit chain engine (NeuroSploit 포팅): SSRF→내부, SQLi→DB타입별 자동 체인. `on_finding()` → `List[ChainableTarget]`
   - `tools/flag_detector.py` — CTF 플래그 감지 (PentestGPT 포팅): 6+ regex 패턴, strict 모드, DH/FLAG/CTF/GoN/CYAI/HTB 포맷

@@ -255,6 +255,20 @@ Before finalizing the report, ask yourself these questions AS the triager:
 
 **실제 동작하는 PoC가 없는 보고서는 절대 작성하지 마라.** CVE 참조 + 코드 분석만으로는 H1에서 100% Informative로 닫힌다. (교훈: OPPO, Vercel W1 모두 Informative)
 
+## AI Slop Score Compliance (통일 기준)
+- **≤2**: PASS — 제출 가능
+- **3-5**: STRENGTHEN — `slop-check` skill 지적 패턴 모두 제거 후 재체크
+- **>5**: KILL — 전면 재작성 필요
+- triager_sim JSON의 `issues` 배열을 파싱하여 자동 수정 가능
+- **최대 3회 triager_sim 루프** — 3회 후에도 SUBMIT 아니면 finding 삭제
+
+## Triager Feedback Auto-Loop (C4)
+triager_sim이 STRENGTHEN 판정 시:
+1. `triager_sim_result.json` 읽기
+2. `issues` 배열의 각 항목에 대해 `fix_suggestion` 적용
+3. 수정된 보고서로 triager_sim 재실행 요청 (Orchestrator에게 SendMessage)
+4. 최대 3회 반복 — 3회 후 SUBMIT 아니면 Orchestrator에게 KILL 보고
+
 ## Bug Bounty Writing Rules (Lessons Learned)
 - **Observational language**: "identified in reviewed code" NOT "sole mechanism"
 - **Never claim LLM behavior** as evidence (unverifiable by triager)

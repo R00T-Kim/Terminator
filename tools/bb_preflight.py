@@ -9,7 +9,7 @@ Enforces two structural rules that LLM instructions alone cannot guarantee:
 Usage:
     bb_preflight.py init <target_dir>                  Create template files
     bb_preflight.py rules-check <target_dir>           Validate program_rules_summary.md
-    bb_preflight.py coverage-check <target_dir> [THR]  Check endpoint coverage % (default 80)
+    bb_preflight.py coverage-check <target_dir> [THR] [--json]  Check endpoint coverage %
     bb_preflight.py inject-rules <target_dir>          Output compact rules for HANDOFF
     bb_preflight.py exclusion-filter <target_dir>      Output exclusion list for analyst
 
@@ -114,18 +114,31 @@ def rules_check(target_dir: str) -> int:
     return 0
 
 
-def coverage_check(target_dir: str, threshold: int = COVERAGE_THRESHOLD) -> int:
-    """Parse endpoint_map.md and calculate coverage percentage."""
+def coverage_check(target_dir: str, threshold: int = COVERAGE_THRESHOLD, json_output: bool = False) -> int:
+    """Parse endpoint_map.md and calculate coverage percentage.
+
+    Args:
+        target_dir: Path to target directory containing endpoint_map.md
+        threshold: Minimum coverage percentage (default 80, 100 for <10 endpoints)
+        json_output: If True, output structured JSON instead of text
+    Returns:
+        0 if PASS, 1 if FAIL
+    """
     map_path = Path(target_dir) / ENDPOINT_MAP
     if not map_path.exists():
-        print(f"FAIL: {ENDPOINT_MAP} not found in {target_dir}")
-        print(f"  → Scout must generate {ENDPOINT_MAP} during Phase 1")
+        if json_output:
+            import json
+            print(json.dumps({"result": "FAIL", "error": f"{ENDPOINT_MAP} not found", "coverage": 0}))
+        else:
+            print(f"FAIL: {ENDPOINT_MAP} not found in {target_dir}")
+            print(f"  → Scout must generate {ENDPOINT_MAP} during Phase 1")
         return 1
 
     content = map_path.read_text()
     lines = content.split("\n")
 
     statuses = {"UNTESTED": 0, "TESTED": 0, "VULN": 0, "SAFE": 0, "EXCLUDED": 0}
+    untested_endpoints = []
     total = 0
 
     # Find Status column index from header row
@@ -157,32 +170,65 @@ def coverage_check(target_dir: str, threshold: int = COVERAGE_THRESHOLD) -> int:
         if status in statuses:
             statuses[status] += 1
             total += 1
+            if status == "UNTESTED":
+                untested_endpoints.append(cells[1])
 
     if total == 0:
-        print(f"FAIL: No endpoints found in {ENDPOINT_MAP}")
-        print(f"  → Scout must populate the endpoint table")
+        if json_output:
+            import json
+            print(json.dumps({"result": "FAIL", "error": "No endpoints found", "coverage": 0}))
+        else:
+            print(f"FAIL: No endpoints found in {ENDPOINT_MAP}")
+            print(f"  → Scout must populate the endpoint table")
         return 1
 
     testable = total - statuses["EXCLUDED"]
     if testable == 0:
-        print(f"FAIL: All {total} endpoints are EXCLUDED — nothing to test")
+        if json_output:
+            import json
+            print(json.dumps({"result": "FAIL", "error": "All endpoints EXCLUDED", "coverage": 0}))
+        else:
+            print(f"FAIL: All {total} endpoints are EXCLUDED — nothing to test")
         return 1
+
+    # Auto-adjust threshold for small targets
+    effective_threshold = 100 if testable < 10 else threshold
 
     tested = statuses["TESTED"] + statuses["VULN"] + statuses["SAFE"]
     coverage = (tested / testable) * 100
 
-    print(f"Coverage: {coverage:.1f}% ({tested}/{testable} testable endpoints)")
-    print(f"  VULN={statuses['VULN']} SAFE={statuses['SAFE']} "
-          f"TESTED={statuses['TESTED']} UNTESTED={statuses['UNTESTED']} "
-          f"EXCLUDED={statuses['EXCLUDED']}")
+    passed = coverage >= effective_threshold
 
-    if coverage < threshold:
-        print(f"FAIL: Coverage {coverage:.1f}% < threshold {threshold}%")
-        print(f"  → Spawn additional exploiter/analyst round for UNTESTED endpoints")
-        return 1
+    if json_output:
+        import json
+        print(json.dumps({
+            "result": "PASS" if passed else "FAIL",
+            "coverage": round(coverage, 1),
+            "threshold": effective_threshold,
+            "total": total,
+            "testable": testable,
+            "tested": tested,
+            "statuses": statuses,
+            "untested_endpoints": untested_endpoints,
+            "small_target_override": testable < 10,
+        }))
+    else:
+        print(f"Coverage: {coverage:.1f}% ({tested}/{testable} testable endpoints)")
+        print(f"  VULN={statuses['VULN']} SAFE={statuses['SAFE']} "
+              f"TESTED={statuses['TESTED']} UNTESTED={statuses['UNTESTED']} "
+              f"EXCLUDED={statuses['EXCLUDED']}")
+        if testable < 10:
+            print(f"  (Small target: <10 endpoints → threshold auto-raised to 100%)")
 
-    print(f"PASS: Coverage {coverage:.1f}% >= threshold {threshold}%")
-    return 0
+        if not passed:
+            print(f"FAIL: Coverage {coverage:.1f}% < threshold {effective_threshold}%")
+            print(f"  → Spawn additional exploiter/analyst round for UNTESTED endpoints")
+            if untested_endpoints:
+                print(f"  → UNTESTED: {', '.join(untested_endpoints[:20])}")
+        else:
+            print(f"PASS: Coverage {coverage:.1f}% >= threshold {effective_threshold}%")
+
+    return 0 if passed else 1
 
 
 def inject_rules(target_dir: str) -> int:
@@ -323,8 +369,17 @@ def main():
     elif cmd == "rules-check":
         sys.exit(rules_check(target))
     elif cmd == "coverage-check":
-        threshold = int(sys.argv[3]) if len(sys.argv) > 3 else COVERAGE_THRESHOLD
-        sys.exit(coverage_check(target, threshold))
+        threshold = COVERAGE_THRESHOLD
+        json_out = False
+        for arg in sys.argv[3:]:
+            if arg == "--json":
+                json_out = True
+            else:
+                try:
+                    threshold = int(arg)
+                except ValueError:
+                    pass
+        sys.exit(coverage_check(target, threshold, json_out))
     elif cmd == "inject-rules":
         sys.exit(inject_rules(target))
     elif cmd == "exclusion-filter":

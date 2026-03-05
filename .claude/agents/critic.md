@@ -343,6 +343,22 @@ If the report contains ANY of these patterns → flag as CRITICAL and require ju
 - Suggested severity: [realistic expectation]
 ```
 
+## Evidence Fidelity Check (MANDATORY — D4)
+
+**"증거가 실제로 주장을 뒷받침하는가?"** 검증:
+
+| 패턴 | 탐지 방법 | 행동 |
+|------|----------|------|
+| 스크린샷/응답이 "Error 401"인데 "bypass 성공" 주장 | 증거 내용과 주장 비교 | **즉시 REJECTED** |
+| .cast 파일이 1KB 미만 (fake evidence) | 파일 크기 확인 | **즉시 REJECTED** |
+| 로컬 flag 파일 읽고 "FLAG_FOUND" 주장 | 원격 실행 로그 확인 | **즉시 REJECTED** |
+| PoC 출력이 generic error만 포함 | 실제 데이터 추출 확인 | **MEDIUM issue** |
+| 200 OK만으로 "취약" 주장 (민감 데이터 없음) | 응답 내용 확인 | **MEDIUM issue** |
+| API 존재 여부 미확인 (error 102 = method not found) | 실제 API 호출 확인 | **HIGH issue** |
+
+**Synology DSM 교훈**: 13개 finding 중 3개 false positive. .cast evidence도 fake(1KB).
+API 존재 여부(error 102), 정확한 method명(get vs evaluate), 정확한 API namespace 직접 확인 필수.
+
 ## Anti-Hallucination Validation (MANDATORY)
 
 Before approving any finding, run the validation checklist:

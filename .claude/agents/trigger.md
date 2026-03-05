@@ -62,6 +62,9 @@ gdb -batch \
 - `gdb -q -ex "source ~/gef/gef.py"` (**GEF: pattern create/search, format-string-helper, heap chunks, vmmap**)
 - `strace`, `ltrace` (syscall/library call tracing)
 - Python fuzzing scripts (targeted, not random)
+- **Syzkaller** (`~/syzkaller/`) — kernel syscall fuzzing (KCOV+KASAN kernel at `workdir/kernels/linux-6.1.128/`)
+- **OSS-Fuzz** (`~/oss-fuzz/`) — `python3 infra/helper.py build_fuzzers <project>` → coverage-guided fuzzing
+- **FirmAE** (`~/FirmAE/`) — firmware full emulation for IoT target fuzzing
 
 ### Plugin Skills (Fuzzing & Harness — Trail of Bits Testing Handbook)
 ```

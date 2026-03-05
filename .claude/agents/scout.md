@@ -191,23 +191,29 @@ python3 tools/bb_preflight.py rules-check targets/<target>/
 
 **Why this exists**: In NAMUHX, reporter used `Authorization: Bearer` (wrong) instead of `IdToken:` (correct), and `bugbounty: true` instead of full UUID. Critic caught these — without critic, both reports would have been rejected instantly. This file prevents the error at source.
 
-#### Phase 1F: Endpoint Map Generation (MANDATORY for Web/API targets)
+#### Phase 1F: Endpoint Map Generation (MANDATORY — 모든 Web/API 타겟)
 
-**Generates `endpoint_map.md` — tracks which endpoints have been tested.**
+**`endpoint_map.md` 생성은 선택이 아닌 필수.** 발견된 모든 endpoint를 즉시 기록.
 
 ```bash
 # During Phase 2-5 recon, populate endpoint_map.md:
 # For EVERY discovered endpoint:
-#   | /api/path | METHOD | Auth_Required | UNTESTED | description |
+#   | /api/path | METHOD | Auth_Required | Status | description |
+# Status 값: UNTESTED | TESTED | VULN | SAFE | EXCLUDED
 
-# After initial population:
+# endpoint_map.md가 없으면 Phase 1 완료로 인정되지 않음.
+# Orchestrator가 Phase 1→2 전환 시 coverage-gate skill로 검증.
 python3 tools/bb_preflight.py coverage-check targets/<target>/
 # Reports coverage % — Orchestrator checks before Phase 2
 ```
 
-**Output**: `endpoint_map.md` — all discovered endpoints with status tracking.
+**Output**: `endpoint_map.md` — all discovered endpoints with Status 필드 필수.
 
-**HARD RULE**: Coverage must reach 80% before Orchestrator declares "analysis complete". If UNTESTED > 20%, spawn additional analyst/exploiter rounds for remaining endpoints.
+**HARD RULES**:
+- **endpoint_map.md 미생성 = Phase 1 미완료.** Orchestrator가 재작업 지시.
+- Coverage must reach 80% before Phase 2. If UNTESTED > 20%, 추가 라운드 스폰.
+- 각 endpoint에 `Status` 필드 필수 (UNTESTED/TESTED/VULN/SAFE/EXCLUDED).
+- SendMessage 보고 시 **발견된 endpoint 수 + UNTESTED 수** 포함 필수.
 
 **Why this exists**: In NAMUHX, 182 endpoints discovered but only ~40% tested in first round. The actual IDOR findings came from the second round that user had to manually request.
 
