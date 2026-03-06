@@ -90,6 +90,23 @@ omx hooks status   # In this repo: Plugins enabled: yes
 
 Outside repos that expose `.omx/hooks/` + `tools/coordination_cli.py`, the wrapper falls back to the real OMX binary unchanged.
 
+## Live E2E Validation Status
+
+Validated on **March 6, 2026** in this repository with real `claude`, `codex`, and plain `omx` sessions.
+
+- **Claude custom agents** -- `reverser`, `target-evaluator`, `triager-sim`, and `fw-profiler` were spawned live and completed successfully
+- **Knowledge injection** -- `Task|Agent` hook path produced `task_knowledge` digests and `task_knowledge_injected` coordination events during live subagent runs
+- **Claude skills** -- the `ctf` skill was loaded through the native `Skill` tool and returned the expected pipeline instructions
+- **Codex/OMX** -- plain `omx` booted with repo hook plugins enabled; Codex read the repo instructions and returned `coordination/` as the shared source of truth
+- **MCP / knowledge** -- live `mcp__git__git_status` and `mcp__knowledge-fts__knowledge_stats` calls succeeded from Claude; Knowledge FTS responded with the indexed corpus metadata
+- **Optional failure tolerated** -- `pentest-thinking` may still fail during startup, but it is treated as **non-blocking** and does not block core Terminator workflows
+
+What is **not** claimed yet:
+
+- A full end-to-end solve of a real CTF challenge fixture
+- A full end-to-end bug bounty replay
+- A full firmware mission run
+
 ---
 
 ## Architecture

@@ -90,6 +90,23 @@ omx hooks status   # 이 repo 안에서는 Plugins enabled: yes
 
 `.omx/hooks/` + `tools/coordination_cli.py`가 없는 다른 디렉토리에서는 wrapper가 기존 OMX 동작을 그대로 통과시킵니다.
 
+## 실전 E2E 검증 상태
+
+**2026년 3월 6일** 기준, 이 저장소에서 실제 `claude`, `codex`, plain `omx` 세션으로 검증했습니다.
+
+- **Claude 커스텀 에이전트** -- `reverser`, `target-evaluator`, `triager-sim`, `fw-profiler`를 실제 spawn해 정상 완료 확인
+- **Knowledge injection** -- live subagent 실행 중 `Task|Agent` hook 경로에서 `task_knowledge` digest와 `task_knowledge_injected` coordination event 생성 확인
+- **Claude skills** -- native `Skill` tool로 `ctf` skill을 실제 로드해 파이프라인 지시문 반환 확인
+- **Codex/OMX** -- plain `omx`가 repo hook plugin enabled 상태로 기동했고, Codex가 repo 지시를 읽어 공통 정본으로 `coordination/`을 정확히 응답
+- **MCP / knowledge** -- Claude에서 `mcp__git__git_status`, `mcp__knowledge-fts__knowledge_stats`를 실제 호출해 성공 응답 확인
+- **허용되는 optional 실패** -- `pentest-thinking`은 startup에서 실패할 수 있지만, **non-blocking**으로 취급하며 핵심 Terminator 워크플로를 막지 않음
+
+아직 **완주했다고 주장하지 않는 것**:
+
+- 실제 CTF fixture 1개 full solve
+- 실제 bug bounty replay 1개 full run
+- 실제 firmware 미션 1개 full run
+
 ---
 
 ## 아키텍처
