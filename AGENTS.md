@@ -34,6 +34,18 @@
 - PR에는 목적, 핵심 변경 파일, 검증 명령어, 리스크/롤백 계획을 포함하세요.
 - UI 변경(`web/static`)은 스크린샷을 첨부하고 관련 이슈/타깃 맥락을 링크하세요.
 
+## Commit Attribution
+- AI 커밋에는 다음 trailer를 포함하세요:
+  - `Co-Authored-By: OpenAI Codex <noreply@openai.com>`
+
 ## 보안 및 설정 팁
 - 비밀정보는 커밋하지 말고 `.env`는 로컬 전용으로 유지하세요. 설정 키가 바뀌면 `.env.example`도 함께 갱신하세요.
 - 공격/스캔 테스트는 반드시 승인된 CTF 환경과 허용된 버그바운티 스코프에서만 수행하세요.
+
+## Cross-tool coordination 규칙
+- 이 저장소의 **교차 도구 정본(source of truth)** 은 `coordination/` 입니다. `.omx/`와 Claude 런타임 상태는 로컬 보조 상태로 취급하세요.
+- Codex/OMX는 1회 `./scripts/install_omx_wrapper.sh` 설치 후 이 repo 안에서는 **plain `omx`** 로 실행하세요. wrapper가 `OMX_HOOK_PLUGINS=1` + `COORD_PROJECT_ROOT`를 자동 주입합니다.
+- wrapper 우회가 필요하면 `OMX_HOOK_PLUGINS=0 omx` 처럼 명시적으로 끄세요.
+- Codex/OMX에서 긴 문서나 로그를 다시 읽기 전에 먼저 `python3 tools/coordination_cli.py bootstrap-codex --cwd .` 또는 `session-status`/`consume-handoff` 결과를 확인하세요.
+- Claude ↔ Codex 전환 시 freeform 재설명 대신 `python3 tools/coordination_cli.py write-handoff ...` 로 구조화 handoff를 남기세요.
+- 큰 입력(대략 800줄+ 파일, 40개+ 파일 디렉토리, 300줄+ 로그)은 `python3 tools/context_digest.py --prefer-gemini ...` 로 digest를 만든 뒤 소비하세요.

@@ -9,6 +9,12 @@ INPUT=$(cat)
 CWD=$(echo "$INPUT" | jq -r '.cwd // ""')
 
 PROJECT_DIR="/home/rootk1m/01_CYAI_Lab/01_Projects/Terminator"
+COORD_CLI="$PROJECT_DIR/tools/coordination_cli.py"
+SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // empty' 2>/dev/null || true)
+
+if [[ -z "$SESSION_ID" ]]; then
+    SESSION_ID="$(python3 "$COORD_CLI" derive-session --cwd "${CWD:-$PROJECT_DIR}" 2>/dev/null | jq -r '.session_id' 2>/dev/null || basename "${CWD:-$PROJECT_DIR}")"
+fi
 
 # 최근 수정된 checkpoint.json 찾기 (최근 10분 이내)
 WARNINGS=""
@@ -57,6 +63,13 @@ for cp in $(find "$CWD" "$PROJECT_DIR" -maxdepth 4 -name "checkpoint*.json" -mmi
             ;;
     esac
 done
+
+if [[ "$FOUND_INCOMPLETE" == true ]]; then
+    python3 "$COORD_CLI" event \
+        --session "$SESSION_ID" \
+        --type "subagent_completion_warning" \
+        --payload-json "$(jq -n --arg warnings "$WARNINGS" '{warnings: $warnings}')" >/dev/null 2>&1 || true
+fi
 
 # 결과 출력
 if [[ "$FOUND_INCOMPLETE" == true ]]; then

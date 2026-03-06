@@ -11,6 +11,20 @@ SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // ""')
 
 # 프로젝트 루트
 PROJECT_DIR="/home/rootk1m/01_CYAI_Lab/01_Projects/Terminator"
+COORD_CLI="$PROJECT_DIR/tools/coordination_cli.py"
+CONTEXT_DIGEST="$PROJECT_DIR/tools/context_digest.py"
+
+if [[ -z "$SESSION_ID" ]]; then
+    SESSION_ID="$(python3 "$COORD_CLI" derive-session --cwd "${CWD:-$PROJECT_DIR}" 2>/dev/null | jq -r '.session_id' 2>/dev/null || basename "${CWD:-$PROJECT_DIR}")"
+fi
+
+python3 "$COORD_CLI" ensure-session \
+    --session "$SESSION_ID" \
+    --cwd "${CWD:-$PROJECT_DIR}" \
+    --leader "claude" \
+    --tool "claude_code" \
+    --lead-mode "auto" \
+    --status "active" >/dev/null 2>&1 || true
 
 # 1. 활성 챌린지/타겟 디렉토리 탐색
 CHECKPOINT_SUMMARY=""
@@ -81,6 +95,44 @@ jq -n \
     --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
     '{session: $session, cwd: $cwd, checkpoints: $checkpoints, teams: $teams, artifacts: $artifacts, saved_at: $timestamp}' \
     > "$STATE_FILE" 2>/dev/null || true
+
+python3 "$COORD_CLI" checkpoint \
+    --session "$SESSION_ID" \
+    --actor "pre_compact" \
+    --stage "context_compaction" \
+    --status "in_progress" \
+    --payload-json "$(jq -n \
+        --arg cwd "$CWD" \
+        --arg checkpoints "$CHECKPOINT_SUMMARY" \
+        --arg teams "$TEAM_SUMMARY" \
+        --arg artifacts "$RECENT_ARTIFACTS" \
+        '{cwd: $cwd, checkpoints: $checkpoints, teams: $teams, artifacts: $artifacts}')" >/dev/null 2>&1 || true
+
+COMPACTION_DIGEST=$(cat <<EOF
+[PRE-COMPACT STATE]
+$CHECKPOINT_SUMMARY
+
+[ACTIVE TEAMS]
+$TEAM_SUMMARY
+
+[RECENT ARTIFACTS]
+$RECENT_ARTIFACTS
+EOF
+)
+
+printf '%s' "$COMPACTION_DIGEST" | python3 "$CONTEXT_DIGEST" \
+    --session "$SESSION_ID" \
+    --cwd "${CWD:-$PROJECT_DIR}" \
+    --kind "compaction_state" \
+    --title "Pre-compact coordination state" \
+    --generated-by "pre_compact_hook" \
+    --source-ref "$STATE_FILE" \
+    --stdin >/dev/null 2>&1 || true
+
+python3 "$COORD_CLI" event \
+    --session "$SESSION_ID" \
+    --type "pre_compact_saved" \
+    --payload-json "{\"state_file\": $(printf '%s' "$STATE_FILE" | jq -Rs .)}" >/dev/null 2>&1 || true
 
 # 6. 출력
 if [[ -n "$CONTEXT" ]]; then

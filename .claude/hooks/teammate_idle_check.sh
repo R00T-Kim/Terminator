@@ -9,6 +9,12 @@ INPUT=$(cat)
 CWD=$(echo "$INPUT" | jq -r '.cwd // ""')
 
 PROJECT_DIR="/home/rootk1m/01_CYAI_Lab/01_Projects/Terminator"
+COORD_CLI="$PROJECT_DIR/tools/coordination_cli.py"
+SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // empty' 2>/dev/null || true)
+
+if [[ -z "$SESSION_ID" ]]; then
+    SESSION_ID="$(python3 "$COORD_CLI" derive-session --cwd "${CWD:-$PROJECT_DIR}" 2>/dev/null | jq -r '.session_id' 2>/dev/null || basename "${CWD:-$PROJECT_DIR}")"
+fi
 
 # 최근 수정된 checkpoint 검색 (5분 이내)
 ALERT=""
@@ -40,6 +46,13 @@ for cp in $(find "$CWD" "$PROJECT_DIR" -maxdepth 4 -name "checkpoint*.json" -mmi
   → 환경 문제 해결 후 재스폰."
     fi
 done
+
+if [[ -n "$ALERT" ]]; then
+    python3 "$COORD_CLI" event \
+        --session "$SESSION_ID" \
+        --type "teammate_idle_alert" \
+        --payload-json "$(jq -n --arg alert "$ALERT" '{alert: $alert}')" >/dev/null 2>&1 || true
+fi
 
 if [[ -n "$ALERT" ]]; then
     jq -n --arg msg "$ALERT" '{additionalContext: $msg}'

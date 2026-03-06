@@ -7,6 +7,23 @@
    - ✅ `WebFetch(url="https://r.jina.ai/https://example.com/page")`
    - Jina Reader가 JS 렌더링 + 마크다운 변환을 수행하여 구조화된 콘텐츠 반환
 
+## 🔁 Cross-tool coordination (Claude + Codex/OMX + Gemini)
+
+1. **`coordination/` 이 교차 도구 정본이다.**
+   - `.omx/`와 Claude 런타임 상태는 로컬 보조 상태로만 취급한다.
+   - 긴 상태 재설명보다 `coordination/sessions/<session>/` 아래의 latest digest / handoff / artifact index를 우선한다.
+2. **Codex/OMX는 repo wrapper 기준으로 본다.**
+   - 1회 `./scripts/install_omx_wrapper.sh` 설치 후 이 저장소에서는 plain `omx` 실행을 기본 경로로 간주한다.
+   - wrapper는 이 repo 안에서만 `OMX_HOOK_PLUGINS=1` + `COORD_PROJECT_ROOT`를 자동 설정한다.
+   - 강제 우회가 필요하면 `OMX_HOOK_PLUGINS=0 omx` 로 실행한다.
+3. **Codex/OMX와 전환할 때는 handoff JSON을 남긴다.**
+   - freeform 재설명 대신 `python3 tools/coordination_cli.py write-handoff ...` 사용.
+   - 새 리더는 raw 장문 문서 재독 전 `consume-handoff`, `session-status`, `latest-digest`부터 확인.
+4. **큰 입력은 digest-first로 처리한다.**
+   - 대략 800줄+ 파일, 40파일+ 디렉토리, 300줄+ 로그는 `python3 tools/context_digest.py --prefer-gemini ...` 로 digest를 만든 뒤 참조.
+5. **Claude hooks는 자동으로 coordination 상태를 갱신한다.**
+   - 세션 시작 / Task spawn / compact / idle / subagent stop 시 digest, checkpoint, event가 coordination에 기록된다.
+
 ## ⚠️ 필수 규칙 (절대 위반 금지)
 
 1. **CTF 문제를 풀 때 반드시 Agent Teams를 사용하라.**

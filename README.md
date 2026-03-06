@@ -8,7 +8,7 @@
 
 **Multi-agent AI system that autonomously solves CTF challenges and hunts bug bounties.**
 
-Built on [Claude Code Agent Teams](https://docs.anthropic.com/en/docs/claude-code) — 22 specialized agents orchestrated through sequential pipelines with structured handoffs and 6 automated quality gates.
+Claude Code-native core with Codex/OMX + Gemini coordination — 22 specialized agents orchestrated through sequential pipelines, shared `coordination/` state, and digest-first context compaction.
 
 <br>
 
@@ -71,6 +71,27 @@ Terminator is not a single model prompt. It is a **team of 22 AI agents** coordi
 
 ---
 
+## Cross-tool Runtime
+
+Terminator now keeps **Claude Code**, **Codex/OMX**, and **Gemini** on the same state contract instead of re-reading the same long context on every handoff.
+
+- **`coordination/` is the shared source of truth** -- manifests, digests, artifacts, checkpoints, and handoffs live under `coordination/sessions/<session_id>/`
+- **Claude remains native** -- `.claude/hooks/*.sh` publish session knowledge, checkpoints, and artifact validation into `coordination/`
+- **Codex/OMX remains native** -- `.omx/hooks/*.mjs` bootstrap Codex sessions and mirror `.omx/state`, notepad, and plans into the same session record
+- **Gemini stays helper-only** -- `tools/context_digest.py --prefer-gemini` compacts large files, directories, and logs into reusable digests
+- **Leader switches are structured** -- `write-handoff` / `consume-handoff` replace freeform “re-read everything” transfers
+
+One-time install to make plain `omx` auto-enable repo hooks:
+
+```bash
+./scripts/install_omx_wrapper.sh
+omx hooks status   # In this repo: Plugins enabled: yes
+```
+
+Outside repos that expose `.omx/hooks/` + `tools/coordination_cli.py`, the wrapper falls back to the real OMX binary unchanged.
+
+---
+
 ## Architecture
 
 ```
@@ -121,6 +142,7 @@ Agents communicate through structured artifact passing -- no context is lost bet
 ### Prerequisites
 
 - [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) with Anthropic API key
+- Codex CLI + oh-my-codex (`omx`) for Codex-native sessions
 - Python 3.10+ with pwntools, z3-solver, angr
 - gdb with pwndbg or GEF, radare2
 - Docker (optional, for full infrastructure stack)
@@ -128,6 +150,13 @@ Agents communicate through structured artifact passing -- no context is lost bet
 ### Interactive Mode
 
 ```bash
+# One-time wrapper install for plain `omx`
+cd Terminator && ./scripts/install_omx_wrapper.sh
+
+# Codex/OMX native (wrapper auto-enables repo hook plugins)
+cd Terminator && omx
+
+# Claude Code native
 cd Terminator && claude
 
 # CTF:

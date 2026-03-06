@@ -62,6 +62,13 @@ aiedge_handoff_adapter.py
 
 # --- OMC state ---
 .omc/
+.omx/*
+!.omx/hooks/
+!.omx/hooks/**
+
+# --- Shared coordination runtime state ---
+coordination/sessions/
+coordination/cache/
 
 # --- Reports (auto-generated) ---
 reports/
@@ -109,3 +116,5 @@ ref.md
 research/vpn_client_attack_techniques.md
 .claude_auth/
 .env
+echo
+Exit code:\ 
