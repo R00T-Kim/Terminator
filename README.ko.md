@@ -48,11 +48,11 @@ Terminator:
 사용자: "이뮤니파이에서 하이~크리티컬 취약점 찾을때까지 ㄱㄱ"
 
 Terminator:
-  -> @target_evaluator 스폰  -> ROI 점수화, GO 판정
+  -> @target-evaluator 스폰  -> ROI 점수화, GO 판정
   -> @scout + @analyst 스폰  -> 병렬 정찰 + CVE 매칭
   -> @exploiter 스폰         -> 작동하는 PoC 개발
   -> @critic 스폰            -> 보고서 팩트체크
-  -> @triager_sim 스폰       -> 제출 전 보고서 공격
+  -> @triager-sim 스폰       -> 제출 전 보고서 공격
   -> SUBMIT: CWE-306 ATO chain, CVSS 7.4 High
 ```
 
@@ -198,7 +198,7 @@ docker compose up -d
 | **Pwn (명확한 취약점)** -- 명백한 오버플로우/포맷 스트링 | `reverser -> chain -> critic -> verifier -> reporter` | 5 |
 | **Pwn (불명확한 취약점)** -- 크래시 탐색 필요 | `reverser -> trigger -> chain -> critic -> verifier -> reporter` | 6 |
 | **Web** -- 인젝션, SSRF, 인증 우회 | `scout -> analyst -> exploiter -> reporter` | 4 |
-| **Firmware** -- ARM 바이너리 diff, 에뮬레이션 PoC | `fw_profiler -> fw_inventory -> fw_surface -> fw_validator -> reporter` | 5 |
+| **Firmware** -- ARM 바이너리 diff, 에뮬레이션 PoC | `fw-profiler -> fw-inventory -> fw-surface -> fw-validator -> reporter` | 5 |
 
 ### 버그바운티 -- v6 파이프라인
 
@@ -209,7 +209,7 @@ docker compose up -d
 <summary><b>7단계 파이프라인 상세</b></summary>
 
 ```
-Phase 0   @target_evaluator     GO / NO-GO 평가 + Hard NO-GO 규칙 (v6)
+Phase 0   @target-evaluator     GO / NO-GO 평가 + Hard NO-GO 규칙 (v6)
           oos-check skill       OOS 패턴 사전 스크리닝 (12개 패턴)
           --- GO gate --------------------------------------------------------
 Phase 0.2 bb_preflight.py       프로그램 규칙 생성 + 검증 (MANDATORY)
@@ -221,7 +221,7 @@ Phase 2   @exploiter            PoC 개발 + poc-tier skill (Tier 1-2만 통과)
           threat-model-check    공격 전제조건 현실성 검증
 Phase 3   @reporter             보고서 초안 + CVSS 계산
 Phase 4   @critic + @architect  2라운드 리뷰: 팩트체크 -> 프레이밍 -> 증거 충실도
-Phase 4.5 @triager_sim          적대적 트리아저 + JSON 피드백 루프 (최대 3회)
+Phase 4.5 @triager-sim          적대적 트리아저 + JSON 피드백 루프 (최대 3회)
           slop-check skill      AI 슬롭 점수 (<=2 PASS, 3-5 STRENGTHEN, >5 KILL)
 Phase 5   @reporter             최종 보고서 + ZIP 패키징
 Phase 6   TeamDelete            정리
@@ -241,7 +241,7 @@ Phase 6   TeamDelete            정리
 **추가 품질 게이트:**
 - Phase 0 Hard NO-GO: 3+ audits, 2+ reputable audits, 100+ reports, 3년+, 소스 비공개
 - Phase 0.2 프로그램 규칙 검증 통과 필수 (에이전트 스폰 전)
-- Phase 4.5 triager_sim이 구조화된 JSON 출력 → reporter 자동 피드백 루프
+- Phase 4.5 triager-sim이 구조화된 JSON 출력 → reporter 자동 피드백 루프
 
 </details>
 
@@ -272,11 +272,11 @@ Phase 6   TeamDelete            정리
 
 | 에이전트 | 역할 | 모델 | 출력 |
 |:---------|:-----|:----:|:-----|
-| **target_evaluator** | 프로그램 ROI 점수화, GO/NO-GO 판정 | Sonnet | `target_assessment.md` |
+| **target-evaluator** | 프로그램 ROI 점수화, GO/NO-GO 판정 | Sonnet | `target_assessment.md` |
 | **scout** | 정찰 + 중복 사전검증 + 자동화 도구 스캔 | Sonnet | `recon_report.json` |
 | **analyst** | CVE 매칭, source->sink 추적, 신뢰도 점수화 | Sonnet | `vulnerability_candidates.md` |
 | **exploiter** | PoC 개발, 품질 등급 분류 | Opus | PoC 스크립트 + 증거 |
-| **triager_sim** | 적대적 트리아저 -- 제출 전 보고서 공격 | Opus | SUBMIT / STRENGTHEN / KILL |
+| **triager-sim** | 적대적 트리아저 -- 제출 전 보고서 공격 | Opus | SUBMIT / STRENGTHEN / KILL |
 | **source-auditor** | 소스코드 심층 감사, 크로스파일 taint 분석 | Opus | `audit_findings.md` |
 | **defi-auditor** | 스마트 컨트랙트 분석, DeFi 특화 취약점 패턴 | Opus | `defi_audit.md` |
 
@@ -287,10 +287,10 @@ Phase 6   TeamDelete            정리
 
 | 에이전트 | 역할 | 모델 | 출력 |
 |:---------|:-----|:----:|:-----|
-| **fw_profiler** | 펌웨어 이미지 프로파일링, 아키텍처 탐지 | Sonnet | `firmware_profile.md` |
-| **fw_inventory** | 바이너리 인벤토리, 버전 추출, CVE 매칭 | Sonnet | `firmware_inventory.md` |
-| **fw_surface** | 공격 표면 매핑, 바이너리 diff 분석 | Sonnet | `attack_surface.md` |
-| **fw_validator** | QEMU 에뮬레이션, 동적 PoC 검증 | Sonnet | `validation_results.md` |
+| **fw-profiler** | 펌웨어 이미지 프로파일링, 아키텍처 탐지 | Sonnet | `firmware_profile.md` |
+| **fw-inventory** | 바이너리 인벤토리, 버전 추출, CVE 매칭 | Sonnet | `firmware_inventory.md` |
+| **fw-surface** | 공격 표면 매핑, 바이너리 diff 분석 | Sonnet | `attack_surface.md` |
+| **fw-validator** | QEMU 에뮬레이션, 동적 PoC 검증 | Sonnet | `validation_results.md` |
 
 </details>
 
@@ -363,6 +363,7 @@ python tools/knowledge_indexer.py --stats
 ### MCP 서버 -- AI 네이티브 도구 통합
 
 12개 MCP 서버가 에이전트에게 보안 도구 직접 접근 제공.
+사용자 레벨 MCP가 추가로 보일 수 있으며, `pentest-thinking`이 unavailable이어도 핵심 Terminator 파이프라인은 계속 동작합니다.
 
 <details>
 <summary><b>전체 12개 MCP 서버</b></summary>
@@ -481,9 +482,9 @@ python tools/knowledge_indexer.py --stats
 | Dual-Approach Parallel -- 3회 실패 후 2전략 병행 | RoboDuck | Orchestrator |
 | OWASP Parallel Hunters | Shannon | analyst (Phase 1.5) |
 | PoC Quality Tier Gate (1-4) | XBOW | exploiter |
-| Adversarial Triage Simulation | Internal | triager_sim |
+| Adversarial Triage Simulation | Internal | triager-sim |
 | Prompt Injection Guardrails | CAI (300+ LLM agents) | All agents |
-| 4-Layer Validation | NeuroSploit | critic, triager_sim |
+| 4-Layer Validation | NeuroSploit | critic, triager-sim |
 | Security-Aware Compression | CyberStrikeAI | All agents (context preservation) |
 | Exploit Chain Rules | NeuroSploit | exploiter (web targets) |
 | Security Council (5-아키타입 심의) | Consciousness Council (K-Dense) | critic |

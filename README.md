@@ -48,11 +48,11 @@ Terminator:
 You: "Hunt high-critical bugs on Immunefi until you find one"
 
 Terminator:
-  -> spawns @target_evaluator  -> scores ROI, returns GO
+  -> spawns @target-evaluator  -> scores ROI, returns GO
   -> spawns @scout + @analyst  -> parallel recon + CVE matching
   -> spawns @exploiter         -> develops working PoC
   -> spawns @critic            -> fact-checks report
-  -> spawns @triager_sim       -> attacks report before submission
+  -> spawns @triager-sim       -> attacks report before submission
   -> SUBMIT: CWE-306 ATO chain, CVSS 7.4 High
 ```
 
@@ -198,7 +198,7 @@ docker compose up -d
 | **Pwn (clear vuln)** -- obvious overflow/fmt | `reverser -> chain -> critic -> verifier -> reporter` | 5 |
 | **Pwn (unclear vuln)** -- crash discovery needed | `reverser -> trigger -> chain -> critic -> verifier -> reporter` | 6 |
 | **Web** -- injection, SSRF, auth bypass | `scout -> analyst -> exploiter -> reporter` | 4 |
-| **Firmware** -- ARM binary diff, emulated PoC | `fw_profiler -> fw_inventory -> fw_surface -> fw_validator -> reporter` | 5 |
+| **Firmware** -- ARM binary diff, emulated PoC | `fw-profiler -> fw-inventory -> fw-surface -> fw-validator -> reporter` | 5 |
 
 ### Bug Bounty -- v6 Pipeline
 
@@ -209,7 +209,7 @@ docker compose up -d
 <summary><b>7-Phase Pipeline Details</b></summary>
 
 ```
-Phase 0   @target_evaluator     GO / NO-GO assessment + Hard NO-GO rules (v6)
+Phase 0   @target-evaluator     GO / NO-GO assessment + Hard NO-GO rules (v6)
           oos-check skill       OOS pattern pre-screening (12 patterns)
           --- GO gate --------------------------------------------------------
 Phase 0.2 bb_preflight.py       Program rules generation + validation (MANDATORY)
@@ -221,7 +221,7 @@ Phase 2   @exploiter            PoC development + poc-tier skill (Tier 1-2 only)
           threat-model-check    Attack prerequisite validation
 Phase 3   @reporter             Report draft + CVSS
 Phase 4   @critic + @architect  2-round review: facts -> framing -> evidence fidelity
-Phase 4.5 @triager_sim          Adversarial triage + JSON feedback loop (max 3 iter)
+Phase 4.5 @triager-sim          Adversarial triage + JSON feedback loop (max 3 iter)
           slop-check skill      AI slop score (<=2 PASS, 3-5 STRENGTHEN, >5 KILL)
 Phase 5   @reporter             Final report + ZIP packaging
 Phase 6   TeamDelete            Cleanup
@@ -241,7 +241,7 @@ Phase 6   TeamDelete            Cleanup
 **Additional quality gates:**
 - Phase 0 Hard NO-GO: 3+ audits, 2+ reputable audits, 100+ reports, 3yr+, source inaccessible
 - Phase 0.2 Program rules must pass validation before any agent spawns
-- Phase 4.5 triager_sim outputs structured JSON for automated reporter feedback loop
+- Phase 4.5 triager-sim outputs structured JSON for automated reporter feedback loop
 
 </details>
 
@@ -272,11 +272,11 @@ Phase 6   TeamDelete            Cleanup
 
 | Agent | Role | Model | Output |
 |:------|:-----|:-----:|:-------|
-| **target_evaluator** | Program ROI scoring, GO/NO-GO gate | Sonnet | `target_assessment.md` |
+| **target-evaluator** | Program ROI scoring, GO/NO-GO gate | Sonnet | `target_assessment.md` |
 | **scout** | Recon + duplicate pre-screen + automated tool scanning | Sonnet | `recon_report.json` |
 | **analyst** | CVE matching, source->sink tracing, confidence scoring | Sonnet | `vulnerability_candidates.md` |
 | **exploiter** | PoC development, quality tier classification | Opus | PoC scripts + evidence |
-| **triager_sim** | Adversarial triage -- attacks report before submission | Opus | SUBMIT / STRENGTHEN / KILL |
+| **triager-sim** | Adversarial triage -- attacks report before submission | Opus | SUBMIT / STRENGTHEN / KILL |
 | **source-auditor** | Deep source code audit, cross-file taint analysis | Opus | `audit_findings.md` |
 | **defi-auditor** | Smart contract analysis, DeFi-specific vulnerability patterns | Opus | `defi_audit.md` |
 
@@ -287,10 +287,10 @@ Phase 6   TeamDelete            Cleanup
 
 | Agent | Role | Model | Output |
 |:------|:-----|:-----:|:-------|
-| **fw_profiler** | Firmware image profiling, architecture detection | Sonnet | `firmware_profile.md` |
-| **fw_inventory** | Binary inventory, version extraction, CVE matching | Sonnet | `firmware_inventory.md` |
-| **fw_surface** | Attack surface mapping, binary diff analysis | Sonnet | `attack_surface.md` |
-| **fw_validator** | QEMU emulation, dynamic PoC validation | Sonnet | `validation_results.md` |
+| **fw-profiler** | Firmware image profiling, architecture detection | Sonnet | `firmware_profile.md` |
+| **fw-inventory** | Binary inventory, version extraction, CVE matching | Sonnet | `firmware_inventory.md` |
+| **fw-surface** | Attack surface mapping, binary diff analysis | Sonnet | `attack_surface.md` |
+| **fw-validator** | QEMU emulation, dynamic PoC validation | Sonnet | `validation_results.md` |
 
 </details>
 
@@ -363,6 +363,7 @@ python tools/knowledge_indexer.py --stats
 ### MCP Servers -- AI-Native Tool Integration
 
 12 MCP servers give agents direct programmatic access to security tools.
+Optional user-level MCPs may appear in local `claude`/`omx` startup logs; if `pentest-thinking` is unavailable, core Terminator pipelines still run.
 
 <details>
 <summary><b>All 12 MCP Servers</b></summary>
@@ -481,9 +482,9 @@ Agent definitions incorporate patterns from 10+ LLM security frameworks:
 | Dual-Approach Parallel -- 2 strategies after 3 failures | RoboDuck | Orchestrator |
 | OWASP Parallel Hunters | Shannon | analyst (Phase 1.5) |
 | PoC Quality Tier Gate (1-4) | XBOW | exploiter |
-| Adversarial Triage Simulation | Internal | triager_sim |
+| Adversarial Triage Simulation | Internal | triager-sim |
 | Prompt Injection Guardrails | CAI (300+ LLM agents) | All agents |
-| 4-Layer Validation | NeuroSploit | critic, triager_sim |
+| 4-Layer Validation | NeuroSploit | critic, triager-sim |
 | Security-Aware Compression | CyberStrikeAI | All agents (context preservation) |
 | Exploit Chain Rules | NeuroSploit | exploiter (web targets) |
 | Security Council (5-archetype deliberation) | Consciousness Council (K-Dense) | critic |

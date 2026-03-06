@@ -17,14 +17,15 @@ Program rules 확인:
 ## 파이프라인 실행 규칙
 
 **반드시 Agent Teams로 분석하라.** Orchestrator가 직접 코드를 읽고 분석하는 것은 금지.
+현재 Claude build에 따라 실제 subagent spawn은 `Task` 또는 `Agent` tool 경로를 탈 수 있지만, runtime `subagent_type`은 canonical hyphen-case(`target-evaluator`, `triager-sim`) 기준으로 유지한다.
 
 ### Phase 0: Target Intelligence
 1. `TeamCreate("mission-<target>")`
-2. `target_evaluator` (model=sonnet) → GO/NO-GO 판정
+2. `target-evaluator` (model=sonnet) → GO/NO-GO 판정
    - **Hard NO-GO (v6)**: 3+ audits, 2+ reputable audits, 100+ reports, 3년+, source inaccessible
    - NO-GO → 즉시 중단, 다른 타겟 검토
 3. **`oos-check` skill 실행** — 프로그램 전체 OOS 스캔
-4. target_evaluator의 `suggested_searches`로 knowledge-fts 검색 → HANDOFF에 `[KNOWLEDGE CONTEXT]` 주입
+4. target-evaluator의 `suggested_searches`로 knowledge-fts 검색 → HANDOFF에 `[KNOWLEDGE CONTEXT]` 주입
 
 ### Phase 0.2: Program Rules Generation (MANDATORY)
 ```bash
@@ -57,10 +58,10 @@ python3 tools/bb_preflight.py coverage-check targets/<target>/ --json
 - exploiter가 endpoint_map.md 업데이트 필수
 
 ### Phase 3-5: Report → Review → Finalize
-- reporter → critic + architect → triager_sim → reporter (최종)
+- reporter → critic + architect → triager-sim → reporter (최종)
 - **`slop-check` skill로 AI 슬롭 측정** (≤2 PASS, 3-5 STRENGTHEN, >5 KILL)
-- triager_sim이 `triager_sim_result.json` 출력 → reporter 자동 피드백 루프 (최대 3회)
-- triager_sim SUBMIT 없이 제출 금지
+- triager-sim이 `triager_sim_result.json` 출력 → reporter 자동 피드백 루프 (최대 3회)
+- triager-sim SUBMIT 없이 제출 금지
 - **`checkpoint-validate` skill로 idle 에이전트 탐지** (필요 시)
 
 ### Phase 6: Cleanup

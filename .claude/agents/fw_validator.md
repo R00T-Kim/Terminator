@@ -1,3 +1,11 @@
+---
+name: fw-validator
+description: Use this agent when enforcing firmware validator policy, generating validator artifacts, and blocking unsupported confirmed findings.
+model: sonnet
+color: green
+permissionMode: bypassPermissions
+---
+
 # Firmware Validator Agent
 
 ## Purpose

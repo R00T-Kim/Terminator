@@ -1,14 +1,17 @@
 #!/bin/bash
-# knowledge_inject.sh — PreToolUse:Task hook
+# knowledge_inject.sh — PreToolUse: Task/Agent hook
 # Injects relevant GraphRAG knowledge into agent context before spawn and persists
 # structured digests for cross-tool reuse.
 
 set -euo pipefail
 
-PROJECT_ROOT="/home/rootk1m/01_CYAI_Lab/01_Projects/Terminator"
-COORD_CLI="$PROJECT_ROOT/tools/coordination_cli.py"
-CONTEXT_DIGEST="$PROJECT_ROOT/tools/context_digest.py"
-GRAPHRAG_ROOT="$(cd "$(dirname "$0")/../../tools/graphrag-security" && pwd)"
+CODE_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+STATE_ROOT="${COORD_PROJECT_ROOT:-$CODE_ROOT}"
+export COORD_PROJECT_ROOT="$STATE_ROOT"
+
+COORD_CLI="$CODE_ROOT/tools/coordination_cli.py"
+CONTEXT_DIGEST="$CODE_ROOT/tools/context_digest.py"
+GRAPHRAG_ROOT="$CODE_ROOT/tools/graphrag-security"
 TIMEOUT=15
 
 # Read stdin JSON
@@ -17,17 +20,22 @@ INPUT=$(cat)
 # Extract tool_name and tool_input.prompt from JSON
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // ""')
 
-# Only process Task tool calls
-if [[ "$TOOL_NAME" != "Task" ]]; then
+# Only process Task/Agent tool calls
+if [[ "$TOOL_NAME" != "Task" && "$TOOL_NAME" != "Agent" ]]; then
     echo '{}'
     exit 0
 fi
 
 # Extract subagent_type and prompt from tool_input
 SUBAGENT_TYPE=$(echo "$INPUT" | jq -r '.tool_input.subagent_type // ""')
-PROMPT=$(echo "$INPUT" | jq -r '.tool_input.prompt // ""')
-SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // .tool_input.team_name // empty')
+PROMPT=$(echo "$INPUT" | jq -r '.tool_input.prompt // .tool_input.description // ""')
+SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // .tool_input.team_name // .tool_input.session_id // empty')
 CWD=$(echo "$INPUT" | jq -r '.cwd // "."')
+
+if [[ -z "$SUBAGENT_TYPE" ]]; then
+    echo '{}'
+    exit 0
+fi
 
 if [[ -z "$SESSION_ID" ]]; then
     SESSION_ID="$(python3 "$COORD_CLI" derive-session --cwd "$CWD" 2>/dev/null | jq -r '.session_id' 2>/dev/null || basename "$CWD")"
@@ -47,13 +55,13 @@ COMBINED="${SUBAGENT_TYPE} ${PROMPT}"
 # Map agent type to GraphRAG query
 QUERY=""
 
-if echo "$COMBINED" | grep -qiE 'reverser|trigger|chain|solver|pwn|exploit|heap|rop|overflow|canary|got|plt|ret2|shellcode|gadget'; then
+if echo "$COMBINED" | grep -qiE 'reverser|trigger|chain|solver|ctf-solver|pwn|exploit|heap|rop|overflow|canary|got|plt|ret2|shellcode|gadget'; then
     QUERY="binary exploitation techniques, vulnerability primitives, heap exploitation, ROP chains, pwn CTF patterns, buffer overflow, format string, use-after-free"
-elif echo "$COMBINED" | grep -qiE 'analyst|scout|recon|bounty|submission|owasp|cve|sqli|xss|ssrf|injection|web'; then
+elif echo "$COMBINED" | grep -qiE 'analyst|scout|recon|recon-scanner|mobile-analyst|web-tester|bounty|submission|owasp|cve|sqli|xss|ssrf|injection|web'; then
     QUERY="bug bounty findings, common rejection reasons, OOS patterns, successful submissions, CVE patterns, web vulnerability techniques, OWASP top 10"
-elif echo "$COMBINED" | grep -qiE 'exploiter|poc|proof.of.concept|exploit.dev'; then
+elif echo "$COMBINED" | grep -qiE 'exploiter|reporter|critic|target[-_]evaluator|triager[-_]sim|source-auditor|poc|proof.of.concept|exploit.dev'; then
     QUERY="exploit development techniques, PoC patterns, proof of concept quality, successful exploits, exploit chain assembly"
-elif echo "$COMBINED" | grep -qiE 'fw_|firmware|embedded|router|cgi|nvram|httpd|upnpd|arm|mips'; then
+elif echo "$COMBINED" | grep -qiE 'fw[-_](profiler|inventory|surface|validator)|firmware|embedded|router|cgi|nvram|httpd|upnpd|arm|mips'; then
     QUERY="firmware analysis, CGI vulnerabilities, embedded device security, ARM binary exploitation, NVRAM injection, command injection in embedded systems"
 elif echo "$COMBINED" | grep -qiE 'crypto|cipher|hash|aes|rsa|prng|random|z3|sage'; then
     QUERY="cryptographic vulnerabilities, cipher attacks, hash collisions, PRNG weaknesses, crypto CTF techniques"
@@ -67,7 +75,7 @@ DOC_JSON="$(python3 "$COORD_CLI" relevant-instructions --session "$SESSION_ID" -
 DOC_BLOCK="$(echo "$DOC_JSON" | jq -r '.documents // [] | map("- " + .type + ": " + .path) | join("\n")' 2>/dev/null || true)"
 GRAPH_SECTION="(GraphRAG query skipped)"
 
-if [[ -n "$QUERY" ]] && command -v graphrag &>/dev/null && [[ -d "$GRAPHRAG_ROOT" ]]; then
+if [[ -n "$QUERY" && "${COORD_SKIP_GRAPHRAG:-0}" != "1" ]] && command -v graphrag &>/dev/null && [[ -d "$GRAPHRAG_ROOT" ]]; then
     RESULT=$(timeout "$TIMEOUT" graphrag query \
         --root "$GRAPHRAG_ROOT" \
         --method local \

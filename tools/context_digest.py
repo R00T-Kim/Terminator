@@ -85,7 +85,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> int:
     args = build_parser().parse_args()
     project_root = PROJECT_ROOT
-    store = CoordinationStore.from_env(project_root)
+    store = CoordinationStore.from_env()
     session_id = args.session or stable_session_id(args.cwd)
 
     if args.stdin:

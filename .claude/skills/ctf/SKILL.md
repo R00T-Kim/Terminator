@@ -43,6 +43,7 @@ elif 문제_유형 == "web":
 TeamCreate("ctf-<challenge_name>")
 ```
 각 에이전트는 `subagent_type="<역할명>"`, `mode="bypassPermissions"`, model 필수 지정.
+현재 Claude build에 따라 실제 subagent spawn은 `Task` 또는 `Agent` tool 경로를 탈 수 있지만 `subagent_type` contract는 동일하다.
 
 ### Step 3: 결과 수집
 - FLAG_FOUND → Orchestrator가 solve.py 직접 실행 검증
