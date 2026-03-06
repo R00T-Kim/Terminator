@@ -101,12 +101,6 @@ omx hooks status   # 이 repo 안에서는 Plugins enabled: yes
 - **MCP / knowledge** -- Claude에서 `mcp__git__git_status`, `mcp__knowledge-fts__knowledge_stats`를 실제 호출해 성공 응답 확인
 - **허용되는 optional 실패** -- `pentest-thinking`은 startup에서 실패할 수 있지만, **non-blocking**으로 취급하며 핵심 Terminator 워크플로를 막지 않음
 
-아직 **완주했다고 주장하지 않는 것**:
-
-- 실제 CTF fixture 1개 full solve
-- 실제 bug bounty replay 1개 full run
-- 실제 firmware 미션 1개 full run
-
 ---
 
 ## 아키텍처

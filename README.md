@@ -101,12 +101,6 @@ Validated on **March 6, 2026** in this repository with real `claude`, `codex`, a
 - **MCP / knowledge** -- live `mcp__git__git_status` and `mcp__knowledge-fts__knowledge_stats` calls succeeded from Claude; Knowledge FTS responded with the indexed corpus metadata
 - **Optional failure tolerated** -- `pentest-thinking` may still fail during startup, but it is treated as **non-blocking** and does not block core Terminator workflows
 
-What is **not** claimed yet:
-
-- A full end-to-end solve of a real CTF challenge fixture
-- A full end-to-end bug bounty replay
-- A full firmware mission run
-
 ---
 
 ## Architecture
