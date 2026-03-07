@@ -72,6 +72,7 @@
 | Protocol Vulnerabilities Index Guide (460 cats × 31 types) | [techniques/protocol_vulns_index_guide.md](techniques/protocol_vulns_index_guide.md) |
 | Immunefi Target Candidates 2026 | [techniques/immunefi_target_candidates_2026.md](techniques/immunefi_target_candidates_2026.md) |
 | Pipeline External Review (GPT/Gemini/Claude 3-model eval) | [techniques/pipeline_external_review_2026.md](techniques/pipeline_external_review_2026.md) |
+| OSS Static Analysis BB (VRT selection, judge sim, Spring Boot patterns) | [techniques/oss_static_analysis_bb.md](techniques/oss_static_analysis_bb.md) |
 
 ## Bug Bounty Programs
 
@@ -111,6 +112,7 @@
 | T-Mobile | Bugcrowd | Web/API (54 targets, Akamai WAF) | ABANDONED (unauth surface exhausted) — 200+ subdomains probed, 4 SSRF vectors tested, Adobe Campaign XXE deep-tested. All P4-P5 info disclosure only. P1/P2 requires account registration. ~4hr/$0. | `targets/t-mobile/` |
 | NAMUHX | FindTheGap | Mobile/API (Android IoT app) | **2 SUBMITTED** — #74190: CWE-306 ATO chain, CVSS 7.4 High. #74191: CWE-639 IDOR chain (3 endpoints, PII), CVSS 6.5 Medium. ~8hr total. | `targets/namuhx/` |
 | Keeper Security | Bugcrowd | Password Manager/PAM (20+ targets, Electron/Java/.NET/Python) | **CONDITIONAL GO (6.2/10)** — 신규 제품 라인(Connection Manager/AD Bridge/EPM/PAM) 집중. Guacamole CVE 체인 가능. Commander CLI 오픈소스 감사. 평가 완료 (2026-03-04). | `targets/keeper-security/target_assessment.md` |
+| Aiven | Bugcrowd | PostgreSQL Extension + Karapace + Klaw | **5 SUBMITTED + 2 READY (2026-03-07)** — R1: pg credential disclosure P3. R2: cross-owner subscription P3. R3-Karapace: ACL $-anchor bypass P3. R4-Klaw: updateTeam BOLA P4. **R5-Klaw: Hardcoded JWT secret → /resetMemoryCache P1 VRT (SUBMITTED 2026-03-07, ID:1826dca9)**. R6-Klaw: OPERATIONAL self-approval P3 READY. R7-Klaw: Cross-tenant getUserDetails IDOR P3 READY. | `targets/aiven/submission/` |
 
 ### H1 Account Status (2026-02-17)
 - **API 제출 차단**: 계정 레벨 403 (모든 프로그램)
