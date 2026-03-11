@@ -21,7 +21,7 @@ Claude Code-native 코어 + Codex/OMX + Gemini coordination 기반 — 22개 전
 
 | CTF 풀이 | 버그바운티 타겟 | AI 에이전트 | MCP 서버 | 파이프라인 스킬 | 지식 문서 | 보안 도구 |
 |:--------:|:-------------:|:----------:|:--------:|:-------------:|:---------:|:--------:|
-| **20** | **30+** | **22** | **12** | **8** | **265K+** | **40+** |
+| **20** | **30+** | **22** | **12** | **8** | **248K+** | **40+** |
 
 <br>
 
@@ -132,7 +132,7 @@ omx hooks status   # 이 repo 안에서는 Plugins enabled: yes
           │                  Infrastructure Layer                     │
           ├──────────┬──────────┬───────────┬──────────┬─────────────┤
           │ 12 MCP   │Knowledge │ Dashboard │ 40+      │ Anti-       │
-          │ Servers  │ DB 265K+ │ (Web UI)  │ Tools    │ Hallucinate │
+          │ Servers  │ DB 248K+ │ (Web UI)  │ Tools    │ Hallucinate │
           └──────────┴──────────┴───────────┴──────────┴─────────────┘
 ```
 
@@ -335,12 +335,12 @@ Phase 6   TeamDelete            정리
 
 ## 지식 엔진
 
-**265K+ 보안 문서**를 SQLite FTS5 + BM25 랭킹으로 인덱싱한 통합 검색 시스템. 외부 의존성 없음.
+**248K+ 보안 문서**를 SQLite FTS5 + BM25 랭킹으로 인덱싱한 통합 검색 시스템. 외부 의존성 없음.
 
 | 소스 | 문서 수 | 내용 |
 |:-----|--------:|:-----|
-| 내부 기법 | 81 | 공격 패턴, CTF 라이트업 |
-| 외부 레포 (42개) | 29,565 | HackTricks, GTFOBins, PayloadsAllTheThings, how2heap, OWASP, SecLists, InternalAllTheThings + 35개 |
+| 내부 기법 | 82 | 공격 패턴, CTF 라이트업 |
+| 외부 레포 (47개) | 12,896 | HackTricks, GTFOBins, PayloadsAllTheThings, how2heap, OWASP, SecLists, InternalAllTheThings + 40개 |
 | ExploitDB | 46,960 | 익스플로잇 설명, 플랫폼, CVE |
 | Nuclei 템플릿 | 14,871 | 심각도 포함 취약점 탐지 템플릿 |
 | PoC-in-GitHub | 18,235 | CVE PoC 저장소 |
@@ -350,8 +350,9 @@ Phase 6   TeamDelete            정리
 
 ```python
 technique_search("heap tcache poisoning")     # 상위 5개 기법 문서
-exploit_search("apache struts rce")            # ExploitDB + nuclei + PoC
-search_all("race condition double spend")      # 전체 265K 문서 랭킹
+technique_search("IDOR")                      # "insecure direct object reference"로 자동 확장
+exploit_search("CVE-2021-44228")              # CVE → trickest-cve + PoC 우선 라우팅
+search_all("race condition double spend")      # 전체 248K 문서, 크로스 테이블 랭킹
 ```
 
 <details>
@@ -392,7 +393,7 @@ python tools/knowledge_indexer.py --stats
 | **playwright** | 웹 익스플로잇용 브라우저 자동화 |
 | **context7** | 최신 라이브러리 문서 조회 |
 | **graphrag-security** | 보안 지식 그래프: 익스플로잇 검색, 유사 발견사항, 드리프트 감지 |
-| **knowledge-fts** | 265K+ 문서 BM25 전문 검색 -- 기법, ExploitDB, nuclei, PoC, trickest-cve |
+| **knowledge-fts** | 248K+ 문서 BM25 검색 — synonym 확장, 크로스 테이블 랭킹, CVE 라우팅 |
 
 </details>
 
@@ -577,7 +578,7 @@ Terminator/
 │       └── checkpoint-validate/ # 에이전트 idle/완료 검증
 ├── knowledge/               # 축적된 경험
 │   ├── index.md             #   마스터 인덱스
-│   ├── knowledge.db         #   FTS5 검색 DB (265K 문서, ~338MB)
+│   ├── knowledge.db         #   FTS5 검색 DB (248K 문서, ~259MB)
 │   ├── challenges/          #   챌린지별 라이트업
 │   └── techniques/          #   재사용 가능한 공격 기법 + 경쟁 분석
 ├── research/                # LLM 보안 프레임워크 분석 (14개 문서)

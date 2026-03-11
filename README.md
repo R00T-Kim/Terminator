@@ -21,7 +21,7 @@ Claude Code-native core with Codex/OMX + Gemini coordination — 22 specialized 
 
 | CTF Solved | Bug Bounty Targets | AI Agents | MCP Servers | Pipeline Skills | Knowledge Docs | Security Tools |
 |:----------:|:------------------:|:---------:|:-----------:|:--------------:|:--------------:|:--------------:|
-| **20** | **30+** | **22** | **12** | **8** | **265K+** | **40+** |
+| **20** | **30+** | **22** | **12** | **8** | **248K+** | **40+** |
 
 <br>
 
@@ -132,7 +132,7 @@ Validated on **March 6, 2026** in this repository with real `claude`, `codex`, a
           │                  Infrastructure Layer                     │
           ├──────────┬──────────┬───────────┬──────────┬─────────────┤
           │ 12 MCP   │Knowledge │ Dashboard │ 40+      │ Anti-       │
-          │ Servers  │ DB 265K+ │ (Web UI)  │ Tools    │ Hallucinate │
+          │ Servers  │ DB 248K+ │ (Web UI)  │ Tools    │ Hallucinate │
           └──────────┴──────────┴───────────┴──────────┴─────────────┘
 ```
 
@@ -335,12 +335,12 @@ All work agents implement a checkpoint protocol for crash/compaction recovery:
 
 ## Knowledge Engine
 
-A unified full-text search over **265K+ security documents** -- zero external dependencies, built on SQLite FTS5 with BM25 ranking.
+A unified full-text search over **248K+ security documents** -- zero external dependencies, built on SQLite FTS5 with BM25 ranking.
 
 | Source | Documents | Content |
 |:-------|----------:|:--------|
-| Internal techniques | 81 | Attack patterns, CTF writeups |
-| External repos (42) | 29,565 | HackTricks, GTFOBins, PayloadsAllTheThings, how2heap, OWASP, SecLists, InternalAllTheThings + 35 more |
+| Internal techniques | 82 | Attack patterns, CTF writeups |
+| External repos (47) | 12,896 | HackTricks, GTFOBins, PayloadsAllTheThings, how2heap, OWASP, SecLists, InternalAllTheThings + 40 more |
 | ExploitDB | 46,960 | Exploit descriptions, platforms, CVEs |
 | Nuclei templates | 14,871 | Vulnerability detection templates with severity |
 | PoC-in-GitHub | 18,235 | CVE proof-of-concept repositories |
@@ -350,8 +350,9 @@ Agents query via the `knowledge-fts` MCP server:
 
 ```python
 technique_search("heap tcache poisoning")     # top 5 technique docs
-exploit_search("apache struts rce")            # ExploitDB + nuclei + PoC
-search_all("race condition double spend")      # all 265K docs ranked
+technique_search("IDOR")                      # auto-expands to "insecure direct object reference"
+exploit_search("CVE-2021-44228")              # CVE routed to trickest-cve + PoC first
+search_all("race condition double spend")      # all 248K docs, cross-table ranked
 ```
 
 <details>
@@ -392,7 +393,7 @@ Optional user-level MCPs may appear in local `claude`/`omx` startup logs; if `pe
 | **playwright** | Browser automation for web exploitation |
 | **context7** | Up-to-date library documentation lookup |
 | **graphrag-security** | Security knowledge graph: exploit lookup, similar findings, drift detection |
-| **knowledge-fts** | 265K+ document BM25 search across techniques, ExploitDB, nuclei, PoC, trickest-cve |
+| **knowledge-fts** | 248K+ document BM25 search with synonym expansion, cross-table ranking, CVE routing |
 
 </details>
 
@@ -577,7 +578,7 @@ Terminator/
 │       └── checkpoint-validate/ # Agent idle/completion verification
 ├── knowledge/               # Accumulated experience
 │   ├── index.md             #   Master index
-│   ├── knowledge.db         #   FTS5 search DB (265K docs, ~338MB)
+│   ├── knowledge.db         #   FTS5 search DB (248K docs, ~259MB)
 │   ├── challenges/          #   Per-challenge writeups
 │   └── techniques/          #   Reusable attack patterns + competitor analysis
 ├── research/                # LLM security framework analysis (14 docs)

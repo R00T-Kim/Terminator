@@ -187,29 +187,33 @@ Agent definitions: `.claude/agents/*.md`
 
 예시: `[CRITICAL FACTS]` 주소/오프셋/보호기법 → `[HANDOFF]` 상태/결과/액션 → `[PREVIOUS FAILURES]` 실패 내역.
 
-### Knowledge DB Pre-Search Protocol (Orchestrator + Agent, v6 — 자동 주입)
+### Knowledge DB Pre-Search Protocol (Orchestrator + Agent, v7 — 6 테이블 + synonym)
 
 **Orchestrator (에이전트 스폰 전):**
 에이전트 스폰 전에 `knowledge-fts` MCP로 관련 기법/exploit을 사전 검색하여 HANDOFF에 포함:
 1. target-evaluator 출력의 `suggested_searches` 필드 사용 (C5)
-2. `technique_search("<취약점 유형>")` → 관련 기법 문서
-3. `exploit_search("<서비스/CVE>")` → ExploitDB + nuclei + PoC
+2. `technique_search("<취약점 유형>")` → 관련 기법 문서 (약어 자동 확장: UAF, IDOR, RCE, SSRF 등)
+3. `exploit_search("<서비스/CVE>")` → ExploitDB + nuclei + PoC + **trickest-cve 155K** (CVE-ID 쿼리 시 자동 우선)
 4. `challenge_search("<유사 챌린지>")` → 과거 CTF 풀이 참조
 5. 검색 결과 상위 3-5건 요약을 HANDOFF의 `[KNOWLEDGE CONTEXT]` 섹션에 **자동** 포함
+6. **OR 구문 활용**: `technique_search("ret2libc OR ret2csu")` — 여러 기법 동시 검색
 
 ```
-[KNOWLEDGE CONTEXT — from knowledge-fts]
+[KNOWLEDGE CONTEXT — from knowledge-fts (6 tables, 265K+ docs)]
 - technique: "Heap UAF exploitation" (custom_allocator_exploitation.md) — custom allocator bypass patterns
 - exploit: CVE-2021-20173 (NETGEAR command injection via update) — similar SOAP injection
 - challenge: "hunter" (pwnable.kr) — heap UAF with custom allocator, partial solve
+- trickest-cve: CVE-2024-XXXXX — products, CWE, PoC URLs
 ```
 
-**v6 변경**: target-evaluator가 `suggested_searches`를 제공하므로 Orchestrator가 수동 검색을 잊는 문제 해결.
+**v7 변경**: 6 테이블 265K+ 문서 명시. synonym 자동 확장 (UAF→"use after free", IDOR→"insecure direct object reference" 등). OR 구문. CVE 쿼리 자동 라우팅. trickest_cve 155K 포매팅 버그 수정.
 **`[KNOWLEDGE CONTEXT]` 섹션은 HANDOFF 템플릿에 고정** — 검색 결과가 없어도 섹션 헤더는 유지 ("no relevant results").
 
 **에이전트 (작업 중):**
 - 작업 시작 시 `ToolSearch("knowledge-fts")`로 MCP 도구 로드 후 적극적으로 검색
 - Orchestrator가 제공한 KNOWLEDGE CONTEXT 외에 추가 검색 권장
+- **약어 활용**: UAF, IDOR, SSRF, RCE, BOF, XSS 등 → 자동 확장됨
+- **OR 구문**: `technique_search("heap spray OR heap feng shui")` 가능
 - `cat knowledge/techniques/*.md` 금지 (토큰 낭비) → MCP 검색 사용
 
 ### Observation Masking Protocol (Context Efficiency)

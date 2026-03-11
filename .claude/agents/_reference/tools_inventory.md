@@ -171,26 +171,40 @@ cat ~/PayloadsAllTheThings/"<Vuln Type>"/README.md | head -100
 
 ## Knowledge Search (MCP + CLI)
 
-### knowledge-fts MCP (265K+ documents)
+### knowledge-fts MCP (265K+ documents, 6 tables)
 ```
 # Load MCP tools first
 ToolSearch("knowledge-fts")
 
-# Search techniques
+# Search techniques (internal + external repos)
 technique_search("<vulnerability type>", category="<field>")
 
-# Search exploits (ExploitDB + nuclei + PoC combined)
-exploit_search("<service version>")
+# Search exploits (ExploitDB + Nuclei + PoC-in-GitHub + Trickest-CVE)
+exploit_search("<service version or CVE>")
 
 # Search past CTF writeups
 challenge_search("<similar challenge>")
 
-# Full-text search across everything
+# Full-text search across all 6 tables with cross-table ranking
 search_all("<query>")
 
 # Get specific document content
 get_technique_content("<path>")
 ```
+
+**Tables**: techniques, external_techniques, exploitdb (47K), nuclei (12K), poc_github (8K), trickest_cve (155K)
+
+**Search tips**:
+- Abbreviations auto-expand: UAF, IDOR, SSRF, RCE, BOF, XSS, CSRF, LFI, RFI, LPE, ROP, BOLA, JWT, etc.
+- OR queries: `technique_search("ret2libc OR ret2csu")`
+- CVE exact match: `exploit_search("CVE-2021-44228")` → trickest_cve + poc_github prioritized
+- CWE exact match: `technique_search("CWE-787")`
+
+**Search strategy** (priority order):
+1. CVE-specific: `exploit_search("CVE-2024-XXXXX")`
+2. Technique: `technique_search("<technique>")`
+3. Broad recon: `search_all("<topic>")`
+4. Past CTF: `challenge_search("<similar>")`
 
 **NEVER use `cat knowledge/techniques/*.md`** — wastes 27-40K tokens. Always use MCP search.
 

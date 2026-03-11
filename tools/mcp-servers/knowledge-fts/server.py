@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Knowledge FTS5 MCP Server — BM25 search over 84K+ security documents.
+"""Knowledge FTS5 MCP Server — BM25 search over 265K+ security documents.
 
 Tables indexed:
   - techniques:          internal knowledge/techniques/ + knowledge/challenges/
@@ -7,8 +7,10 @@ Tables indexed:
   - exploitdb:           47K+ ExploitDB entries
   - nuclei:              12K+ Nuclei detection templates
   - poc_github:          8K+ CVE PoC repos
+  - trickest_cve:        155K+ CVE entries with products, CWE, PoC URLs
 """
 import os
+import re as _re
 import sys
 
 # Add tools/ to path so we can import knowledge_indexer
@@ -100,12 +102,13 @@ def technique_search(query: str, category: str = "", limit: int = 5) -> str:
 
 @mcp.tool()
 def exploit_search(query: str, platform: str = "", severity: str = "", limit: int = 10) -> str:
-    """Search ExploitDB, Nuclei templates, and PoC-in-GitHub for exploits.
+    """Search ExploitDB, Nuclei templates, PoC-in-GitHub, and Trickest-CVE for exploits.
 
-    Searches three exploit databases combined:
+    Searches four exploit databases combined:
     - ExploitDB (47K+ exploits with CVE codes, platform, type)
     - Nuclei templates (12K+ detection templates with severity/CWE/CVE)
     - PoC-in-GitHub (8K+ CVE proof-of-concept repositories)
+    - Trickest-CVE (155K+ CVE entries with products, CWE, PoC URLs)
 
     Use this when you need:
     - Known exploits for a CVE (e.g. "CVE-2021-44228")
@@ -120,6 +123,13 @@ def exploit_search(query: str, platform: str = "", severity: str = "", limit: in
         limit:    Max results per source (default 10)
     """
     results = _indexer.search_exploits(query, platform=platform, severity=severity, limit=limit)
+
+    # CVE query priority routing: trickest_cve + poc_github first
+    if _re.match(r'CVE-\d{4}-\d{4,}', query, _re.IGNORECASE):
+        results.sort(key=lambda r: (
+            0 if r.get("_source_table") in ("trickest_cve", "poc_github") else 1,
+            r.get("rank", 0)
+        ))
 
     if not results:
         return (f"No exploit results for '{query}'"
@@ -195,6 +205,23 @@ def exploit_search(query: str, platform: str = "", severity: str = "", limit: in
             if year:
                 lines.append(f"   Year: {year}")
 
+        elif source == "trickest_cve":
+            cve_id = r.get("cve_id", "?")
+            desc = r.get("description", "")
+            products = r.get("products", "")
+            cwe = r.get("cwe", "")
+            year = r.get("year", "")
+            lines.append(f"{i}. [Trickest-CVE: {cve_id}] {desc[:120]}")
+            parts = []
+            if products:
+                parts.append(f"Products: {products[:80]}")
+            if cwe:
+                parts.append(f"CWE: {cwe}")
+            if year:
+                parts.append(f"Year: {year}")
+            if parts:
+                lines.append("   " + " | ".join(parts))
+
         else:
             lines.append(f"{i}. [{source}] {str(r)[:200]}")
 
@@ -267,11 +294,12 @@ def challenge_search(query: str, status: str = "", limit: int = 5) -> str:
 
 @mcp.tool()
 def search_all(query: str, limit: int = 10) -> str:
-    """Search ALL 5 knowledge tables simultaneously for the broadest coverage.
+    """Search ALL 6 knowledge tables simultaneously for the broadest coverage.
 
-    Queries techniques, external_techniques, exploitdb, nuclei, and poc_github
-    tables at once, sorted by BM25 rank. Each result is labelled with its
-    source table. Use this as the 'I need everything about X' tool.
+    Queries techniques, external_techniques, exploitdb, nuclei, poc_github,
+    and trickest_cve tables at once, with cross-table normalized BM25 ranking.
+    Each result is labelled with its source table. Use this as the
+    'I need everything about X' tool.
 
     Use this when you need:
     - Comprehensive coverage across internal docs + external repos + exploit DBs
@@ -303,6 +331,11 @@ def search_all(query: str, limit: int = 10) -> str:
         elif source_table == "poc_github":
             title = f"{r.get('cve_id', '?')} — {r.get('repo_name', '')}"
             ident = "PoC-GitHub"
+        elif source_table == "trickest_cve":
+            cve_id = r.get("cve_id", "?")
+            desc = r.get("description", "")[:80]
+            title = f"{cve_id} — {desc}" if desc else cve_id
+            ident = f"CVE-DB:{r.get('year', '?')}"
         elif source_table == "external_techniques":
             title = r.get("title", "untitled")
             ident = f"ext:{r.get('source_repo', '?')}"
@@ -344,6 +377,18 @@ def search_all(query: str, limit: int = 10) -> str:
             url = r.get("github_url", "")
             if url:
                 detail_parts.append(f"url={url}")
+        elif source_table == "trickest_cve":
+            products = r.get("products", "")
+            if products:
+                detail_parts.append(f"products={products[:80]}")
+            cwe = r.get("cwe", "")
+            if cwe:
+                detail_parts.append(f"cwe={cwe}")
+            poc = r.get("poc_urls", "")
+            if poc:
+                first_url = poc.split()[0] if poc.strip() else ""
+                if first_url:
+                    detail_parts.append(f"poc={first_url}")
 
         if detail_parts:
             lines.append("   " + " | ".join(detail_parts))
@@ -396,13 +441,14 @@ def knowledge_stats() -> str:
 
     lines = ["## Knowledge FTS5 Database Statistics\n"]
 
-    tables = ["techniques", "external_techniques", "exploitdb", "nuclei", "poc_github"]
+    tables = ["techniques", "external_techniques", "exploitdb", "nuclei", "poc_github", "trickest_cve"]
     table_labels = {
         "techniques": "Internal techniques + challenges",
         "external_techniques": "External repos (PayloadsAllTheThings, HackTricks, how2heap, etc.)",
         "exploitdb": "ExploitDB entries",
         "nuclei": "Nuclei detection templates",
         "poc_github": "PoC-in-GitHub CVE repos",
+        "trickest_cve": "Trickest CVE database",
     }
 
     total = 0

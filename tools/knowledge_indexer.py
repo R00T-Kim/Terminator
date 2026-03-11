@@ -134,12 +134,62 @@ def split_sections(text: str) -> list[tuple[str, str]]:
     return sections
 
 
+SYNONYMS = {
+    "uaf": '"use" "after" "free"',
+    "bof": '"buffer" "overflow"',
+    "sqli": '"sql" "injection"',
+    "xss": '"cross" "site" "scripting"',
+    "ssrf": '"server" "side" "request" "forgery"',
+    "csrf": '"cross" "site" "request" "forgery"',
+    "rce": '"remote" "code" "execution"',
+    "lfi": '"local" "file" "inclusion"',
+    "rfi": '"remote" "file" "inclusion"',
+    "idor": '"insecure" "direct" "object" "reference"',
+    "lpe": '"local" "privilege" "escalation"',
+    "rop": '"return" "oriented" "programming"',
+    "aslr": '"address" "space" "layout" "randomization"',
+    "got": '"global" "offset" "table"',
+    "plt": '"procedure" "linkage" "table"',
+    "oob": '"out" "of" "bounds"',
+    "bola": '"broken" "object" "level" "authorization"',
+    "jwt": '"json" "web" "token"',
+}
+
+
 def escape_fts5(query: str) -> str:
-    # Preserve hyphens for CVE-style identifiers (CVE-2021-44228)
-    words = re.findall(r"[\w][\w\-]*[\w]|[\w]+", query)
+    """Escape and preprocess query for FTS5 with synonym expansion and OR support."""
+    q = query.strip()
+    if not q:
+        return q
+    # CVE exact match
+    if re.match(r'^CVE-\d{4}-\d{4,}$', q, re.IGNORECASE):
+        return f'"{q}"'
+    # CWE exact match
+    if re.match(r'^CWE-\d+$', q, re.IGNORECASE):
+        return f'"{q}"'
+    # User-level OR
+    if ' OR ' in q:
+        parts = q.split(' OR ')
+        return ' OR '.join(escape_fts5(p.strip()) for p in parts if p.strip())
+    # Synonym expansion (whole-query match)
+    q_lower = q.lower().strip()
+    if q_lower in SYNONYMS:
+        original = f'"{q_lower}"'
+        expanded = SYNONYMS[q_lower]
+        return f'{original} OR ({expanded})'
+    # Standard tokenization
+    words = re.findall(r"[\w][\w\-]*[\w]|[\w]+", q)
     if not words:
-        return query
-    return " ".join(f'"{w}"' for w in words)
+        return q
+    # Per-word synonym expansion (inline)
+    expanded_words = []
+    for w in words:
+        w_lower = w.lower()
+        if w_lower in SYNONYMS:
+            expanded_words.append(f'({SYNONYMS[w_lower]})')
+        else:
+            expanded_words.append(f'"{w}"')
+    return " ".join(expanded_words)
 
 
 def parse_nuclei_yaml(text: str) -> dict:
@@ -176,6 +226,19 @@ def parse_nuclei_yaml(text: str) -> dict:
         "severity": severity, "tags": tags, "cve_id": cve_id,
         "cwe_id": cwe_id, "framework": framework,
     }
+
+
+POC_URL_NOISE_PATTERNS = {
+    "ARPSyndicate", "cve-scores", "ProjectZeroDays",
+    "nvd-json-data-feeds", "fkie-cad", "vulnscope",
+    "cyber-ai-info", "EPSS-Scoring", "nomi-sec/PoC-in-GitHub",
+}
+
+
+def _filter_poc_urls(urls_str: str) -> str:
+    """Remove CVE tracker/monitoring repo URLs from PoC URL lists."""
+    urls = urls_str.split()
+    return " ".join(u for u in urls if not any(n in u for n in POC_URL_NOISE_PATTERNS))
 
 
 class KnowledgeIndexer:
@@ -363,6 +426,16 @@ class KnowledgeIndexer:
             title = f"{year} {chal}" if year else chal
             return [(title, text, "ctf", "", "", cfg["name"], str(f))]
 
+        def _shannon_compact(f: Path, text: str, cfg: dict) -> list[tuple]:
+            """Shannon-analysis: single entry per file, 3KB cap, skip audit/benchmark."""
+            str_f = str(f)
+            if any(skip in str_f for skip in ("/audit-logs/", "/prompts/", "/xben-benchmark")):
+                return []
+            title = extract_md_title(text) or f.stem
+            content = text[:3072]
+            cat = cfg.get("category_fn", lambda p: "")(f)
+            return [(title, content, cat, "", "", cfg["name"], str(f))]
+
         repos = [
             {"name": "PayloadsAllTheThings", "path": "~/PayloadsAllTheThings",
              "patterns": ["**/*.md"],
@@ -540,7 +613,7 @@ class KnowledgeIndexer:
             {"name": "shannon-analysis", "path": "~/tools/shannon-analysis",
              "patterns": ["**/*.md"],
              "category_fn": lambda f: "baseband-analysis",
-             "extractor": _md_default},
+             "extractor": _shannon_compact},
             {"name": "NeuroSploit", "path": "~/tools/NeuroSploit",
              "patterns": ["**/*.md"],
              "category_fn": lambda f: "ai-exploit",
@@ -548,6 +621,27 @@ class KnowledgeIndexer:
             {"name": "PentestGPT", "path": "~/tools/PentestGPT",
              "patterns": ["**/*.md"],
              "category_fn": lambda f: "ai-pentest",
+             "extractor": _md_default},
+            # === NEW: AI Security / Agent Analysis ===
+            {"name": "cai-analysis", "path": "~/tools/cai-analysis",
+             "patterns": ["**/*.md"],
+             "category_fn": lambda f: "ai-security",
+             "extractor": _md_default},
+            {"name": "CyberStrikeAI", "path": "~/tools/CyberStrikeAI",
+             "patterns": ["**/*.md"],
+             "category_fn": lambda f: "ai-security-tools",
+             "extractor": _md_default},
+            {"name": "pentagi", "path": "~/tools/pentagi",
+             "patterns": ["**/*.md"],
+             "category_fn": lambda f: "pentest-ai",
+             "extractor": _md_default},
+            {"name": "awesome-android-security", "path": "~/tools/awesome-android-security",
+             "patterns": ["**/*.md"],
+             "category_fn": lambda f: "android-security",
+             "extractor": _md_default},
+            {"name": "codeql-docs", "path": "~/tools/codeql",
+             "patterns": ["**/*.md"],
+             "category_fn": lambda f: "codeql",
              "extractor": _md_default},
         ]
         return repos
@@ -738,7 +832,7 @@ class KnowledgeIndexer:
                     poc_m2 = re_poc_start.search(text)
                     if poc_m2:
                         poc_section = text[poc_m2.end():]
-                        poc_urls = " ".join(re_urls.findall(poc_section))
+                        poc_urls = _filter_poc_urls(" ".join(re_urls.findall(poc_section)))
 
                     rows.append((cve_id, description, products, cwe, poc_urls, year))
 
@@ -796,16 +890,44 @@ class KnowledgeIndexer:
         return results
 
     def search_all(self, query: str, limit: int = 10) -> list[dict]:
-        tables = ["techniques", "external_techniques", "exploitdb", "nuclei", "poc_github", "trickest_cve"]
+        TABLE_WEIGHTS = {
+            "techniques": 1.5,
+            "external_techniques": 1.3,
+            "exploitdb": 1.0,
+            "nuclei": 1.0,
+            "poc_github": 1.0,
+            "trickest_cve": 0.6,
+        }
+        tables = list(TABLE_WEIGHTS.keys())
         all_results = []
         for table in tables:
             results = self.search(query, table=table, limit=limit)
+            if not results:
+                continue
+            ranks = [r.get("rank", 0) for r in results]
+            min_rank = min(ranks)
+            max_rank = max(ranks)
+            span = max_rank - min_rank if max_rank != min_rank else 1.0
+            weight = TABLE_WEIGHTS.get(table, 1.0)
             for r in results:
                 r["_source_table"] = table
+                normalized = (r.get("rank", 0) - min_rank) / span
+                r["_normalized_rank"] = normalized / weight
             all_results.extend(results)
-        # FTS5 BM25 rank is negative; ascending sort puts best matches first
-        all_results.sort(key=lambda x: x.get("rank", 0))
-        return all_results[:limit]
+
+        # Diversity: guarantee at least 1 result per table that has results
+        seen_tables = set()
+        diverse = []
+        remaining = []
+        for r in sorted(all_results, key=lambda x: x.get("_normalized_rank", 1.0)):
+            t = r["_source_table"]
+            if t not in seen_tables:
+                diverse.append(r)
+                seen_tables.add(t)
+            else:
+                remaining.append(r)
+        diverse.extend(remaining)
+        return diverse[:limit]
 
     def search_exploits(self, query: str, platform: str = "",
                         severity: str = "", limit: int = 10) -> list[dict]:
