@@ -13,7 +13,7 @@ permissionMode: bypassPermissions
 1. **Duplicate Pre-Screen BEFORE deep scanning** — Check CVE databases, Hacktivity, searchsploit, and `graphrag-security` MCP for existing reports before spending tokens on analysis. If Duplicate Risk = HIGH for ALL areas, STOP and report to Orchestrator.
 2. **Program Context is MANDATORY** — Every recon MUST produce `program_context.md` with: scope boundaries, auth requirements, CVSS version (3.1 vs 4.0), exclusion list, bounty table. No report submission without this.
 3. **Program Rules Summary is MANDATORY** — `bb_preflight.py rules-check` MUST return PASS before any analyst is spawned. Auth header format, mandatory headers, known issues, exclusion list all verified.
-4. **endpoint_map.md with coverage tracking** — Every discovered endpoint gets an entry with Status: UNTESTED/TESTED/VULN/SAFE/EXCLUDED. Coverage must reach 80%+ before Phase 2 handoff. No endpoint_map = Phase 1 incomplete.
+4. **endpoint_map.md with risk-weighted coverage tracking** — Every discovered endpoint gets an entry with Status (UNTESTED/TESTED/VULN/SAFE/EXCLUDED) AND Risk (HIGH/MEDIUM/LOW). HIGH endpoints (auth, payment, admin) count 2x toward coverage. Coverage must reach 80%+ risk-weighted before Phase 2 handoff. No endpoint_map = Phase 1 incomplete.
 5. **WAF-aware scanning** — Detect WAF first. If WAF present, switch to passive/low-rate (max 10 req/sec). Never trigger rate limits or IP bans.
 6. **Token efficiency** — Use targeted scans, not full-spectrum. Nmap: top 1000 ports first, full only if justified. Nuclei: targeted templates by tag/severity, never `-t all`.
 7. **Observation Masking** — Output >100 lines: key findings inline + file save. >500 lines: `[Obs elided]` + file save mandatory.
@@ -107,7 +107,20 @@ All modes end with: Program Context (MANDATORY) + Endpoint/Surface Map + Report 
 ### Phase E: Program Context (MANDATORY — same as Network Phase A sub-step 4)
 **Decision**: Same program context requirements as Network mode.
 **Output**: `program_context.md`, `program_rules_summary.md`
-**Gate**: `rules-check` PASS -> Report Assembly
+**Gate**: `rules-check` PASS -> Phase G
+
+### Phase G: Workflow Discovery (v12 — feeds explore lane)
+**Decision**: What multi-step workflows exist? What state transitions are possible?
+**Sub-steps**:
+  (1) Identify sequential endpoint groups from endpoint_map.md (endpoints sharing resource IDs)
+  (2) Map authentication flows (signup → verify → login → session → logout)
+  (3) Map payment flows if billing endpoints exist
+  (4) Map invitation/sharing flows if invite endpoints exist
+  (5) Note workflow boundaries and state parameters in workflow_map.md
+**Output**: `workflow_map.md` (initial draft — @threat-modeler and @workflow-auditor refine)
+**Gate**: Workflow map created -> Report Assembly
+
+> **Rationale**: Workflow mapping feeds directly into the v12 explore lane. Business logic bugs (CWE-840, CWE-362) have the highest acceptance rate on Bugcrowd, but require understanding multi-step flows that endpoint scanning alone misses.
 
 ### Report Assembly
 Produce `recon_report.json` + `recon_notes.md` with: Repository Overview, Security Posture, Attack Surface Map, Key Dependencies, Recommended Analysis Priorities (ranked), Program Context summary.
@@ -167,7 +180,8 @@ Additional: dalfox (XSS), garak (LLM), whatweb, dirsearch, amass, openssl, Gemin
 |----------|----------|-------------|
 | `recon_report.json` | ALWAYS | Combined structured findings (all phases) |
 | `recon_notes.md` | ALWAYS | Human-readable: Key Findings (severity-tagged), Attack Surface Summary, Recommended Next Steps |
-| `endpoint_map.md` | Web/API targets | All endpoints with Status field (UNTESTED/TESTED/VULN/SAFE/EXCLUDED) |
+| `endpoint_map.md` | Web/API targets | All endpoints with columns: `Endpoint \| Method \| Auth \| Status \| Risk \| Notes`. Status: UNTESTED/TESTED/VULN/SAFE/EXCLUDED. Risk: `HIGH` (auth/payment/admin/role-change), `MEDIUM` (data access/user-content), `LOW` (static/public/docs). |
+| `workflow_map.md` | Web/API targets | Multi-step workflow state transitions — initial mapping for @threat-modeler and @workflow-auditor. Identifies sequential endpoint groups, state parameters, and timing dependencies. |
 | `program_context.md` | Bug Bounty | Scope, CVSS version, exclusions, bounty table, program rules |
 | `program_rules_summary.md` | Bug Bounty | Auth format, mandatory headers, known issues — `bb_preflight.py` generated |
 | `mitre_enrichment.json` | If CVEs found | CVE -> CWE -> CAPEC -> ATT&CK mapping |

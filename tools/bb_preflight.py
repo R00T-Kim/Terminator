@@ -14,10 +14,15 @@ Usage:
     bb_preflight.py exclusion-filter <target_dir>      Output exclusion list for analyst
     bb_preflight.py kill-gate-1 <target_dir> --finding "<desc>"  Pre-validate finding viability
     bb_preflight.py kill-gate-2 <submission_dir>       Pre-validate PoC/evidence quality
+    bb_preflight.py workflow-check <target_dir>        Validate workflow_map.md completeness (v12)
+    bb_preflight.py fresh-surface-check <target_dir> [--repo <path>]  Check for fresh attack surface (v12)
+    bb_preflight.py evidence-tier-check <submission_dir> [--json]     Classify evidence E1-E4 tier (v12)
+    bb_preflight.py duplicate-graph-check <target_dir> --finding "<desc>" [--json]  Enhanced duplicate detection (v12)
 
 Exit: 0=PASS, 1=FAIL (with specific error message); kill-gate-*: 0=PASS, 1=WARN (advisory)
 
 Created: 2026-02-25 (NAMUHX retrospective — structural fix for rule compliance & coverage gap)
+Updated: 2026-03-14 (v12 — workflow-check, fresh-surface-check, evidence-tier-check, duplicate-graph-check)
 """
 
 import sys
@@ -514,6 +519,401 @@ Status values: UNTESTED | TESTED | VULN | SAFE | EXCLUDED
 """
 
 
+# --- v12 Subcommands ---
+
+def workflow_check(target_dir: str) -> int:
+    """Check that workflow_map.md exists and has minimum content.
+
+    v12: Validates workflow mapping completeness before Phase 2 handoff.
+    Rationale: Business logic bugs (CWE-840, CWE-362) have the highest
+    acceptance rate on Bugcrowd but require workflow understanding that
+    endpoint scanning alone misses.
+
+    Returns: 0=PASS, 1=FAIL
+    """
+    target = Path(target_dir)
+    wf_path = target / "workflow_map.md"
+
+    if not wf_path.exists():
+        print("[FAIL] workflow_map.md not found in", target_dir)
+        print("  → Run threat-modeler or workflow-auditor first")
+        return 1
+
+    content = wf_path.read_text(encoding="utf-8")
+    lines = content.strip().split("\n")
+
+    if len(lines) < 10:
+        print("[FAIL] workflow_map.md too short ({} lines) — needs substantive content".format(len(lines)))
+        return 1
+
+    # Check for workflow structure markers
+    has_workflow = False
+    has_states = False
+    has_transitions = False
+
+    for line in lines:
+        lower = line.lower()
+        if "## workflow" in lower or "### workflow" in lower:
+            has_workflow = True
+        if "state" in lower and ("→" in line or "->" in line or "transition" in lower):
+            has_transitions = True
+        if any(marker in lower for marker in ["entry", "terminal", "pending", "active", "completed", "init"]):
+            has_states = True
+
+    issues = []
+    if not has_workflow:
+        issues.append("No workflow sections found (expected ## Workflow headers)")
+    if not has_states:
+        issues.append("No state definitions found (expected entry/terminal states)")
+    if not has_transitions:
+        issues.append("No transitions found (expected state → state patterns)")
+
+    if issues:
+        print("[FAIL] workflow_map.md structure incomplete:")
+        for issue in issues:
+            print("  →", issue)
+        return 1
+
+    print("[PASS] workflow_map.md exists with valid structure ({} lines)".format(len(lines)))
+    return 0
+
+
+def fresh_surface_check(target_dir: str, repo_path: str = None) -> int:
+    """Check if a mature target has fresh attack surface worth investigating.
+
+    v12: Enables Fresh-Surface Exception for targets that would otherwise
+    be NO-GO due to maturity. Analyzes git history for recent security-relevant
+    changes.
+    Rationale: 33 CLOSED/ABANDONED targets included cases where mature targets
+    had fresh modules that were prematurely skipped.
+
+    Returns: 0=FRESH_SURFACE_FOUND, 1=NO_FRESH_SURFACE
+    """
+    import subprocess
+
+    target = Path(target_dir)
+    repo = Path(repo_path) if repo_path else target
+
+    # Check if it's a git repo
+    git_dir = repo / ".git"
+    if not git_dir.exists():
+        # Try to find git repo in parent directories
+        check = repo
+        while check != check.parent:
+            if (check / ".git").exists():
+                repo = check
+                git_dir = check / ".git"
+                break
+            check = check.parent
+        else:
+            print("[SKIP] Not a git repository:", str(repo))
+            print("  → Cannot check for fresh surface without git history")
+            return 1
+
+    fresh_indicators = []
+
+    # Check 1: Recent commits (last 6 months) touching security-relevant files
+    try:
+        result = subprocess.run(
+            ["git", "log", "--oneline", "--since=6 months ago", "-n", "50",
+             "--", "**/*auth*", "**/*middleware*", "**/*permission*", "**/*security*",
+             "**/*payment*", "**/*billing*", "**/*admin*", "**/*bridge*", "**/*migration*"],
+            capture_output=True, text=True, cwd=str(repo), timeout=30
+        )
+        recent_security = [l for l in result.stdout.strip().split("\n") if l.strip()]
+        if recent_security:
+            fresh_indicators.append("Security-relevant commits in last 6mo: {}".format(len(recent_security)))
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        pass
+
+    # Check 2: New files added in last 6 months
+    try:
+        result = subprocess.run(
+            ["git", "log", "--oneline", "--since=6 months ago", "--diff-filter=A", "--name-only", "-n", "50"],
+            capture_output=True, text=True, cwd=str(repo), timeout=30
+        )
+        new_files = [l for l in result.stdout.strip().split("\n") if l.strip() and not l.startswith(" ")]
+        # Filter for code files only
+        code_extensions = {".py", ".js", ".ts", ".sol", ".go", ".rs", ".java", ".rb", ".php"}
+        new_code_files = [f for f in new_files if any(f.endswith(ext) for ext in code_extensions)]
+        if new_code_files:
+            fresh_indicators.append("New code files in last 6mo: {}".format(len(new_code_files)))
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        pass
+
+    # Check 3: Check endpoint_map.md for recently added endpoints
+    endpoint_map = target / "endpoint_map.md"
+    if endpoint_map.exists():
+        content = endpoint_map.read_text(encoding="utf-8")
+        new_markers = content.lower().count("new") + content.lower().count("added") + content.lower().count("v2")
+        if new_markers > 2:
+            fresh_indicators.append("Endpoint map contains 'new'/'added' markers: {}".format(new_markers))
+
+    # Check 4: Look for migration/bridge files
+    try:
+        result = subprocess.run(
+            ["git", "log", "--oneline", "--since=6 months ago", "-n", "20",
+             "--grep=migration\\|bridge\\|upgrade\\|v2\\|new module\\|scope expansion"],
+            capture_output=True, text=True, cwd=str(repo), timeout=30
+        )
+        migration_commits = [l for l in result.stdout.strip().split("\n") if l.strip()]
+        if migration_commits:
+            fresh_indicators.append("Migration/bridge/upgrade commits: {}".format(len(migration_commits)))
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        pass
+
+    if fresh_indicators:
+        print("[FOUND] Fresh attack surface detected:")
+        for indicator in fresh_indicators:
+            print("  ✓", indicator)
+        print("  → Fresh-Surface Exception may apply. Scope investigation to new surface only.")
+        return 0
+    else:
+        print("[NONE] No fresh surface detected in last 6 months")
+        print("  → Original NO-GO assessment stands")
+        return 1
+
+
+def evidence_tier_check(submission_dir: str, json_output: bool = False) -> int:
+    """Classify evidence quality into E1-E4 tiers.
+
+    v12: Separates exploration findings from submission-ready findings.
+    E1/E2 are submit-ready. E3/E4 need more investigation.
+    Rationale: Binary Tier 1-2/3-4 model from v11 silently killed findings
+    worth investigating. Evidence tiers create an explore lane for borderline
+    findings. (Evidence: Chain-of-Verification, Dhuliawala et al.)
+
+    Returns: 0=E1/E2 (submit-ready), 1=E3/E4 (explore-only)
+    """
+    import json as json_module
+
+    sub = Path(submission_dir)
+
+    if not sub.exists():
+        print("[FAIL] Submission directory not found:", submission_dir)
+        return 1
+
+    # Collect evidence signals
+    signals = {
+        "has_poc_script": False,
+        "has_output_file": False,
+        "has_real_target_url": False,
+        "has_before_after": False,
+        "has_invariant_ref": False,
+        "has_config_proof": False,
+    }
+
+    # Check for PoC scripts
+    poc_patterns = ["poc_*.py", "exploit_*.py", "solve.py", "poc_*.sh", "test_*.py"]
+    for pattern in poc_patterns:
+        if list(sub.glob(pattern)):
+            signals["has_poc_script"] = True
+            break
+
+    # Check for output/evidence files
+    evidence_patterns = ["output_*.txt", "evidence_*.png", "evidence_*.txt", "response_*.txt",
+                         "*_evidence.*", "race_evidence_*"]
+    for pattern in evidence_patterns:
+        if list(sub.glob(pattern)):
+            signals["has_output_file"] = True
+            break
+
+    # Check PoC content for real target indicators
+    for poc_file in sub.glob("*.py"):
+        try:
+            content = poc_file.read_text(encoding="utf-8", errors="ignore")
+            # Real target = actual URLs, not localhost/mock
+            if any(marker in content for marker in ["https://", "http://", "remote(", "requests.post", "requests.get"]):
+                if "localhost" not in content and "127.0.0.1" not in content and "mock" not in content.lower():
+                    signals["has_real_target_url"] = True
+            # Before/after evidence
+            if any(marker in content.lower() for marker in ["before", "after", "diff", "delta", "comparison"]):
+                signals["has_before_after"] = True
+            # Invariant reference
+            if any(marker in content.lower() for marker in ["invariant", "inv-", "violation", "assertion"]):
+                signals["has_invariant_ref"] = True
+        except Exception:
+            continue
+
+    # Check for config/reachability proof
+    for txt_file in sub.glob("*.md"):
+        try:
+            content = txt_file.read_text(encoding="utf-8", errors="ignore")
+            if any(marker in content.lower() for marker in ["config", "enabled", "reachable", "code path"]):
+                signals["has_config_proof"] = True
+        except Exception:
+            continue
+
+    # Classify tier
+    tier = "E4"  # Default: lowest
+    reasoning = []
+
+    if signals["has_poc_script"] and signals["has_output_file"] and signals["has_real_target_url"]:
+        if signals["has_before_after"]:
+            tier = "E1"
+            reasoning.append("Full live exploit: PoC + output + real target + before/after evidence")
+        else:
+            tier = "E2"
+            reasoning.append("Live differential proof: PoC + output + real target (no before/after)")
+    elif signals["has_poc_script"] and signals["has_invariant_ref"]:
+        tier = "E3"
+        reasoning.append("Invariant violation proof: PoC references invariant but lacks live target evidence")
+    elif signals["has_config_proof"] or signals["has_poc_script"]:
+        tier = "E4"
+        reasoning.append("Config-backed reachability: code path analysis without runtime evidence")
+    else:
+        tier = "E4"
+        reasoning.append("Insufficient evidence: no PoC or config proof found")
+
+    submit_ready = tier in ("E1", "E2")
+
+    if json_output:
+        result = {
+            "tier": tier,
+            "submit_ready": submit_ready,
+            "signals": signals,
+            "reasoning": reasoning
+        }
+        print(json_module.dumps(result, indent=2))
+    else:
+        status = "PASS" if submit_ready else "FAIL"
+        print("[{}] Evidence tier: {} ({})".format(status, tier, "submit-ready" if submit_ready else "explore-only"))
+        for r in reasoning:
+            print("  →", r)
+        if not submit_ready:
+            print("  → Log to explore_candidates.md for potential re-investigation")
+
+    return 0 if submit_ready else 1
+
+
+def duplicate_graph_check(target_dir: str, finding: str, json_output: bool = False) -> int:
+    """Check finding against all prior submissions and triage feedback.
+
+    v12: Enhanced duplicate detection using submission history, triage feedback,
+    and knowledge base. Goes beyond kill-gate-1's keyword overlap by checking
+    CWE patterns and root cause descriptions.
+    Rationale: bb_preflight v11's kill-gate-1 used title keyword overlap which
+    missed semantically identical findings with different wording, and flagged
+    different findings with overlapping keywords.
+
+    Returns: 0=PASS (no duplicates), 1=WARN (possible duplicates found)
+    """
+    import json as json_module
+
+    target = Path(target_dir)
+    finding_lower = finding.lower()
+
+    # Extract keywords from finding description
+    stop_words = {"the", "a", "an", "is", "in", "on", "at", "to", "for", "of", "and", "or", "via", "by", "with"}
+    finding_words = set(re.findall(r'\b[a-z]{3,}\b', finding_lower)) - stop_words
+
+    # Extract CWE if mentioned
+    cwe_match = re.search(r'cwe-(\d+)', finding_lower)
+    finding_cwe = cwe_match.group(0) if cwe_match else None
+
+    duplicates = []
+
+    # Source 1: Previous submissions in this target
+    submission_dir = target / "submission"
+    if submission_dir.exists():
+        for report_dir in submission_dir.iterdir():
+            if not report_dir.is_dir():
+                continue
+            # Check bugcrowd_form.md
+            form = report_dir / "bugcrowd_form.md"
+            if form.exists():
+                try:
+                    content = form.read_text(encoding="utf-8").lower()
+                    content_words = set(re.findall(r'\b[a-z]{3,}\b', content)) - stop_words
+                    overlap = finding_words & content_words
+                    overlap_ratio = len(overlap) / max(len(finding_words), 1)
+
+                    if overlap_ratio > 0.5:
+                        duplicates.append({
+                            "source": "submission/" + report_dir.name,
+                            "overlap_ratio": round(overlap_ratio, 2),
+                            "matching_words": sorted(overlap)[:10]
+                        })
+                except Exception:
+                    continue
+
+            # Check report markdown files
+            for md_file in report_dir.glob("*.md"):
+                if md_file.name == "bugcrowd_form.md":
+                    continue
+                try:
+                    content = md_file.read_text(encoding="utf-8").lower()
+                    # CWE match is stronger signal
+                    if finding_cwe and finding_cwe in content:
+                        duplicates.append({
+                            "source": "submission/" + report_dir.name + "/" + md_file.name,
+                            "match_type": "CWE match",
+                            "cwe": finding_cwe
+                        })
+                except Exception:
+                    continue
+
+    # Source 2: Triage objections (v12)
+    objections_dir = Path(target_dir).parent.parent / "knowledge" / "triage_objections"
+    if not objections_dir.exists():
+        objections_dir = Path("knowledge/triage_objections")
+
+    if objections_dir.exists():
+        for obj_file in objections_dir.rglob("*.md"):
+            try:
+                content = obj_file.read_text(encoding="utf-8").lower()
+                content_words = set(re.findall(r'\b[a-z]{3,}\b', content)) - stop_words
+                overlap = finding_words & content_words
+                overlap_ratio = len(overlap) / max(len(finding_words), 1)
+
+                if overlap_ratio > 0.4:
+                    # Check if this was a DUPLICATE rejection
+                    is_dup_rejection = "duplicate" in content or "already reported" in content
+                    duplicates.append({
+                        "source": "triage_objections/" + obj_file.name,
+                        "overlap_ratio": round(overlap_ratio, 2),
+                        "was_duplicate_rejection": is_dup_rejection
+                    })
+            except Exception:
+                continue
+
+    # Source 3: Knowledge base bugbounty findings
+    kb_dir = Path("knowledge/bugbounty")
+    if kb_dir.exists():
+        for kb_file in kb_dir.rglob("*.md"):
+            try:
+                content = kb_file.read_text(encoding="utf-8").lower()
+                if finding_cwe and finding_cwe in content:
+                    duplicates.append({
+                        "source": "knowledge/bugbounty/" + kb_file.name,
+                        "match_type": "CWE match in knowledge base",
+                        "cwe": finding_cwe
+                    })
+            except Exception:
+                continue
+
+    has_duplicates = len(duplicates) > 0
+
+    if json_output:
+        result = {
+            "finding": finding,
+            "duplicates_found": len(duplicates),
+            "verdict": "WARN" if has_duplicates else "PASS",
+            "matches": duplicates
+        }
+        print(json_module.dumps(result, indent=2))
+    else:
+        if has_duplicates:
+            print("[WARN] Possible duplicates found: {}".format(len(duplicates)))
+            for dup in duplicates[:5]:  # Show top 5
+                print("  →", dup.get("source", "unknown"), "| overlap:", dup.get("overlap_ratio", dup.get("match_type", "?")))
+            print("  → Review these before submitting. May need differentiation argument.")
+        else:
+            print("[PASS] No duplicates found for:", finding[:80])
+
+    return 1 if has_duplicates else 0
+
+
 # --- Main ---
 
 def main():
@@ -557,6 +957,29 @@ def main():
         sys.exit(kill_gate_1(target, finding))
     elif cmd == "kill-gate-2":
         sys.exit(kill_gate_2(target))
+    elif cmd == "workflow-check":
+        if len(sys.argv) < 3:
+            print("Usage: bb_preflight.py workflow-check <target_dir>")
+            sys.exit(1)
+        sys.exit(workflow_check(sys.argv[2]))
+    elif cmd == "fresh-surface-check":
+        repo_path = None
+        if "--repo" in sys.argv:
+            repo_idx = sys.argv.index("--repo")
+            if repo_idx + 1 < len(sys.argv):
+                repo_path = sys.argv[repo_idx + 1]
+        sys.exit(fresh_surface_check(sys.argv[2], repo_path))
+    elif cmd == "evidence-tier-check":
+        json_flag = "--json" in sys.argv
+        sys.exit(evidence_tier_check(sys.argv[2], json_flag))
+    elif cmd == "duplicate-graph-check":
+        if "--finding" not in sys.argv:
+            print("Usage: bb_preflight.py duplicate-graph-check <target_dir> --finding \"<desc>\" [--json]")
+            sys.exit(1)
+        finding_idx = sys.argv.index("--finding")
+        finding_desc = sys.argv[finding_idx + 1] if finding_idx + 1 < len(sys.argv) else ""
+        json_flag = "--json" in sys.argv
+        sys.exit(duplicate_graph_check(sys.argv[2], finding_desc, json_flag))
     else:
         print(f"Unknown command: {cmd}")
         print(__doc__)

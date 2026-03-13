@@ -4,7 +4,7 @@ description: Start Bug Bounty target analysis pipeline. Auto-matches "bounty", "
 argument-hint: [target-url-or-name] [scope]
 ---
 
-# Bug Bounty Pipeline (v3)
+# Bug Bounty Pipeline (v4 — Explore Lane)
 
 ## CRITICAL RULES (NEVER VIOLATE)
 1. **No PoC = No Submission** — reports without exploitation path are 100% Informative
@@ -45,16 +45,32 @@ python3 tools/bb_preflight.py rules-check targets/<target>/
 - scout runs Slither/Semgrep/CodeQL auto-scan (DeFi targets)
 - **analyst MUST NOT read code without tool results first**
 
-### Phase 1: Discovery
+### Phase 1: Discovery (v12 — Explore Lane)
 - scout (model=sonnet) + analyst (model=sonnet) parallel spawn
+- **threat-modeler (model=sonnet, v12 NEW)** → trust boundaries, role matrix, state machines, invariants
+- **patch-hunter (model=sonnet, v12 NEW)** → variant candidates from security commits
 - inject-rules output in prompt lines 3-5 (lines 1-2 = Critical Facts)
 - On each finding: `oos-check` pattern match (OOS BLOCK → auto-exclude)
 
-### Phase 1→2 Gate: Coverage Check
-- **Run `coverage-gate` skill** (or directly):
+### Phase 1.5: Deep Exploration (v12 NEW)
+- **workflow-auditor (model=sonnet)** → workflow state transitions, anomaly flags
+- web-tester (model=sonnet) → request-level + workflow pack testing
+- Reads: workflow_map.md, invariants.md, trust_boundary_map.md
+
+### Phase 1→2 Gate: Coverage + Workflow Check (v12)
+- **Run `coverage-gate` skill** (risk-weighted in v12: HIGH endpoints count 2x):
 ```bash
 python3 tools/bb_preflight.py coverage-check targets/<target>/ --json
-# ≥80% → Phase 2 / <80% → additional round (<10 endpoints → 100% required)
+# ≥80% risk-weighted → Phase 2 / <80% → additional round
+```
+- **Workflow check (v12 NEW)**:
+```bash
+python3 tools/bb_preflight.py workflow-check targets/<target>/
+# PASS → Phase 2 / FAIL → workflow-auditor supplement
+```
+- **Fresh-surface check (v12 NEW, for CONDITIONAL GO targets)**:
+```bash
+python3 tools/bb_preflight.py fresh-surface-check targets/<target>/
 ```
 
 ### Phase 2: PoC Validation
@@ -62,6 +78,15 @@ python3 tools/bb_preflight.py coverage-check targets/<target>/ --json
 - **`poc-tier` skill for Tier verification** — Tier 3-4 = DROPPED
 - **`threat-model-check` skill for prerequisite validation** — BLOCK = do not send to exploiter
 - exploiter MUST update endpoint_map.md
+- **Evidence tier check (v12 NEW)**:
+```bash
+python3 tools/bb_preflight.py evidence-tier-check targets/<target>/submission/<name>/
+# E1/E2 → Gate 2 / E3/E4 → explore_candidates.md
+```
+- **Duplicate graph check (v12 NEW)** at Gate 2:
+```bash
+python3 tools/bb_preflight.py duplicate-graph-check targets/<target>/ --finding "<desc>"
+```
 
 ### Phase 3-5: Report → Review → Finalize
 - reporter → critic + architect → triager-sim → reporter (final)
@@ -78,4 +103,4 @@ python3 tools/bb_preflight.py coverage-check targets/<target>/ --json
 - Phase 2: 3hr MAX | Phase 3-5: 2hr MAX | Total: 8hr (12hr DeFi)
 - No HIGH+ signal at 2hr mark → ABANDON (after checklist pass)
 
-> **REMINDER**: No PoC = No Submission. Quality over Quantity. Orchestrator delegates, never analyzes directly.
+> **REMINDER**: No PoC = No Submission. Quality over Quantity. Orchestrator delegates, never analyzes directly. Evidence Tier E1/E2 required for submission. Triage feedback checked before every Gate.

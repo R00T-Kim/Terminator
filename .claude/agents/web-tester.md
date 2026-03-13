@@ -53,6 +53,9 @@ cat endpoint_map.md
 cat recon_notes.md 2>/dev/null || cat recon_report.json 2>/dev/null
 ```
 
+- Read `workflow_map.md` if available (v12 — from @scout/@workflow-auditor: multi-step workflow state transitions and anomaly flags)
+- Read `invariants.md` if available (v12 — from @threat-modeler: testable security assertions that become test cases)
+
 ### Step 1: Authentication Setup
 
 Set up test accounts and sessions before endpoint testing:
@@ -238,6 +241,39 @@ browser_snapshot()  // check if admin content loaded
 browser_take_screenshot()
 ```
 
+### Step 2G: Workflow Pack Testing (v12 — from @threat-modeler/@workflow-auditor)
+
+If `workflow_map.md` and/or `invariants.md` are available, execute applicable workflow packs.
+
+> **Detailed pack definitions**: See `.claude/agents/_reference/workflow_packs.md`
+
+#### Pack Selection
+Read workflow_map.md anomaly flags and select applicable packs:
+
+| Pack | Select When | Focus |
+|------|-------------|-------|
+| `workspace_pack` | Multi-tenant with roles, workspace isolation | Cross-tenant IDOR, role confusion, ownership transfer |
+| `billing_pack` | Payment processing, subscriptions, credits | Amount tampering, state manipulation, double-charge race |
+| `admin_pack` | Admin panel, user management, impersonation | Privilege escalation, audit bypass, phantom access |
+| `invite_pack` | Invitation system (link/email/code) | Replay, expiration bypass, unauthorized acceptance |
+| `race_pack` | Concurrent-access on shared mutable state | Double-spend, TOCTOU, idempotency violation |
+
+#### Execution Protocol
+For each selected pack:
+1. Read the full pack definition from `_reference/workflow_packs.md`
+2. Adapt test sequence to target's specific endpoints (from endpoint_map.md)
+3. Execute each test case with evidence capture (request + response + timestamps)
+4. Cross-reference results against invariants.md assertions
+5. Flag violations as anomalies with evidence
+
+#### Evidence Requirements (same as request-level testing)
+- Full HTTP request/response pairs for each test
+- Timestamps for race condition tests
+- Before/after state for state manipulation tests
+- Screenshots or response diffs for visual evidence
+
+**Rationale**: Workflow-level testing catches business logic bugs that request-level testing misses. Modern SaaS bounties pay highest for workflow bugs (invite race, billing bypass, role propagation delay). CWE-840 and CWE-362 have the highest acceptance rates on Bugcrowd. (Evidence: memory/learnings_bugbounty.md)
+
 ### Step 3: Automated Scanning (supplement, not replace manual testing)
 ```bash
 # XSS scan on parameterized endpoints
@@ -408,6 +444,20 @@ Save to `web_test_report.md`:
 | /api/users/{id} | GET | VULN | IDOR confirmed |
 | /api/profile | PATCH | SAFE | Mass assignment blocked |
 | /api/admin/users | GET | TESTED | 403 for low-priv users |
+
+## Workflow Pack Test Results (v12)
+### Packs Executed: [list]
+### Anomalies Found
+| Pack | Test Case | Result | Invariant Violated | Evidence |
+|------|-----------|--------|-------------------|----------|
+| workspace_pack | Cross-tenant GET | PASS (403 returned) | INV-AC-02 | req_resp_001.txt |
+| billing_pack | Double-charge race | FAIL (both succeeded) | INV-DI-02 | race_evidence_001.txt |
+
+### Invariant Verification Summary
+| Invariant | Tested By | Result | Evidence |
+|-----------|-----------|--------|----------|
+| INV-AC-01 | workspace_pack test 2 | PASS | — |
+| INV-DI-02 | billing_pack test 5 | VIOLATED | race_evidence_001.txt |
 ```
 
 ## Checkpoint Protocol (MANDATORY)

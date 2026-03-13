@@ -12,7 +12,7 @@ permissionMode: bypassPermissions
 
 1. **Tool-First, Code-Second** — Run automated tools (Slither/Mythril/CodeQL/Semgrep) BEFORE reading source code. Manual review only after tool results identify HIGH+ signals.
 2. **Minimum Level 2 before ABANDON** — Never declare "0 findings" at Level 0-1. Must reach Level 2 (CodeQL taint tracking + 3-pass source-to-sink) before any ABANDON decision.
-3. **Manual review <= 3 contracts/files** — Deep-analyze max 3 high-signal files rather than skimming 16. Exceeding 3 = token waste + depth degradation.
+3. **Dynamic manual review budget** — Base: 3 files. Composition bonus: +1 per cross-file dataflow chain detected, +1 per state transition boundary, +1 per privilege boundary, +1 if threat-modeler identified >3 trust boundaries, +1 if patch-hunter identified >2 variant candidates. Max: 8 files. Track budget explicitly in checkpoint.json. Exceeding max 8 = token waste + depth degradation.
 4. **Every finding needs Duplicate Risk assessment** — Check CVE databases, Hacktivity, past reports. Mark each: LOW/MEDIUM/HIGH duplicate risk. If you cite a CVE, verify the finding is NOT covered by that CVE's fix scope.
 5. **program_rules_summary.md exclusion filter** — Read and apply OOS exclusions BEFORE analysis. Findings matching exclusion list = instant discard.
 6. **Confidence score on every finding** — 1-10 scale via questionnaire. <=3 = discard. 4-6 = needs more evidence. 7+ = promote to exploiter. Score <5 = never send to exploiter.
@@ -48,9 +48,9 @@ permissionMode: bypassPermissions
 |-------------|--------------------------------------|---------------------|
 | < 3K lines | Semgrep auto + Gemini triage | Entire codebase |
 | 3K-10K lines | + CodeQL + insecure-defaults | Tool-signal files only |
-| 10K-50K lines | + Gemini summarize-dir + sharp-edges | Max 3 files |
-| 50K+ lines | + audit-context-building + variant-analysis | Max 3 files |
-| Smart contract | Slither + Mythril + Foundry fork + Semgrep solidity | Max 3 contracts |
+| 10K-50K lines | + Gemini summarize-dir + sharp-edges | Dynamic budget (base 3 + bonus, max 8) |
+| 50K+ lines | + audit-context-building + variant-analysis | Dynamic budget (base 3 + bonus, max 8) |
+| Smart contract | Slither + Mythril + Foundry fork + Semgrep solidity | Dynamic budget (base 3 + bonus, max 8) |
 
 ### ABANDON Checklist (ALL must be checked before reporting "0 findings")
 
@@ -105,9 +105,32 @@ If `mitre_enrichment.json` exists (from scout Phase 6), load it first for pre-ma
 
 After identifying target protocol type, load the relevant checklist from `knowledge/protocol-vulns-index/categories/<protocol_type>/`. Cross-reference with tool results. Guide: `knowledge/techniques/protocol_vulns_index_guide.md`.
 
+### Step 0.7: Dynamic Review Budget Calculation (v12 — MANDATORY)
+
+Calculate manual review budget BEFORE starting deep analysis:
+
+```
+Base budget: 3 files
+Composition bonuses (cumulative, each +1):
+  □ Cross-file dataflow detected (source in file A, sink in file B)
+  □ State transition boundary detected (workflow spans multiple handlers)
+  □ Privilege boundary detected (auth middleware + protected handler in different files)
+  □ threat-modeler identified >3 trust boundaries (read trust_boundary_map.md)
+  □ patch-hunter identified >2 variant candidates (read patch_analysis.md)
+
+Total budget: base(3) + bonuses = N (max 8)
+```
+
+Log in checkpoint.json: `{"review_budget": N, "bonuses": ["cross-file", "state-transition", ...]}`
+
+**Rationale**: Fixed 3-file limit was appropriate for simple targets (Kiln: 5 vaults, single pattern) but insufficient for complex SaaS with auth/billing/queue/admin entangled across many files. Dynamic budget scales with actual complexity. (Evidence: Tree of Thoughts, Yao et al. — evaluate scope before committing resources)
+
 ### Step 1-4: Core Analysis Loop
 
 1. **Parse Recon Data** — read scout's `recon_report.json`, extract service/version pairs
+   - Read threat-modeler's `trust_boundary_map.md` and `invariants.md` if available (v12 explore lane artifacts)
+   - Read patch-hunter's `patch_analysis.md` if available (v12 variant candidates)
+   - Read workflow-auditor's `workflow_map.md` if available (v12 workflow anomalies)
 2. **Vulnerability Search** — for each service, query ExploitDB (`searchsploit`), PoC-in-GitHub, trickest-cve, nuclei templates, PayloadsAllTheThings
 3. **Exploitability Assessment** — per finding: public PoC available? Pre-auth? Network accessible? Impact severity?
 4. **Attack Chain Correlation** — multi-step paths (e.g., info leak -> credential extraction -> auth bypass -> RCE)

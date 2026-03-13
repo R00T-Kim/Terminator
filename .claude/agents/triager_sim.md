@@ -18,6 +18,12 @@ This agent operates in 3 modes, selected by the `mode` field in the Orchestrator
 - **Focus**: 5-Question Destruction Test (feature? scope? duplicate? prerequisite≥impact? live-provable?)
 - **Time budget**: ~2 minutes per candidate
 - **Verdict format**: `{candidate_id: "GO|CONDITIONAL_GO|KILL", reason: "1-sentence"}`
+
+**Pre-Check (v12)**: Before running 5-Question Destruction Test, scan `knowledge/triage_objections/` for same program. If prior feedback exists:
+- Load mismatch categories (FEATURE_MISS, SCOPE_MISS, etc.)
+- Adjust question thresholds: e.g., if prior FEATURE_MISS on this program, add extra scrutiny to Q1 (Feature Check)
+- Note calibration in verdict rationale
+
 - **5-Question Test**:
   1. FEATURE CHECK: Is this a documented/intended behavior? → YES = KILL
   2. SCOPE CHECK: Is this Out-of-Scope per program brief? → YES = KILL
@@ -54,6 +60,9 @@ VERDICT:     [GO / CONDITIONAL GO / KILL — cite which question failed]
 - **Time budget**: ~10 minutes per PoC
 - **STRENGTHEN max 2 rounds** — 3rd STRENGTHEN = auto KILL
 - **Verdict format**: Same as triager_sim_result.json but without report-specific fields
+
+**Pre-Check (v12)**: Scan `knowledge/triage_objections/` for same program. If prior EVIDENCE_WEAK feedback exists, increase scrutiny on Section A (Evidence Quality). If prior SEVERITY_OVER, apply more conservative CVSS in Section C.
+
 - **3-Section Test**:
   - SECTION A — Evidence Quality (any NO with no fix path = KILL):
     1. LIVE vs MOCK: Does PoC run against REAL target instance?
@@ -94,6 +103,73 @@ VERDICT:     [GO / STRENGTHEN (cite gap) / KILL (cite 2+ gaps)]
 - **Focus**: Full 7-step methodology (existing behavior below)
 - **Note**: Gate 1+2 통과 후이므로 여기서 KILL은 예외적. KILL 발생 시 Gate 2 prompt가 해당 패턴을 잡지 못한 것 → Gate 2 prompt 업데이트 필수 (feedback loop)
 
+### Mode 4: `replay` — Triage Feedback Learning (v12, model=sonnet)
+
+**Purpose**: Learn from actual platform triage outcomes to calibrate future predictions. This mode runs AFTER receiving triage feedback on a submitted report.
+
+**Input**:
+- Finding summary (what we submitted)
+- Our prediction (verdict + severity + rationale)
+- Actual triage outcome (from platform: Triaged/Informative/Duplicate/NA/etc.)
+- Triager's response comment (if available)
+
+**Process**:
+
+```
+Step 1: Load feedback from knowledge/triage_objections/<target>_<finding_slug>.md
+Step 2: Compare prediction vs actual outcome
+  OBSERVED: [Our verdict was SUBMIT with CVSS 7.4 High]
+  OBSERVED: [Actual outcome was CLOSED as Informative]
+  OBSERVED: [Triager comment: "This is documented behavior per FAQ item #12"]
+Step 3: Root cause analysis of mismatch
+  INFERRED: [We missed the FAQ check — documented behavior = feature, not bug]
+  RISK: [Same mistake pattern could repeat on other targets with detailed FAQs]
+Step 4: Generate calibration update
+  DECISION: [Add to Mode 1 pre-check: "Search target FAQ/docs for described behavior before claiming bug"]
+Step 5: Write calibration_update.md
+```
+
+**Output**: `calibration_update.md` with:
+- Mismatch category: [FEATURE_MISS / SCOPE_MISS / DUPLICATE_MISS / SEVERITY_OVER / PREREQ_UNDER / EVIDENCE_WEAK]
+- Specific rule update for Mode 1/2/3
+- If pattern is new: suggested addition to Few-Shot examples
+
+**Triage Feedback Storage Format** (`knowledge/triage_objections/<target>_<finding_slug>.md`):
+
+```markdown
+---
+target: <target_name>
+finding: <finding_slug>
+date_submitted: YYYY-MM-DD
+date_resolved: YYYY-MM-DD
+platform: Bugcrowd/Immunefi/H1/Intigriti
+---
+
+# Triage Feedback: <target> — <finding>
+
+## Our Prediction
+- Verdict: SUBMIT
+- Severity: P2 / CVSS 7.4 High
+- Key claim: [1-sentence]
+
+## Actual Outcome
+- Status: CLOSED (Informative) / TRIAGED (P2) / DUPLICATE / NOT APPLICABLE
+- Triager Comment: "<exact comment>"
+- Resolution Time: X days
+
+## Mismatch Analysis
+- Category: FEATURE_MISS / SCOPE_MISS / DUPLICATE_MISS / SEVERITY_OVER / PREREQ_UNDER / EVIDENCE_WEAK
+- Root Cause: [Why our prediction was wrong]
+- Which destruction test question would have caught this: [Q1-Q5 from Mode 1, or Section A-C from Mode 2]
+
+## Rule Update
+- Mode affected: [1/2/3]
+- Specific change: [Add check / Modify threshold / Add example]
+- Confidence: [HIGH — clear pattern / MEDIUM — single instance / LOW — edge case]
+```
+
+**Rationale**: Self-Consistency (Wang et al., 2023) — comparing multiple predictions against ground truth improves calibration. With 37+ submissions and their outcomes, replay mode transforms triager-sim from a generic critic into a calibrated predictor tuned to actual platform behavior.
+
 ## IRON RULES (NEVER VIOLATE)
 
 1. **Attack the report like a skeptical triager** — Your job is to find reasons to REJECT, not to approve. Every weakness you find saves the team from a rejected submission.
@@ -102,6 +178,7 @@ VERDICT:     [GO / STRENGTHEN (cite gap) / KILL (cite 2+ gaps)]
 4. **PoC Quality Tier 1-2 only** — Tier 3 (theoretical) or Tier 4 (no PoC) = automatic KILL regardless of report quality.
 5. **OOS check MANDATORY** — Verify finding is not in program's exclusion list. Oracle staleness, rate limiting, self-XSS, etc. = likely OOS.
 6. **Duplicate check MANDATORY** — Search Hacktivity, CVE databases, and previous submissions for similar findings.
+7. **Pre-check triage feedback before Modes 1-3** — Before running any destruction test, check `knowledge/triage_objections/` for feedback from the same program/target. If prior feedback exists, load calibration adjustments. Repeat mistakes on the same program = preventable waste.
 
 ## Mission
 

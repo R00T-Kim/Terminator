@@ -153,6 +153,13 @@ Save to `target_assessment.md`:
 - exploit_search: ["<service/CVE>", "<protocol name>"]
 - challenge_search: ["<similar target>"]
 
+## Research Novelty Assessment
+- Novelty Score: X/10
+- Fresh Surface Detected: [YES/NO]
+- Unexplored Areas: [list]
+- Fresh-Surface Exception Applicable: [YES/NO]
+- If YES: Scoped investigation target: [specific modules/endpoints]
+
 ## Recommendation
 [2-3 sentences: why GO or NO-GO, what approach if GO, what to focus on]
 ```
@@ -177,10 +184,25 @@ DIMENSION 4 — Reward/Effort: [Expected ROI? Score: X/10]
 DIMENSION 5 — Attack Surface: [Accessible entry points? Score: X/10]
   OBSERVED: [Source available? API docs? Scope breadth?]
 
+DIMENSION 6 — Research Novelty (v12): Is this target under-researched despite maturity?
+  OBSERVED: [Hacktivity diversity — what vuln types have been reported? Any gaps?]
+  INFERRED: [Which attack surfaces remain unexplored?]
+  NOVELTY INDICATORS:
+    - New module/bridge/migration added in last 6 months?
+    - Scope expansion announced recently?
+    - No business logic reports in hacktivity?
+    - Unexplored API surface or new integration layer?
+    - Fresh fork with divergent code from audited original?
+  SCORE: [0-10]
+    0-2: Thoroughly researched, no novel surface
+    3-5: Some unexplored areas, moderate novelty
+    6-8: Significant unexplored surface or fresh code
+    9-10: Brand new scope expansion or untouched attack surface
+
 HARD NO-GO CHECK: [Any automatic disqualifier?]
   OBSERVED: [Audit count, operation years, resolved reports, source access]
 
-TOTAL: [Sum/50] → GO (40+) / CONDITIONAL (25-39) / NO-GO (<25 or any Hard NO-GO)
+TOTAL: [Sum/60] → GO (48+) / CONDITIONAL (30-47) / NO-GO (<30 or any Hard NO-GO)
 ```
 
 **This scoring is not optional.** Every target_assessment.md must contain this explicit scoring.
@@ -199,6 +221,7 @@ TOTAL: [Sum/50] → GO (40+) / CONDITIONAL (25-39) / NO-GO (<25 or any Hard NO-G
 | 8 | Tech Stack | Languages/frameworks we know | Exotic stack |
 | 9 | Scope Breadth | Multiple repos/assets | Single hardened endpoint |
 | 10 | Past Success | Similar targets yielded bounties | Similar targets yielded $0 |
+| 11 | Research Novelty | Fresh surface, unexplored areas, scope expansion | /10 |
 
 **Score interpretation**: 8-10 STRONG GO, 5-7 CONDITIONAL GO, 3-4 WEAK, 0-2 NO-GO. Negative scores after audit penalty = auto NO-GO.
 
@@ -213,6 +236,22 @@ Any ONE = immediate NO-GO:
 - Our Past Failure (same target, $0)
 - Audit Fortress (3+ audits + security team + 100+ reports)
 - Fork Fully Patched (all fixes applied + no new code)
+
+## Fresh-Surface Exception (v12 — overrides selected NO-GO signals)
+
+Even if a target triggers "Already Picked Clean" or "Audit Fortress" NO-GO signals, it MAY qualify for a scoped investigation if ALL of:
+- New module, bridge, integration, or migration added in the last 6 months
+- OR scope expansion announced by the program in the last 3 months
+- OR major version upgrade with new API surface
+- The NEW surface has NOT been covered by existing audits
+
+**If Fresh-Surface Exception applies**:
+1. Score the NEW surface independently (ignore old surface scores)
+2. Mark assessment as "CONDITIONAL GO — Fresh Surface Only"
+3. Restrict all downstream agents to the new surface scope
+4. Old/audited surface remains NO-GO — do not analyze
+
+**Rationale**: 33 CLOSED/ABANDONED targets in our history include cases where mature targets had fresh modules that were prematurely skipped. This exception prevents that loss. (Evidence: memory/bugbounty_findings.md)
 
 ## Checkpoint Protocol (MANDATORY)
 
