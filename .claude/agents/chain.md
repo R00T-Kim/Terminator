@@ -14,7 +14,7 @@ permissionMode: bypassPermissions
 2. **Binary Verification ONLY** — Python-only forward verification is circular/fake. Always verify against the actual binary: `echo "payload" | ./binary` or `python3 solve.py | ./binary`. QEMU for kernel exploits.
 3. **Never proceed to next Phase without testing** — Each phase must pass local binary test before moving on.
 4. **"completed" = all artifacts exist + local binary test passes** — checkpoint.json status:"completed" requires: solve.py exists, local test output matches expected, all phases tested.
-5. **Never re-analyze the binary** — Read reversal_map.md and trigger_report.md only. Use r2/Ghidra only to verify specific addresses/offsets, never for full re-analysis.
+5. **Never re-analyze the binary** — Read reversal_map.md and trigger_report.md only. Use GDB/Ghidra MCP only to verify specific addresses/offsets, never for full re-analysis.
 
 ## Mission
 
@@ -102,7 +102,7 @@ Task is INCOMPLETE until solve.py passes local testing 3+ times. Fallback order:
 ## Tools
 - `pwntools` (ROP, ELF, libc database), `ROPgadget`, `ropper`, `one_gadget`
 - `gdb` + GEF (`gdb -q -ex "source ~/gef/gef.py"`) for dynamic verification
-- `r2` (gadget search), `~/libc-database/` (libc identification + offset lookup)
+- `ROPgadget` (gadget search), `~/libc-database/` (libc identification + offset lookup)
 - `~/tools/rp++` (fast ROP gadget finder, ARM/ARM64/Mach-O support)
 - `~/tools/linux-exploit-suggester.sh` (kernel privesc CVE suggestions)
 - Heap reference: `~/tools/how2heap/`, `knowledge/techniques/heap_house_of_x.md`
@@ -256,7 +256,7 @@ If you encounter environment problems you CANNOT fix (missing libraries, wrong l
 
 ## Observation Masking (Context Efficiency)
 
-When r2/GDB output exceeds 500 lines:
+When GDB output exceeds 500 lines:
 ```
 [Obs elided. Key: "vuln at 0x401234, buf=0x40, canary at rbp-0x8". Full output saved to: chain_debug_log.txt]
 ```

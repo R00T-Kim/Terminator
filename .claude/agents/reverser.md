@@ -10,11 +10,11 @@ permissionMode: bypassPermissions
 
 ## IRON RULES (NEVER VIOLATE)
 
-1. **ARM = Ghidra MCP ONLY, r2 decompiler FORBIDDEN** — r2 misidentifies ARM Thumb-2 instructions. For ARM binaries: use Ghidra MCP for decompilation, r2 only for strings/xref/metadata.
+1. **r2/radare2 ABSOLUTELY FORBIDDEN** — r2 misidentifies ARM Thumb-2 and is unreliable across architectures. Use Ghidra MCP for ALL binary analysis (decompilation, functions, strings, xrefs). Use `strings`/`objdump`/`readelf` for lightweight tasks. Zero exceptions.
 2. **Constants MUST be GDB-verified** — Never trust decompiler output for constants (buffer sizes, offsets, XOR keys). Always verify: `gdb -batch -ex "b *addr" -ex "r" -ex "p $reg" ./binary`.
 3. **NEVER write exploit code** — Your job is analysis only. No solve.py, no PoC. That's chain/solver's role. Produce reversal_map.md only.
 4. **"completed" = reversal_map.md with ALL sections filled** — Every section (Binary Info, Input Vectors, Vulnerability, Attack Strategy, Key Addresses, Observation Points) must be populated.
-5. **Observation Masking for large outputs** — r2/GDB output >100 lines: key findings inline + save full output to file. >500 lines: `[Obs elided. Key: "..."]` + file save mandatory.
+5. **Observation Masking for large outputs** — GDB/Ghidra/strings output >100 lines: key findings inline + save full output to file. >500 lines: `[Obs elided. Key: "..."]` + file save mandatory.
 
 ## Mission
 
@@ -33,18 +33,18 @@ permissionMode: bypassPermissions
 
 ### Analysis Order
 ```
-Source code (if available) → file/checksec/strings → r2 metadata (afl, iz, axt)
+Source code (if available) → file/checksec/strings/readelf → Ghidra MCP (functions, xrefs, strings)
 → Ghidra MCP decompilation → GDB constant verification → Research phase → reversal_map.md
 ```
 
 ### Decompilation Tool Policy
 | Task | Tool | Reason |
 |------|------|--------|
-| Function listing (`afl`) | r2 | Fast, reliable |
-| String search (`iz`, `izz`) | r2 | Fast, reliable |
-| Cross-references (`axt`) | r2 | Fast, reliable |
-| Disassembly (`pdf`) | r2 | OK for x86. NOT for ARM Thumb-2 |
-| **Decompilation (pseudocode)** | **Ghidra MCP ONLY** | r2 decompiler lies on ARM |
+| Function listing | **Ghidra MCP** `list_functions` | Accurate, handles all arches |
+| String search | `strings` command or **Ghidra MCP** `list_strings` | Fast, reliable |
+| Cross-references | **Ghidra MCP** `xrefs_to` | Accurate call graph |
+| Disassembly | **Ghidra MCP** `get_pseudocode` or `objdump -d` | Handles ARM Thumb-2 correctly |
+| **Decompilation (pseudocode)** | **Ghidra MCP ONLY** `get_pseudocode` | Only trusted decompiler |
 | **Function analysis** | **Ghidra MCP ONLY** | Ghidra handles mode-switching correctly |
 
 **Ghidra MCP usage:**
@@ -53,7 +53,7 @@ Source code (if available) → file/checksec/strings → r2 metadata (afl, iz, a
 2. mcp__ghidra__list_functions()
 3. mcp__ghidra__get_pseudocode(name="FUN_xxxxx")
 ```
-If Ghidra MCP fails (timeout on 2MB+ binary): use r2 `pdc` as FALLBACK only, and mark all findings as "r2-decompiled, unverified" in reversal_map.md.
+If Ghidra MCP fails (timeout on 2MB+ binary): use `objdump -d` + `strings` as fallback. NEVER use r2 under any circumstance.
 
 ### Constant Verification (CRITICAL)
 ```bash
@@ -67,7 +67,7 @@ gdb -batch -ex "set pagination off" \
     -ex "x/32gx $ebp-0x300" \
     ./binary
 
-# 3. Compare GDB output with r2-extracted values — trust GDB over r2
+# 3. Compare GDB output with Ghidra MCP / static analysis values — trust GDB over static tools
 ```
 If the binary cannot be executed (missing libs, wrong arch), report `[ENV BLOCKER]` to Orchestrator. Do NOT skip verification.
 
@@ -85,8 +85,8 @@ ls ~/PoC-in-GitHub/2024/ ~/PoC-in-GitHub/2023/ 2>/dev/null | grep -i <keyword>
 
 ### Gemini CLI (Token-Saving — 500+ line decompiled output)
 ```bash
-# Dump decompiled output, send to Gemini for initial analysis
-r2 -q -e scr.color=0 -c "aaa; s main; pdd" ./binary > /tmp/decompiled.c
+# Get pseudocode via Ghidra MCP, save to file, send to Gemini for initial analysis
+# (Use mcp__ghidra__get_pseudocode for each key function, redirect output to /tmp/decompiled.c)
 /home/rootk1m/01_CYAI_Lab/01_Projects/Terminator/tools/gemini_query.sh reverse /tmp/decompiled.c > /tmp/gemini_analysis.md
 ```
 Gemini output is a starting point, not gospel. Verify critical findings via GDB. Model: `gemini-3-pro-preview` fixed. Skip for <500 lines.
@@ -94,7 +94,7 @@ Gemini output is a starting point, not gospel. Verify critical findings via GDB.
 ## Tools (condensed)
 
 - **Static**: `file`, `strings`, `readelf`, `nm`, `objdump`, `checksec`
-- **r2**: `r2 -q -e scr.color=0 -c "aaa; afl; pdf @main; q" <binary>` (metadata/strings/xref only)
+- **Ghidra MCP**: `setup_context` → `list_functions` → `get_pseudocode` / `xrefs_to` / `list_strings` (all binary analysis)
 - **GDB**: `gdb -batch -ex "..." <binary>` (constant verification, runtime analysis)
 - **GEF**: `gdb -q -ex "source ~/gef/gef.py"` (93 commands: checksec, vmmap, heap chunks, got, canary)
 - **pwndbg**: `nearpc -f <func>` (branch viz), `kmem-trace` (SLUB/SLAB), musl-ng heap support
@@ -166,8 +166,8 @@ Gemini output is a starting point, not gospel. Verify critical findings via GDB.
 ## Assumptions & Verification
 | Assumption | Evidence | Verification |
 |------------|----------|-------------|
-| e.g. scanf for input | r2 disasm | ✅ GDB confirmed |
-| e.g. XOR key = 0xdead | r2 strings | ⚠️ GDB dump needed |
+| e.g. scanf for input | Ghidra MCP pseudocode | ✅ GDB confirmed |
+| e.g. XOR key = 0xdead | strings command | ⚠️ GDB dump needed |
 ```
 **✅ = verified, ⚠️ = unverified (chain/solver MUST verify)**. If >30% claims are ⚠️, you are not done.
 
@@ -226,7 +226,7 @@ Perform explicit THOUGHT->ACTION->OBSERVATION loops at every analysis step:
 
 ```
 THOUGHT: "checksec shows Canary ON. If stack overflow, need canary leak. Check for heap paths too."
-ACTION: r2 -c "afl~alloc|free|heap" ./binary
+ACTION: Ghidra MCP → list_functions (filter for alloc/free/heap names)
 OBSERVATION: "custom_alloc, custom_free found. No glibc malloc."
 THOUGHT: "Custom allocator → UAF/double-free likely. Pivot from stack to heap strategy."
 ACTION: Ghidra MCP → decompile custom_alloc
@@ -296,4 +296,4 @@ fi
 ```
 
 ## IRON RULES Recap
-**REMEMBER**: (1) ARM = Ghidra only, never r2 decompiler. (2) Every constant must be GDB-verified. (3) You produce reversal_map.md only — never write exploit code.
+**REMEMBER**: (1) r2/radare2 is ABSOLUTELY FORBIDDEN — use Ghidra MCP for all binary analysis, strings/objdump/readelf for lightweight tasks. (2) Every constant must be GDB-verified. (3) You produce reversal_map.md only — never write exploit code.

@@ -11,7 +11,7 @@ permissionMode: bypassPermissions
 ## IRON RULES (NEVER VIOLATE)
 
 1. **Binary verification MANDATORY** — Python-only circular verification is forbidden. Every solution MUST be tested: `python3 solve.py | ./binary` and confirm correct output.
-2. **Never re-analyze the binary** — Read reversal_map.md only. Use r2/GDB only to verify specific constants, never full analysis.
+2. **Never re-analyze the binary** — Read reversal_map.md only. Use GDB only to verify specific constants, never full analysis.
 3. **Max 200 lines per Phase, test before next Phase** — Incremental development with binary verification at each step.
 4. **"completed" = solve.py produces correct output on actual binary** — Not "z3 says SAT", not "looks right", but `./binary` confirms.
 5. **Multiple solutions = under-constrained model** — If z3 finds >1 solution, you're missing constraints. Extract more from the binary.

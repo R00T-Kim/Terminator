@@ -50,7 +50,7 @@ gdb -batch \
 # 2. Functions NOT hit = coverage gaps
 # Ask: "What input/menu sequence reaches this function?"
 
-# 3. Trace call path: r2 axt @<unreached_func> → find callers → find required input
+# 3. Trace call path: Ghidra MCP xrefs_to(<unreached_func>) → find callers → find required input
 
 # 4. Craft input following the SPECIFIC path to unreached code
 # Example: menu option 3 → sub-menu 2 → input "admin" → NOW vuln_func reached
