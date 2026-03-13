@@ -12,8 +12,10 @@ Usage:
     bb_preflight.py coverage-check <target_dir> [THR] [--json]  Check endpoint coverage %
     bb_preflight.py inject-rules <target_dir>          Output compact rules for HANDOFF
     bb_preflight.py exclusion-filter <target_dir>      Output exclusion list for analyst
+    bb_preflight.py kill-gate-1 <target_dir> --finding "<desc>"  Pre-validate finding viability
+    bb_preflight.py kill-gate-2 <submission_dir>       Pre-validate PoC/evidence quality
 
-Exit: 0=PASS, 1=FAIL (with specific error message)
+Exit: 0=PASS, 1=FAIL (with specific error message); kill-gate-*: 0=PASS, 1=WARN (advisory)
 
 Created: 2026-02-25 (NAMUHX retrospective — structural fix for rule compliance & coverage gap)
 """
@@ -295,6 +297,164 @@ def exclusion_filter(target_dir: str) -> int:
     return 0
 
 
+# --- Kill Gates (advisory pre-validation, exit 0=PASS, 1=WARN) ---
+
+def kill_gate_1(target_dir: str, finding: str) -> int:
+    """Pre-validate finding viability before Kill Gate 1.
+
+    Checks:
+    - Finding type matches any exclusion entry in program_rules_summary.md
+    - Previous submissions (bugcrowd_form.md) share overlapping keywords with finding
+
+    Advisory only — final judgment is by triager-sim agent.
+    Returns: 0=PASS, 1=WARN
+    """
+    warnings = []
+    tdir = Path(target_dir)
+
+    # --- Check 1: exclusion list match ---
+    rules_path = tdir / RULES_FILE
+    if rules_path.exists():
+        content = rules_path.read_text()
+        excl_match = re.search(
+            r"##\s*Exclusion List[^\n]*\n(.*?)(?=\n##|\Z)", content, re.DOTALL
+        )
+        if excl_match:
+            excl_body = excl_match.group(1).strip()
+            finding_lower = finding.lower()
+            for line in excl_body.splitlines():
+                line_clean = line.strip().lstrip("0123456789.-) ").lower()
+                if not line_clean or line_clean.startswith("#"):
+                    continue
+                # Tokenise: split on non-alpha to get meaningful words (>=4 chars)
+                excl_words = set(w for w in re.split(r"\W+", line_clean) if len(w) >= 4)
+                finding_words = set(w for w in re.split(r"\W+", finding_lower) if len(w) >= 4)
+                overlap = excl_words & finding_words
+                if overlap:
+                    warnings.append(
+                        f"[EXCLUSION MATCH] Finding overlaps with exclusion entry: '{line.strip()}'"
+                        f" (shared keywords: {', '.join(sorted(overlap))})"
+                    )
+    else:
+        warnings.append(f"[MISSING] {RULES_FILE} not found in {target_dir} — cannot check exclusions")
+
+    # --- Check 2: duplicate against previous submission titles ---
+    submission_glob = tdir / "submission"
+    form_files = list(submission_glob.glob("report_*/bugcrowd_form.md"))
+    if form_files:
+        finding_lower = finding.lower()
+        finding_words = set(w for w in re.split(r"\W+", finding_lower) if len(w) >= 4)
+        for form_path in form_files:
+            form_content = form_path.read_text()
+            title_match = re.search(r"(?i)^#+\s*Title[:\s]+(.+)$", form_content, re.MULTILINE)
+            if not title_match:
+                # Fall back: grab any line starting with "Title:"
+                title_match = re.search(r"(?i)^Title[:\s]+(.+)$", form_content, re.MULTILINE)
+            if not title_match:
+                continue
+            title = title_match.group(1).strip().lower()
+            title_words = set(w for w in re.split(r"\W+", title) if len(w) >= 4)
+            overlap = finding_words & title_words
+            if len(overlap) >= 2:
+                warnings.append(
+                    f"[DUPLICATE RISK] Finding shares keywords with previous submission"
+                    f" '{form_path.parent.name}/bugcrowd_form.md' title: '{title_match.group(1).strip()}'"
+                    f" (overlap: {', '.join(sorted(overlap))})"
+                )
+
+    # --- Report ---
+    if warnings:
+        print(f"WARN: kill-gate-1 raised {len(warnings)} flag(s) for finding: \"{finding}\"")
+        for w in warnings:
+            print(f"  {w}")
+        print("  → Advisory only. Confirm with triager-sim before proceeding.")
+        return 1
+
+    print(f"PASS: kill-gate-1 — no exclusion or duplicate flags for: \"{finding}\"")
+    return 0
+
+
+def kill_gate_2(submission_dir: str) -> int:
+    """Pre-validate PoC/evidence quality before Kill Gate 2.
+
+    Checks:
+    - PoC files (*.py, *.sh) contain mock/fake/simulated/dummy keywords
+    - Evidence files (*.md) contain weak-claim language (inferred, would, likely, etc.)
+    - Evidence files are non-empty (>0 bytes)
+
+    Advisory only — final judgment is by triager-sim agent.
+    Returns: 0=PASS, 1=WARN
+    """
+    warnings = []
+    sdir = Path(submission_dir)
+
+    if not sdir.exists():
+        print(f"WARN: submission directory not found: {submission_dir}")
+        return 1
+
+    POC_KEYWORDS = ["mock", "simulated", "fake", "dummy"]
+    EVIDENCE_WEAK_KEYWORDS = ["inferred", "would", "likely", "probably", "could potentially"]
+
+    # Glob all relevant files
+    py_files = list(sdir.glob("**/*.py"))
+    sh_files = list(sdir.glob("**/*.sh"))
+    md_files = list(sdir.glob("**/*.md"))
+
+    # --- Check 1: PoC files for mock/fake/simulated/dummy ---
+    poc_files = py_files + sh_files
+    for fpath in poc_files:
+        try:
+            content = fpath.read_text(errors="replace")
+        except OSError:
+            continue
+        content_lower = content.lower()
+        found = [kw for kw in POC_KEYWORDS if kw in content_lower]
+        if found:
+            warnings.append(
+                f"[MOCK POC] {fpath.relative_to(sdir) if fpath.is_relative_to(sdir) else fpath}"
+                f" contains: {', '.join(found)}"
+            )
+
+    # --- Check 2: Evidence files for weak-claim language + empty check ---
+    for fpath in md_files:
+        # Empty check
+        try:
+            size = fpath.stat().st_size
+        except OSError:
+            continue
+        if size == 0:
+            warnings.append(
+                f"[EMPTY FILE] {fpath.relative_to(sdir) if fpath.is_relative_to(sdir) else fpath}"
+                f" is 0 bytes"
+            )
+            continue
+
+        # Weak-claim language scan
+        try:
+            content = fpath.read_text(errors="replace")
+        except OSError:
+            continue
+        content_lower = content.lower()
+        found = [kw for kw in EVIDENCE_WEAK_KEYWORDS if kw in content_lower]
+        if found:
+            warnings.append(
+                f"[WEAK CLAIM] {fpath.relative_to(sdir) if fpath.is_relative_to(sdir) else fpath}"
+                f" contains: {', '.join(found)}"
+            )
+
+    # --- Report ---
+    scanned = len(poc_files) + len(md_files)
+    if warnings:
+        print(f"WARN: kill-gate-2 raised {len(warnings)} flag(s) across {scanned} file(s) in {submission_dir}")
+        for w in warnings:
+            print(f"  {w}")
+        print("  → Advisory only. Confirm with triager-sim before proceeding.")
+        return 1
+
+    print(f"PASS: kill-gate-2 — {scanned} file(s) scanned, no mock/fake/weak-claim flags in {submission_dir}")
+    return 0
+
+
 # --- Inline templates (fallback if templates/ dir missing) ---
 
 def _inline_rules_template(target_dir: str) -> str:
@@ -384,6 +544,19 @@ def main():
         sys.exit(inject_rules(target))
     elif cmd == "exclusion-filter":
         sys.exit(exclusion_filter(target))
+    elif cmd == "kill-gate-1":
+        finding = ""
+        args = sys.argv[3:]
+        for i, arg in enumerate(args):
+            if arg == "--finding" and i + 1 < len(args):
+                finding = args[i + 1]
+                break
+        if not finding:
+            print("FAIL: kill-gate-1 requires --finding \"<description>\"")
+            sys.exit(1)
+        sys.exit(kill_gate_1(target, finding))
+    elif cmd == "kill-gate-2":
+        sys.exit(kill_gate_2(target))
     else:
         print(f"Unknown command: {cmd}")
         print(__doc__)

@@ -114,8 +114,8 @@ Validated on **March 6, 2026** in this repository with real `claude`, `codex`, a
                   ┌──────────────────┼──────────────────┐
                   │                                      │
         ┌────────▼─────────┐                  ┌─────────▼────────┐
-        │   CTF Pipeline   │                  │  Bug Bounty v6   │
-        │   (Sequential)   │                  │   (7 Phases)     │
+        │   CTF Pipeline   │                  │  Bug Bounty v11  │
+        │   (Sequential)   │                  │   (Kill Gate)    │
         └────────┬─────────┘                  └─────────┬────────┘
                  │                                      │
     ┌────────────┼────────────┐          ┌──────────────┼──────────────┐
@@ -211,16 +211,16 @@ docker compose up -d
 | **Web** -- injection, SSRF, auth bypass | `scout -> analyst -> exploiter -> reporter` | 4 |
 | **Firmware** -- ARM binary diff, emulated PoC | `fw-profiler -> fw-inventory -> fw-surface -> fw-validator -> reporter` | 5 |
 
-### Bug Bounty -- v6 Pipeline
+### Bug Bounty -- v11 Pipeline (Kill Gate)
 
 > [!IMPORTANT]
 > **Iron Rule**: No Exploit, No Report. Findings without a working PoC are automatically discarded.
 
 <details>
-<summary><b>7-Phase Pipeline Details</b></summary>
+<summary><b>Kill Gate Pipeline Details (v11)</b></summary>
 
 ```
-Phase 0   @target-evaluator     GO / NO-GO assessment + Hard NO-GO rules (v6)
+Phase 0   @target-evaluator     GO / NO-GO assessment + Hard NO-GO rules
           oos-check skill       OOS pattern pre-screening (12 patterns)
           --- GO gate --------------------------------------------------------
 Phase 0.2 bb_preflight.py       Program rules generation + validation (MANDATORY)
@@ -228,17 +228,19 @@ Phase 0.5 @scout                Automated tool scan (Slither, Semgrep, Mythril)
 Phase 1   @scout + @analyst     Parallel recon + OOS cross-check per finding
           coverage-gate skill   80%+ endpoint coverage required
 Phase 1.5 @analyst (N parallel) OWASP-category hunting (large codebases only)
+★ Gate 1  @triager-sim (sonnet) Finding viability: 5-Question Destruction Test (KILL/GO)
 Phase 2   @exploiter            PoC development + poc-tier skill (Tier 1-2 only)
           threat-model-check    Attack prerequisite validation
+★ Gate 2  @triager-sim (opus)   PoC destruction: evidence quality + triager objections (KILL/GO)
 Phase 3   @reporter             Report draft + CVSS
-Phase 4   @critic + @architect  2-round review: facts -> framing -> evidence fidelity
-Phase 4.5 @triager-sim          Adversarial triage + JSON feedback loop (max 3 iter)
+Phase 4   @critic               Fact-check (streamlined, Gate 2 handles viability)
+Phase 4.5 @triager-sim          Final consistency check (KILL here = Gate bug → feedback loop)
           slop-check skill      AI slop score (<=2 PASS, 3-5 STRENGTHEN, >5 KILL)
 Phase 5   @reporter             Final report + ZIP packaging
 Phase 6   TeamDelete            Cleanup
 ```
 
-**6 automated pipeline skills (v6 NEW):**
+**6 automated pipeline skills + 2 Kill Gates (v11):**
 
 | Skill | Gate | Blocks |
 |:------|:-----|:-------|
@@ -253,6 +255,7 @@ Phase 6   TeamDelete            Cleanup
 - Phase 0 Hard NO-GO: 3+ audits, 2+ reputable audits, 100+ reports, 3yr+, source inaccessible
 - Phase 0.2 Program rules must pass validation before any agent spawns
 - Phase 4.5 triager-sim outputs structured JSON for automated reporter feedback loop
+- ★ Gate 1 + Gate 2: Kill Gates block findings before PoC dev and before report writing (v11 NEW)
 
 </details>
 
@@ -287,7 +290,7 @@ Phase 6   TeamDelete            Cleanup
 | **scout** | Recon + duplicate pre-screen + automated tool scanning | Sonnet | `recon_report.json` |
 | **analyst** | CVE matching, source->sink tracing, confidence scoring | Sonnet | `vulnerability_candidates.md` |
 | **exploiter** | PoC development, quality tier classification | Opus | PoC scripts + evidence |
-| **triager-sim** | Adversarial triage -- attacks report before submission | Opus | SUBMIT / STRENGTHEN / KILL |
+| **triager-sim** | Adversarial triage -- 3 modes: finding-viability (Gate 1), PoC-destruction (Gate 2), report-review | Sonnet/Opus | SUBMIT / STRENGTHEN / KILL |
 | **source-auditor** | Deep source code audit, cross-file taint analysis | Opus | `audit_findings.md` |
 | **defi-auditor** | Smart contract analysis, DeFi-specific vulnerability patterns | Opus | `defi_audit.md` |
 
@@ -598,7 +601,7 @@ Terminator/
 │   └── static/index.html    #   Single-page dashboard (5 tabs)
 ├── targets/                 # Bug bounty workspaces (30+ missions)
 ├── tests/                   # CTF files + E2E replay benchmarks
-├── CLAUDE.md                # Orchestrator instructions (v6)
+├── CLAUDE.md                # Orchestrator instructions (v11)
 ├── terminator.sh            # Autonomous mode launcher
 ├── docker-compose.yml       # Full stack infrastructure
 └── README.md
