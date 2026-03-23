@@ -97,13 +97,18 @@ Unspecified model = inherits parent (opus) = 3-5x token waste. Pipeline violatio
 ### Knowledge Pre-Search Protocol
 
 Before spawning agents, Orchestrator searches `knowledge-fts` MCP:
-1. `technique_search("<vuln_type>")` — auto-expands abbreviations (UAF, IDOR, RCE, SSRF)
-2. `exploit_search("<service/CVE>")` — ExploitDB + nuclei + PoC + trickest-cve 155K
-3. `challenge_search("<similar_challenge>")` — past CTF solutions
-4. OR syntax: `technique_search("ret2libc OR ret2csu")`
-5. Top 3-5 results summarized in HANDOFF `[KNOWLEDGE CONTEXT]` section (always present, even if empty)
+1. **`smart_search("<query>")` — PREFERRED default** — auto-relaxes (AND → OR → top-terms) when exact match fails
+2. `technique_search("<vuln_type>")` — auto-expands abbreviations (UAF, IDOR, RCE, SSRF, TOCTOU, XXE, SSTI, etc.)
+3. `exploit_search("<service/CVE>")` — ExploitDB + nuclei + PoC + trickest-cve 155K + web_articles
+4. `challenge_search("<similar_challenge>")` — past CTF solutions
+5. OR syntax: `smart_search("ret2libc OR ret2csu")`
+6. Top 3-5 results summarized in HANDOFF `[KNOWLEDGE CONTEXT]` section (always present, even if empty)
+
+**Query rules: 2-3 keywords max.** `"QNAP buffer overflow"` not `"QNAP QTS wfm2_save_file buffer overflow strcpy"`.
 
 Agents: use `ToolSearch("knowledge-fts")` to load MCP tools. Never `cat knowledge/techniques/*.md`.
+
+**Web content**: `python3 tools/knowledge_fetcher.py fetch <url>` or `bulk knowledge/sources/<name>.md` to add articles/writeups to `web_articles` table.
 
 ### Observation Masking (Context Efficiency)
 

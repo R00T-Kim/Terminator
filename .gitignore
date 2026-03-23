@@ -111,11 +111,28 @@ aiedge-runs/
 setup.sh
 .setup.log
 
+# --- Target artifacts (sensitive) ---
+target_assessment.md
+*.sa.bin
+*.bin.fw
+poc_step*.png
+output/
+.sisyphus/
+.playwright-cli/
+tools/graphrag-security/update_output/
+
+# --- Firmware binaries (large + sensitive) ---
+FW_*.zip
+BC800Z*
+arm_gpu_bug_bounty*
+
 # --- Misc ---
 ref.md
 research/vpn_client_attack_techniques.md
 .claude_auth/
 .env
 echo
+<%*
+EXIT:
 Exit code:\ 
 knowledge/index.md

@@ -397,6 +397,13 @@ Then use:
 - Do NOT use `cat knowledge/techniques/*.md` (wastes tokens)
 - Orchestrator may include [KNOWLEDGE CONTEXT] in your HANDOFF — review it before duplicating searches
 
+### Query Best Practices
+- **Use `smart_search` as default** — auto-relaxes queries when exact AND match returns 0 results
+- **2-3 keywords max** — `"QNAP buffer overflow"` not `"QNAP QTS wfm2_save_file buffer overflow strcpy CVE-2024"`
+- **Generic vuln type first** — `"NAS command injection"` > `"QNAP wfm2_save_file strcpy overflow"`
+- **Abbreviations auto-expand** — uaf, bof, sqli, ssrf, toctou, xxe, ssti, idor, rce, lpe, cmdinjection, etc.
+- **OR syntax** — `"ret2libc OR ret2csu"` for alternatives
+
 ## Observation Masking Protocol
 
 | Output Size | Handling |

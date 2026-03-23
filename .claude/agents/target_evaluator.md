@@ -302,5 +302,12 @@ fi
 - Use `mcp__graphrag-security__similar_findings` — check past analysis of similar targets
 - Use `mcp__graphrag-security__knowledge_global` — "what patterns predict bug bounty rejection?"
 
+### Query Best Practices
+- **Use `smart_search` as default** — auto-relaxes queries when exact AND match returns 0 results
+- **2-3 keywords max** — `"QNAP buffer overflow"` not `"QNAP QTS wfm2_save_file buffer overflow strcpy CVE-2024"`
+- **Generic vuln type first** — `"NAS command injection"` > `"QNAP wfm2_save_file strcpy overflow"`
+- **Abbreviations auto-expand** — uaf, bof, sqli, ssrf, toctou, xxe, ssti, idor, rce, lpe, cmdinjection, etc.
+- **OR syntax** — `"ret2libc OR ret2csu"` for alternatives
+
 ## IRON RULES Recap
 **REMEMBER**: (1) Hard NO-GO rules are absolute — 3+ audits = instant NO-GO. (2) Structured scoring for every target. (3) OOS exclusion check before any GO decision. (4) suggested_searches field always included.

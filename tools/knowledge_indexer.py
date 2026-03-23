@@ -153,7 +153,29 @@ SYNONYMS = {
     "oob": '"out" "of" "bounds"',
     "bola": '"broken" "object" "level" "authorization"',
     "jwt": '"json" "web" "token"',
+    "toctou": '"time" "of" "check" "time" "of" "use"',
+    "xxe": '"xml" "external" "entity"',
+    "ssti": '"server" "side" "template" "injection"',
+    "deserialization": '"insecure" "deserialization"',
+    "prototype-pollution": '"prototype" "pollution"',
+    "race-condition": '"race" "condition"',
+    "nosqli": '"nosql" "injection"',
+    "crlf": '"crlf" "injection" OR "carriage" "return"',
+    "cors": '"cross" "origin" "resource" "sharing"',
+    "clickjacking": '"click" "hijacking"',
+    "open-redirect": '"open" "redirect"',
+    "path-traversal": '"path" "traversal" OR "directory" "traversal"',
+    "cmdinjection": '"command" "injection"',
+    "smm": '"system" "management" "mode"',
+    "dma": '"direct" "memory" "access"',
 }
+
+STOP_WORDS = frozenset({
+    "the", "a", "an", "in", "on", "for", "to", "of", "and", "or",
+    "is", "it", "at", "by", "as", "be", "this", "that", "with",
+    "from", "not", "are", "was", "were", "been", "has", "have",
+    "but", "if", "no", "do", "so", "up", "can", "all", "its",
+})
 
 
 def escape_fts5(query: str) -> str:
@@ -182,14 +204,27 @@ def escape_fts5(query: str) -> str:
     if not words:
         return q
     # Per-word synonym expansion (inline)
+    # Track words already covered by synonym expansions to avoid duplicates
+    covered_words = set()
     expanded_words = []
     for w in words:
         w_lower = w.lower()
         if w_lower in SYNONYMS:
-            expanded_words.append(f'({SYNONYMS[w_lower]})')
+            # Inline synonym expansion without parens (AND context)
+            expanded_words.append(SYNONYMS[w_lower])
+            for syn_word in re.findall(r'"(\w+)"', SYNONYMS[w_lower]):
+                covered_words.add(syn_word.lower())
         else:
             expanded_words.append(f'"{w}"')
-    return " ".join(expanded_words)
+    # Remove duplicates: drop standalone words already in a synonym expansion
+    final = []
+    for part in expanded_words:
+        if part.startswith('"') and part.endswith('"'):
+            inner = part.strip('"').lower()
+            if inner in covered_words:
+                continue
+        final.append(part)
+    return " ".join(final)
 
 
 def parse_nuclei_yaml(text: str) -> dict:
@@ -860,7 +895,7 @@ class KnowledgeIndexer:
         print(f"[Tier 3] Indexed trickest-cve — {total:,} CVEs ({file_count:,} files)")
         return total
 
-    VALID_TABLES = {"techniques", "external_techniques", "exploitdb", "nuclei", "poc_github", "trickest_cve"}
+    VALID_TABLES = {"techniques", "external_techniques", "exploitdb", "nuclei", "poc_github", "trickest_cve", "web_articles"}
 
     def search(self, query: str, table: str = "techniques",
                category: str = "", limit: int = 5) -> list[dict]:
@@ -929,6 +964,138 @@ class KnowledgeIndexer:
         diverse.extend(remaining)
         return diverse[:limit]
 
+    def _raw_fts_search(self, fts_query: str, table: str,
+                        category: str = "", limit: int = 5) -> list[dict]:
+        """Execute a pre-escaped FTS5 query string directly."""
+        if table not in self.VALID_TABLES:
+            raise ValueError(f"Unknown table: {table}")
+        if not fts_query.strip():
+            return []
+        conn = self._connect()
+        try:
+            if category:
+                cat_escaped = escape_fts5(category)
+                sql = (f"SELECT *, rank FROM {table} "
+                       f"WHERE {table} MATCH ? AND category MATCH ? "
+                       f"ORDER BY rank LIMIT ?")
+                cur = conn.execute(sql, (fts_query, cat_escaped, limit))
+            else:
+                sql = (f"SELECT *, rank FROM {table} "
+                       f"WHERE {table} MATCH ? ORDER BY rank LIMIT ?")
+                cur = conn.execute(sql, (fts_query, limit))
+            results = [dict(row) for row in cur.fetchall()]
+        except sqlite3.OperationalError:
+            results = []
+        finally:
+            conn.close()
+        return results
+
+    def relaxed_search(self, query: str, table: str = "techniques",
+                       category: str = "", limit: int = 5) -> tuple[list[dict], str]:
+        """Search with progressive query relaxation. Returns (results, relaxation_level).
+
+        relaxation_level: "exact" | "or" | "top_terms"
+        """
+        # Step 1: Try exact AND match (current behavior)
+        results = self.search(query, table, category, limit)
+        if results:
+            return results, "exact"
+
+        # Extract words for relaxation
+        words = re.findall(r"[\w][\w\-]*[\w]|[\w]+", query)
+        if len(words) <= 2:
+            return results, "exact"  # Already simple, no further relaxation
+
+        # Step 2: Convert all terms to OR (no synonym expansion — just raw words)
+        or_parts = []
+        for w in words:
+            w_lower = w.lower()
+            if w_lower in STOP_WORDS:
+                continue
+            or_parts.append(f'"{w}"')
+        if or_parts:
+            or_query = " OR ".join(or_parts)
+            results = self._raw_fts_search(or_query, table, category, limit)
+            if results:
+                return results, "or"
+
+        # Step 3: Keep top 3 most distinctive terms (longest words)
+        distinctive = [w for w in words if w.lower() not in STOP_WORDS and len(w) > 2]
+        distinctive.sort(key=lambda w: len(w), reverse=True)
+        top_terms = distinctive[:3]
+        if top_terms:
+            subset_query = " OR ".join(f'"{w}"' for w in top_terms)
+            results = self._raw_fts_search(subset_query, table, category, limit)
+            if results:
+                return results, "top_terms"
+
+        return [], "no_results"
+
+    def relaxed_search_all(self, query: str, limit: int = 10) -> tuple[list[dict], str]:
+        """Search all tables with progressive relaxation. Returns (results, relaxation_level)."""
+        TABLE_WEIGHTS = {
+            "techniques": 1.5,
+            "external_techniques": 1.3,
+            "exploitdb": 1.0,
+            "nuclei": 1.0,
+            "poc_github": 1.0,
+            "trickest_cve": 0.6,
+        }
+        # Also include web_articles if table exists
+        conn = self._connect()
+        try:
+            tables = [r[0] for r in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE '%_content' "
+                "AND name NOT LIKE '%_docsize' AND name NOT LIKE '%_config' "
+                "AND name NOT LIKE '%_data' AND name NOT LIKE '%_idx' "
+                "AND name != 'db_metadata'"
+            ).fetchall()]
+        finally:
+            conn.close()
+        if "web_articles" in tables and "web_articles" not in TABLE_WEIGHTS:
+            TABLE_WEIGHTS["web_articles"] = 1.2
+
+        all_results = []
+        best_level = "no_results"
+        level_priority = {"exact": 0, "or": 1, "top_terms": 2, "no_results": 3}
+
+        for table in TABLE_WEIGHTS:
+            if table not in self.VALID_TABLES:
+                continue
+            try:
+                results, level = self.relaxed_search(query, table, limit=max(3, limit // len(TABLE_WEIGHTS)))
+            except (ValueError, sqlite3.OperationalError):
+                continue
+            weight = TABLE_WEIGHTS.get(table, 1.0)
+            for r in results:
+                r["_source_table"] = table
+                if "rank" in r and r["rank"] is not None:
+                    r["_weighted_rank"] = r["rank"] * weight
+                else:
+                    r["_weighted_rank"] = 0
+            all_results.extend(results)
+            if level_priority.get(level, 3) < level_priority.get(best_level, 3):
+                best_level = level
+
+        # Sort by weighted rank (more negative = better in FTS5)
+        all_results.sort(key=lambda r: r.get("_weighted_rank", 0))
+
+        # Diversity: ensure at least 1 from each table that had results
+        tables_with_results = {}
+        for r in all_results:
+            t = r["_source_table"]
+            if t not in tables_with_results:
+                tables_with_results[t] = r
+
+        final = list(tables_with_results.values())
+        for r in all_results:
+            if r not in final:
+                final.append(r)
+            if len(final) >= limit:
+                break
+
+        return final[:limit], best_level
+
     def search_exploits(self, query: str, platform: str = "",
                         severity: str = "", limit: int = 10) -> list[dict]:
         escaped = escape_fts5(query)
@@ -995,7 +1162,7 @@ class KnowledgeIndexer:
             return {"error": "Database not found. Run 'build' first."}
         conn = self._connect()
         info = {}
-        for table in ["techniques", "external_techniques", "exploitdb", "nuclei", "poc_github", "trickest_cve"]:
+        for table in ["techniques", "external_techniques", "exploitdb", "nuclei", "poc_github", "trickest_cve", "web_articles"]:
             try:
                 cur = conn.execute(f"SELECT COUNT(*) FROM {table}")
                 info[table] = cur.fetchone()[0]
@@ -1074,6 +1241,10 @@ def main():
     sp_exp.add_argument("--limit", "-n", type=int, default=10)
     sp_exp.add_argument("--verbose", "-v", action="store_true")
 
+    sp_smart = sub.add_parser("smart-search", help="Relaxed search across all tables")
+    sp_smart.add_argument("query")
+    sp_smart.add_argument("--limit", type=int, default=10)
+
     sub.add_parser("stats", help="Show database statistics")
 
     sp_get = sub.add_parser("get", help="Get file content")
@@ -1098,6 +1269,17 @@ def main():
         results = indexer.search_exploits(args.query, platform=args.platform,
                                           severity=args.severity, limit=args.limit)
         print(format_results(results, verbose=args.verbose))
+    elif args.command == "smart-search":
+        results, level = indexer.relaxed_search_all(args.query, limit=args.limit)
+        print(f"Query: {args.query}")
+        print(f"Relaxation: {level}")
+        print(f"Results: {len(results)}")
+        for i, r in enumerate(results, 1):
+            table = r.get("_source_table", "?")
+            title = r.get("title", r.get("name", r.get("description", "untitled")))
+            if isinstance(title, str) and len(title) > 100:
+                title = title[:100] + "..."
+            print(f"  {i}. [{table}] {title}")
     elif args.command == "stats":
         info = indexer.stats()
         print(f"{'='*40}")

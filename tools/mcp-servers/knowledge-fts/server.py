@@ -8,6 +8,7 @@ Tables indexed:
   - nuclei:              12K+ Nuclei detection templates
   - poc_github:          8K+ CVE PoC repos
   - trickest_cve:        155K+ CVE entries with products, CWE, PoC URLs
+  - web_articles:        Crawled security writeups and blog posts
 """
 import os
 import re as _re
@@ -57,7 +58,14 @@ def technique_search(query: str, category: str = "", limit: int = 5) -> str:
     int_results = _indexer.search(query, table="techniques", category=category, limit=limit)
     ext_results = _indexer.search(query, table="external_techniques", category=category, limit=limit)
 
-    total = len(int_results) + len(ext_results)
+    # Also search web_articles if table exists
+    web_results = []
+    try:
+        web_results = _indexer.search(query, table="web_articles", category=category, limit=limit)
+    except (ValueError, Exception):
+        pass  # Table may not exist in older DBs
+
+    total = len(int_results) + len(ext_results) + len(web_results)
     if total == 0:
         return f"No technique results for '{query}'" + (f" (category={category})" if category else "") + "."
 
@@ -69,6 +77,9 @@ def technique_search(query: str, category: str = "", limit: int = 5) -> str:
         all_rows.append(r)
     for r in ext_results:
         r["_table_label"] = "external"
+        all_rows.append(r)
+    for r in web_results:
+        r["_table_label"] = "web"
         all_rows.append(r)
 
     for i, r in enumerate(all_rows, 1):
@@ -123,6 +134,15 @@ def exploit_search(query: str, platform: str = "", severity: str = "", limit: in
         limit:    Max results per source (default 10)
     """
     results = _indexer.search_exploits(query, platform=platform, severity=severity, limit=limit)
+
+    # Also search web_articles for exploit/CVE writeups
+    try:
+        web_results = _indexer.search(query, table="web_articles", limit=limit)
+        for r in web_results:
+            r["_source_table"] = "web_articles"
+        results.extend(web_results)
+    except (ValueError, Exception):
+        pass
 
     # CVE query priority routing: trickest_cve + poc_github first
     if _re.match(r'CVE-\d{4}-\d{4,}', query, _re.IGNORECASE):
@@ -221,6 +241,23 @@ def exploit_search(query: str, platform: str = "", severity: str = "", limit: in
                 parts.append(f"Year: {year}")
             if parts:
                 lines.append("   " + " | ".join(parts))
+
+        elif source == "web_articles":
+            title = r.get("title", "untitled")[:100]
+            domain = r.get("domain", "")
+            cat = r.get("category", "")
+            tags = r.get("tags", "")
+            url = r.get("source_url", "")
+            lines.append(f"{i}. [Web: {domain}] {title}")
+            parts = []
+            if cat:
+                parts.append(f"Category: {cat}")
+            if tags:
+                parts.append(f"Tags: {tags[:80]}")
+            if parts:
+                lines.append("   " + " | ".join(parts))
+            if url:
+                lines.append(f"   URL: {url}")
 
         else:
             lines.append(f"{i}. [{source}] {str(r)[:200]}")
@@ -339,6 +376,9 @@ def search_all(query: str, limit: int = 10) -> str:
         elif source_table == "external_techniques":
             title = r.get("title", "untitled")
             ident = f"ext:{r.get('source_repo', '?')}"
+        elif source_table == "web_articles":
+            title = r.get("title", "untitled")[:100]
+            ident = f"web:{r.get('domain', '?')}"
         else:
             title = r.get("title", "untitled")
             ident = "internal"
@@ -347,13 +387,16 @@ def search_all(query: str, limit: int = 10) -> str:
 
         # Secondary details
         detail_parts = []
-        if source_table in ("techniques", "external_techniques"):
+        if source_table in ("techniques", "external_techniques", "web_articles"):
             cat = r.get("category", "")
             if cat:
                 detail_parts.append(f"cat={cat}")
-            fp = r.get("file_path", "")
+            fp = r.get("file_path", r.get("source_url", ""))
             if fp:
                 detail_parts.append(f"path={fp}")
+            tags = r.get("tags", "")
+            if tags:
+                detail_parts.append(f"tags={tags[:60]}")
             content = r.get("content", "")
             if content:
                 snippet = _fmt_snippet(content)
@@ -393,6 +436,104 @@ def search_all(query: str, limit: int = 10) -> str:
         if detail_parts:
             lines.append("   " + " | ".join(detail_parts))
         lines.append("")
+
+    return "\n".join(lines)
+
+
+@mcp.tool()
+def smart_search(query: str, limit: int = 10) -> str:
+    """Search all knowledge tables with automatic query relaxation.
+
+    Unlike search_all which requires all terms to match (AND), smart_search
+    progressively relaxes the query if no results are found:
+    1. Try exact AND match across all tables
+    2. Convert to OR match (any term matches)
+    3. Use only the 2-3 most distinctive terms with OR
+
+    This is the RECOMMENDED default search tool for agents. Especially useful for:
+    - Verbose natural language queries ("QNAP buffer overflow in wfm2 function")
+    - Multi-keyword searches that might be too specific
+    - When you're not sure which terms will match
+
+    Args:
+        query: Any search query — can be verbose, smart_search handles it automatically
+        limit: Max total results returned across all tables (default 10)
+    """
+    results, level = _indexer.relaxed_search_all(query, limit=limit)
+
+    if not results:
+        return f"No results for '{query}' across any table (tried exact, OR, and top-terms relaxation)."
+
+    lines = [f"## Smart Search: \"{query}\" ({len(results)} results, relaxation={level})\n"]
+
+    for i, r in enumerate(results, 1):
+        source_table = r.get("_source_table", "?")
+
+        if source_table == "exploitdb":
+            title = r.get("description", "untitled")[:100]
+            ident = f"ExploitDB #{r.get('exploit_id', '?')}"
+        elif source_table == "nuclei":
+            title = r.get("name", r.get("template_id", "untitled"))
+            ident = f"Nuclei: {r.get('template_id', '?')}"
+        elif source_table == "poc_github":
+            title = f"{r.get('cve_id', '?')} — {r.get('repo_name', '')}"
+            ident = "PoC-GitHub"
+        elif source_table == "trickest_cve":
+            cve_id = r.get("cve_id", "?")
+            desc = r.get("description", "")[:80]
+            title = f"{cve_id} — {desc}" if desc else cve_id
+            ident = f"CVE-DB:{r.get('year', '?')}"
+        elif source_table == "web_articles":
+            title = r.get("title", "untitled")[:100]
+            ident = f"web:{r.get('domain', '?')}"
+        elif source_table == "external_techniques":
+            title = r.get("title", "untitled")
+            ident = f"ext:{r.get('source_repo', '?')}"
+        else:
+            title = r.get("title", "untitled")
+            ident = "internal"
+
+        lines.append(f"{i}. [{source_table}] ({ident}) {title}")
+
+        detail_parts = []
+        if source_table in ("techniques", "external_techniques", "web_articles"):
+            cat = r.get("category", "")
+            if cat:
+                detail_parts.append(f"cat={cat}")
+            fp = r.get("file_path", r.get("source_url", ""))
+            if fp:
+                detail_parts.append(f"path={fp}")
+            tags = r.get("tags", "")
+            if tags:
+                detail_parts.append(f"tags={tags[:60]}")
+        elif source_table == "exploitdb":
+            plat = r.get("platform", "")
+            cve = r.get("cve_codes", "")
+            if plat:
+                detail_parts.append(f"platform={plat}")
+            if cve:
+                detail_parts.append(f"cve={cve}")
+        elif source_table in ("nuclei",):
+            sev = r.get("severity", "")
+            cve_id = r.get("cve_id", "")
+            if sev:
+                detail_parts.append(f"severity={sev}")
+            if cve_id:
+                detail_parts.append(f"cve={cve_id}")
+        elif source_table in ("trickest_cve",):
+            products = r.get("products", "")
+            cwe = r.get("cwe", "")
+            if products:
+                detail_parts.append(f"products={products[:60]}")
+            if cwe:
+                detail_parts.append(f"cwe={cwe}")
+
+        if detail_parts:
+            lines.append("   " + " | ".join(detail_parts))
+        lines.append("")
+
+    if level != "exact":
+        lines.append(f"Note: Query was relaxed to '{level}' mode to find results.")
 
     return "\n".join(lines)
 
@@ -441,7 +582,7 @@ def knowledge_stats() -> str:
 
     lines = ["## Knowledge FTS5 Database Statistics\n"]
 
-    tables = ["techniques", "external_techniques", "exploitdb", "nuclei", "poc_github", "trickest_cve"]
+    tables = ["techniques", "external_techniques", "exploitdb", "nuclei", "poc_github", "trickest_cve", "web_articles"]
     table_labels = {
         "techniques": "Internal techniques + challenges",
         "external_techniques": "External repos (PayloadsAllTheThings, HackTricks, how2heap, etc.)",
@@ -449,6 +590,7 @@ def knowledge_stats() -> str:
         "nuclei": "Nuclei detection templates",
         "poc_github": "PoC-in-GitHub CVE repos",
         "trickest_cve": "Trickest CVE database",
+        "web_articles": "Web articles (crawled security writeups)",
     }
 
     total = 0

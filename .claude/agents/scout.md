@@ -193,6 +193,13 @@ Additional: dalfox (XSS), garak (LLM), whatweb, dirsearch, amass, openssl, Gemin
 Then use: `technique_search("<vuln type>")`, `exploit_search("<service version>")`, `challenge_search("<similar>")`.
 Do NOT use `cat knowledge/techniques/*.md` (token waste). Review Orchestrator's `[KNOWLEDGE CONTEXT]` before duplicating searches.
 
+### Query Best Practices
+- **Use `smart_search` as default** — auto-relaxes queries when exact AND match returns 0 results
+- **2-3 keywords max** — `"QNAP buffer overflow"` not `"QNAP QTS wfm2_save_file buffer overflow strcpy CVE-2024"`
+- **Generic vuln type first** — `"NAS command injection"` > `"QNAP wfm2_save_file strcpy overflow"`
+- **Abbreviations auto-expand** — uaf, bof, sqli, ssrf, toctou, xxe, ssti, idor, rce, lpe, cmdinjection, etc.
+- **OR syntax** — `"ret2libc OR ret2csu"` for alternatives
+
 ## Structured Reasoning (MANDATORY at every decision point)
 
 When interpreting scan results or deciding next scan direction:
