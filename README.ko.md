@@ -348,7 +348,7 @@ Phase 6   TeamDelete            정리
 
 ## 지식 엔진
 
-**248K+ 보안 문서**를 SQLite FTS5 + BM25 랭킹으로 인덱싱한 통합 검색 시스템. 외부 의존성 없음.
+**248K+ 보안 문서**를 SQLite FTS5 + BM25 랭킹 + 프로그레시브 쿼리 완화로 인덱싱한 통합 검색 시스템. 외부 의존성 없음.
 
 | 소스 | 문서 수 | 내용 |
 |:-----|--------:|:-----|
@@ -358,25 +358,35 @@ Phase 6   TeamDelete            정리
 | Nuclei 템플릿 | 14,871 | 심각도 포함 취약점 탐지 템플릿 |
 | PoC-in-GitHub | 18,235 | CVE PoC 저장소 |
 | trickest-cve | 155,121 | CVE 상세, 제품, CWE, PoC 링크 |
+| 웹 아티클 | 30+ | 크롤링한 보안 블로그, 라이트업, OWASP 치트시트 |
 
 에이전트가 `knowledge-fts` MCP 서버를 통해 검색:
 
 ```python
-technique_search("heap tcache poisoning")     # 상위 5개 기법 문서
-technique_search("IDOR")                      # "insecure direct object reference"로 자동 확장
-exploit_search("CVE-2021-44228")              # CVE → trickest-cve + PoC 우선 라우팅
-search_all("race condition double spend")      # 전체 248K 문서, 크로스 테이블 랭킹
+smart_search("QNAP buffer overflow strcpy")   # 추천: 자동 완화 (AND → OR → top-terms)
+technique_search("heap tcache poisoning")      # 상위 5개 기법 문서
+technique_search("IDOR")                       # "insecure direct object reference"로 자동 확장
+exploit_search("CVE-2021-44228")               # CVE → trickest-cve + PoC 우선 라우팅
+search_all("race condition double spend")      # 전체 7개 테이블, 크로스 테이블 랭킹
 ```
 
-<details>
-<summary><b>자동 재빌드 및 CLI</b></summary>
+33개 보안 약어 자동 확장: `uaf`, `bof`, `sqli`, `ssrf`, `toctou`, `xxe`, `ssti`, `idor`, `rce`, `lpe`, `cmdinjection` 등.
 
-PostToolUse 훅이 `knowledge/techniques/` 또는 `knowledge/challenges/` 파일 변경 시 자동 재인덱싱. 전체 재빌드: ~4분. 증분 업데이트: 0.13초.
+<details>
+<summary><b>자동 재빌드, 웹 페처, CLI</b></summary>
+
+PostToolUse 훅이 `knowledge/techniques/` 또는 `knowledge/challenges/` 파일 변경 시 자동 재인덱싱. 전체 재빌드: ~60초. 증분 업데이트: <1초.
 
 ```bash
-python tools/knowledge_indexer.py --rebuild    # 전체 재빌드
-python tools/knowledge_indexer.py --search "reentrancy flash loan"
-python tools/knowledge_indexer.py --stats
+python tools/knowledge_indexer.py build                    # 전체 재빌드
+python tools/knowledge_indexer.py smart-search "heap uaf"  # 프로그레시브 완화 검색
+python tools/knowledge_indexer.py stats                    # 테이블별 문서 수
+
+# 웹 콘텐츠 페처 (web_articles 테이블에 추가)
+python tools/knowledge_fetcher.py fetch <url>              # 단일 URL (jina.ai 경유)
+python tools/knowledge_fetcher.py bulk knowledge/sources/blogs.md  # URL 목록 일괄 수집
+python tools/knowledge_fetcher.py update                   # 30일+ 오래된 항목 재수집
+python tools/knowledge_fetcher.py stats                    # 웹 아티클 통계
 ```
 
 </details>
@@ -405,7 +415,7 @@ python tools/knowledge_indexer.py --stats
 | **playwright** | 웹 익스플로잇용 브라우저 자동화 |
 | **context7** | 최신 라이브러리 문서 조회 |
 | **graphrag-security** | 보안 지식 그래프: 익스플로잇 검색, 유사 발견사항, 드리프트 감지 |
-| **knowledge-fts** | 248K+ 문서 BM25 검색 — synonym 확장, 크로스 테이블 랭킹, CVE 라우팅 |
+| **knowledge-fts** | 248K+ 문서 BM25 검색 — smart_search 완화, 33 시노님, web_articles, 크로스 테이블 랭킹 |
 
 </details>
 
@@ -597,7 +607,8 @@ Terminator/
 │       └── checkpoint-validate/ # 에이전트 idle/완료 검증
 ├── knowledge/               # 축적된 경험
 │   ├── index.md             #   마스터 인덱스
-│   ├── knowledge.db         #   FTS5 검색 DB (248K 문서, ~259MB)
+│   ├── knowledge.db         #   FTS5 검색 DB (248K+ 문서, 7 테이블, ~259MB)
+│   ├── sources/             #   웹 콘텐츠 URL 시드 (blogs.md, writeups.md, techniques.md)
 │   ├── challenges/          #   챌린지별 라이트업
 │   └── techniques/          #   재사용 가능한 공격 기법 + 경쟁 분석
 ├── research/                # LLM 보안 프레임워크 분석 (14개 문서)
@@ -606,7 +617,8 @@ Terminator/
 │   │                        #   inject-rules, exclusion-filter, kill-gate-1, kill-gate-2,
 │   │                        #   workflow-check, fresh-surface-check, duplicate-graph-check,
 │   │                        #   risk-weighted-coverage, --json)
-│   ├── knowledge_indexer.py #   FTS5 DB 빌더 (6 테이블, 제로 의존성)
+│   ├── knowledge_indexer.py #   FTS5 DB 빌더 (7 테이블, smart_search, 제로 의존성)
+│   ├── knowledge_fetcher.py #   웹 콘텐츠 페처 (jina.ai → web_articles 테이블)
 │   ├── web_chain_engine.py  #   Web 익스플로잇 체인 엔진 (10 규칙)
 │   ├── flag_detector.py     #   CTF 플래그 패턴 탐지 (8+ 포맷)
 │   ├── validation_prompts.py#   환각 방지 프롬프트 라이브러리
