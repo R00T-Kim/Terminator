@@ -203,7 +203,7 @@ Full inventory: `memory/installed_tools_full.md`
 - **Web**: sqlmap, SSRFmap, commix, nuclei(12K+), ffuf, RustScan
 - **Browser**: lightpanda(MCP, 9x mem↓ 11x speed↑), browser-use(MCP, AI web automation), Playwright(MCP, full Chromium)
 - **Analysis**: CodeQL, Slither, Mythril, Semgrep | **Web3**: Foundry 1.5.1
-- **AI**: Gemini CLI | **Firmware**: FirmAE, binwalk, routersploit
+- **AI**: Gemini CLI | **Firmware**: FirmAE, binwalk, routersploit | **Kernel**: `~/kernel-security-learning/` (bsauce — UAF/heap/BPF/race/dirty-pagetable, 22 docs indexed)
 - **PDF**: opendataloader-pdf(MCP, AI-safe PDF→MD/JSON/HTML)
 - **Security**: parry-guard(prompt injection scanner, `~/.local/bin/parry-guard`)
 - **BB Gate**: `tools/bb_preflight.py` (init/rules-check/coverage-check/inject-rules/exclusion-filter/kill-gate-1/kill-gate-2/workflow-check/fresh-surface-check/evidence-tier-check/duplicate-graph-check)
