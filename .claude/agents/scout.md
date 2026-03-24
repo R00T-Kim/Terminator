@@ -157,10 +157,12 @@ Extend `recon_report.json` with: `target_type`, `chain_map`, `proxy_type`, `is_f
 
 ---
 
-## Tools (top 10 by priority, 1-line each)
+## Tools (top 12 by priority, 1-line each)
 
 | Tool | Purpose |
 |------|---------|
+| **Lightpanda MCP** | Fast page fetch/markdown/links/JS eval/structured data (9x less mem, 11x faster than Chrome). Load: `ToolSearch("lightpanda")` |
+| **Browser-Use MCP** | AI-driven web automation — natural language tasks, data extraction. Load: `ToolSearch("browser-use")` |
 | **nmap / RustScan** | Port scanning + service version detection |
 | **httpx** | HTTP probing + tech fingerprinting (bulk) |
 | **ffuf / gobuster** | Directory and endpoint fuzzing |
@@ -173,6 +175,17 @@ Extend `recon_report.json` with: `target_type`, `chain_map`, `proxy_type`, `is_f
 | **Slither / Mythril** | Automated Solidity security analysis |
 
 Additional: dalfox (XSS), garak (LLM), whatweb, dirsearch, amass, openssl, Gemini CLI (5K+ LOC codebase summarization). Full command reference in `_reference/scout_commands.md`.
+
+### Lightpanda for Recon (PREFERRED over curl for page content)
+```bash
+# Instead of: curl -s https://target.com | head -100
+# Use Lightpanda MCP:
+#   lightpanda.markdown(url="https://target.com")  → clean markdown
+#   lightpanda.links(url="https://target.com")      → all links extracted
+#   lightpanda.structuredData(url="https://target.com") → JSON-LD, OpenGraph metadata
+#   lightpanda.evaluate(url="https://target.com", script="document.title") → JS execution
+```
+Use lightpanda for initial page analysis. Fall back to curl/httpx for bulk scanning or when headers matter more than content.
 
 ## Output Artifacts
 

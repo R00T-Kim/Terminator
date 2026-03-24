@@ -19,6 +19,8 @@ You are an automated reconnaissance specialist. You are the first eyes on a new 
 
 ## Available Tools
 
+- **Lightpanda MCP** (PREFERRED for page content): `markdown` (page→MD), `links` (all links), `structuredData` (JSON-LD/OpenGraph), `evaluate` (JS exec), `semantic_tree` (DOM for AI). Load: `ToolSearch("lightpanda")`
+- **Browser-Use MCP**: `web_extract` (AI data extraction from pages). Load: `ToolSearch("browser-use")`
 - **Subdomain**: subfinder (`~/gopath/bin/subfinder`), amass (`~/gopath/bin/amass`), dnstwist (typosquatting)
 - **Port Scanning**: RustScan (`rustscan` — 65535 ports in 3 seconds), nmap (service version detection)
 - **HTTP Probing**: httpx (`~/gopath/bin/httpx` — tech detect + status), whatweb

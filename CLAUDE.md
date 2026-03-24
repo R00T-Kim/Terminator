@@ -201,10 +201,13 @@ Full inventory: `memory/installed_tools_full.md`
 - **RE**: Ghidra(MCP, PRIMARY), objdump, strings, readelf
 - **Debug**: gdb(+pwndbg+GEF+MCP), strace | **Exploit**: pwntools, ROPgadget, z3, angr, rp++
 - **Web**: sqlmap, SSRFmap, commix, nuclei(12K+), ffuf, RustScan
+- **Browser**: lightpanda(MCP, 9x mem↓ 11x speed↑), browser-use(MCP, AI web automation), Playwright(MCP, full Chromium)
 - **Analysis**: CodeQL, Slither, Mythril, Semgrep | **Web3**: Foundry 1.5.1
 - **AI**: Gemini CLI | **Firmware**: FirmAE, binwalk, routersploit
+- **PDF**: opendataloader-pdf(MCP, AI-safe PDF→MD/JSON/HTML)
+- **Security**: parry-guard(prompt injection scanner, `~/.local/bin/parry-guard`)
 - **BB Gate**: `tools/bb_preflight.py` (init/rules-check/coverage-check/inject-rules/exclusion-filter/kill-gate-1/kill-gate-2/workflow-check/fresh-surface-check/evidence-tier-check/duplicate-graph-check)
-- **MCP (11)**: gdb, pentest, pentest-thinking, context7, frida, ghidra, knowledge-fts, nuclei, codeql, semgrep, graphrag-security
+- **MCP (14)**: gdb, pentest, pentest-thinking, context7, frida, ghidra, knowledge-fts, nuclei, codeql, semgrep, graphrag-security, lightpanda, browser-use, opendataloader-pdf
 
 ## Flag Formats
 

@@ -131,7 +131,7 @@ Validated on **March 6, 2026** in this repository with real `claude`, `codex`, a
           ┌──────────────────────────────────────────────────────────┐
           │                  Infrastructure Layer                     │
           ├──────────┬──────────┬───────────┬──────────┬─────────────┤
-          │ 12 MCP   │Knowledge │ Dashboard │ 40+      │ Anti-       │
+          │ 15 MCP   │Knowledge │ Dashboard │ 40+      │ Anti-       │
           │ Servers  │ DB 248K+ │ (Web UI)  │ Tools    │ Hallucinate │
           └──────────┴──────────┴───────────┴──────────┴─────────────┘
 ```
@@ -404,11 +404,11 @@ python tools/knowledge_fetcher.py stats                    # Web articles breakd
 
 ### MCP Servers -- AI-Native Tool Integration
 
-12 MCP servers give agents direct programmatic access to security tools.
+15 MCP servers give agents direct programmatic access to security tools.
 Optional user-level MCPs may appear in local `claude`/`omx` startup logs; if `pentest-thinking` is unavailable, core Terminator pipelines still run.
 
 <details>
-<summary><b>All 12 MCP Servers</b></summary>
+<summary><b>All 15 MCP Servers</b></summary>
 
 | Server | Capability |
 |:-------|:-----------|
@@ -424,6 +424,9 @@ Optional user-level MCPs may appear in local `claude`/`omx` startup logs; if `pe
 | **context7** | Up-to-date library documentation lookup |
 | **graphrag-security** | Security knowledge graph: exploit lookup, similar findings, drift detection |
 | **knowledge-fts** | 248K+ document BM25 search with smart_search relaxation, 33 synonyms, web_articles, cross-table ranking |
+| **lightpanda** | Lightweight headless browser (9x less memory, 11x faster): page fetch, markdown, links, JS eval, semantic tree |
+| **browser-use** | AI-driven browser automation: natural language web tasks, data extraction, screenshots |
+| **opendataloader-pdf** | PDF parsing: markdown, JSON with bounding boxes, table extraction, HTML |
 
 </details>
 
