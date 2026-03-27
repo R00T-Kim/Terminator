@@ -2,10 +2,12 @@
 
 > Terminator Knowledge Base. CTF challenges, Bug Bounty findings, techniques.
 
-## Solved CTF Challenges (21)
+## Solved CTF Challenges (23)
 
 | Challenge | Type | Flag | File |
 |-----------|------|------|------|
+| Fast XSS (Dreamhack) | Web (HTTP Response Splitting + XSS) | `DH{7a709e7d846af26c41613cbcf071cd8a5996150a60507007c129a092f720057c}` | [fast-xss.md](challenges/fast-xss.md) |
+| Piggybank-2 (Dreamhack) | Web (Spring Boot @Transactional race) | `DH{5adefa9ac97eacf2936ed8f88b9cd3b544fe4b8a8a259871de07a228bf3dc9a6}` | [piggybank-2.md](challenges/piggybank-2.md) |
 | kernelCTF vulnmod LPE | Pwn (Kernel LPE) | Solved (local) | [kernelctf_vulnmod_lpe.md](challenges/kernelctf_vulnmod_lpe.md) |
 | dhcc (Level10_1) | Reversing (flex/bison) | Solved | [level10_1_dhcc.md](challenges/level10_1_dhcc.md) |
 | Too Many Questions | Crypto (AES-ECB) | Solved | [too_many_questions.md](challenges/too_many_questions.md) |
@@ -92,6 +94,7 @@
 | Lovable VDP | HackerOne | Web App | Report strengthened, H1 API blocked | `targets/lovable/submission/` |
 | OPPO | HackerOne | Mobile | Informative (closed) | - |
 | MCP SDK/OAuth | HackerOne | SDK | 2 Informative (closed) | - |
+| Asphere Web | HackenProof | Web / OAuth / CMS / public-rpc brand surface | **CONDITIONAL GO (42/60, 2026-03-25)** — Hidden Gem. 81 hackers / 128 submissions / rewards private. High-signal hosts: `oauth-proxy.asphere.xyz`, `auth.asphere.xyz`, `strapi.asphere.xyz`, `*.public-rpc.com`. Phase 0.2 PASS, coverage PASS, workflow-map PASS. Focus on OAuth state/binding, auth boundary confusion, Strapi adjacent route exposure. | `targets/asphere/target_assessment.md` |
 | Symbiotic | Immunefi | Smart Contract | ABANDONED (0 Critical) | `knowledge/bugbounty/` |
 | Superform | Immunefi | Smart Contract | ABANDONED (1 Medium, not Critical) | `knowledge/bugbounty/` |
 | YieldNest | Immunefi | Smart Contract | ABANDONED (mitigated on-chain) | - |
@@ -183,7 +186,7 @@
 | codeql-mcp | 시맨틱 코드 분석 |
 | semgrep-mcp | 패턴 기반 정적 분석 |
 | graphrag-security | 보안 지식 그래프 |
-| knowledge-fts | 265K+ 문서 BM25 검색 |
+| knowledge-fts | 280K+ 문서 BM25 검색 (external_techniques 11.4K + web_articles 3.4K 포함) |
 | lightpanda | 경량 헤드리스 브라우저 (9x mem↓, 11x speed↑) |
 | browser-use | AI 자연어 웹 자동화 |
 | opendataloader-pdf | PDF→MD/JSON/HTML 파싱 |
@@ -214,7 +217,28 @@ Use the tree to find relevant past experience by category:
 
 Catalog of all cloned reference repositories: [external_repos.md](external_repos.md)
 
-Key repos: ExploitDB (47K+), PoC-in-GitHub (8K+), nuclei-templates (12K+), PayloadsAllTheThings (70+ categories), protocol-vulns-index (460×31)
+Key repos: ExploitDB (47K+), PoC-in-GitHub (8K+), nuclei-templates (12K+), PayloadsAllTheThings (70+ categories), protocol-vulns-index (460×31), **Awesome-Hacking 81 repos (11.4K docs)**
+
+### Awesome-Hacking Knowledge (2026-03-26)
+
+81개 보안 레포 클론 (`~/awesome-hacking-repos/`) → FTS5 인덱싱 완료.
+
+| Source | Docs | Table |
+|--------|------|-------|
+| Repo README/docs (80 repos) | 11,390 | `external_techniques` |
+| Web articles (PortSwigger, P0, SpecterOps, OWASP, etc.) | 1,340 | `web_articles` |
+| MITRE ATT&CK STIX (Enterprise+Mobile+ICS) | 898 | `web_articles` |
+| Wave 2 (medium, arxiv, hackerone, etc.) | 803 | `web_articles` |
+| Conference PDFs (BlackHat, DEFCON, USENIX) | 301 | `web_articles` |
+| **Total added** | **14,732** | |
+
+Tools:
+- `tools/awesome_hacking_clone.sh` — 81 repos shallow clone (8 parallel)
+- `tools/index_awesome_hacking.py` — repo→FTS5 indexer (section splitting, category auto-detect)
+- `tools/index_mitre_attck.py` — MITRE ATT&CK STIX JSON→FTS5
+- `tools/index_pdf_articles.py` — PDF→text→FTS5 (pypdf)
+- `tools/bulk_fetch_direct.py` — parallel direct HTML fetcher (gzip-aware, 15 workers)
+- `tools/bulk_fetch_parallel.py` — parallel r.jina.ai fetcher (rate-limit aware)
 
 ## Kernel Exploit Environments
 
