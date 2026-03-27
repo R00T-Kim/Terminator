@@ -21,7 +21,7 @@ Claude Code-native core with Codex/OMX + Gemini coordination — 25 specialized 
 
 | CTF Solved | Bug Bounty Targets | AI Agents | MCP Servers | Pipeline Skills | Knowledge Docs | Security Tools |
 |:----------:|:------------------:|:---------:|:-----------:|:--------------:|:--------------:|:--------------:|
-| **20** | **30+** | **25** | **12** | **8** | **248K+** | **40+** |
+| **23** | **30+** | **25** | **14** | **8** | **280K+** | **40+** |
 
 <br>
 
@@ -131,8 +131,8 @@ Validated on **March 6, 2026** in this repository with real `claude`, `codex`, a
           ┌──────────────────────────────────────────────────────────┐
           │                  Infrastructure Layer                     │
           ├──────────┬──────────┬───────────┬──────────┬─────────────┤
-          │ 15 MCP   │Knowledge │ Dashboard │ 40+      │ Anti-       │
-          │ Servers  │ DB 248K+ │ (Web UI)  │ Tools    │ Hallucinate │
+          │ 14 MCP   │Knowledge │ Dashboard │ 40+      │ Anti-       │
+          │ Servers  │ DB 280K+ │ (Web UI)  │ Tools    │ Hallucinate │
           └──────────┴──────────┴───────────┴──────────┴─────────────┘
 ```
 
@@ -355,7 +355,7 @@ All work agents implement a checkpoint protocol for crash/compaction recovery:
 
 ## Knowledge Engine
 
-A unified full-text search over **248K+ security documents** -- zero external dependencies, built on SQLite FTS5 with BM25 ranking and progressive query relaxation.
+A unified full-text search over **280K+ security documents** -- zero external dependencies, built on SQLite FTS5 with BM25 ranking and progressive query relaxation.
 
 | Source | Documents | Content |
 |:-------|----------:|:--------|
@@ -404,11 +404,11 @@ python tools/knowledge_fetcher.py stats                    # Web articles breakd
 
 ### MCP Servers -- AI-Native Tool Integration
 
-15 MCP servers give agents direct programmatic access to security tools.
+14 MCP servers give agents direct programmatic access to security tools.
 Optional user-level MCPs may appear in local `claude`/`omx` startup logs; if `pentest-thinking` is unavailable, core Terminator pipelines still run.
 
 <details>
-<summary><b>All 15 MCP Servers</b></summary>
+<summary><b>All 14 MCP Servers</b></summary>
 
 | Server | Capability |
 |:-------|:-----------|
@@ -423,7 +423,7 @@ Optional user-level MCPs may appear in local `claude`/`omx` startup logs; if `pe
 | **playwright** | Browser automation for web exploitation |
 | **context7** | Up-to-date library documentation lookup |
 | **graphrag-security** | Security knowledge graph: exploit lookup, similar findings, drift detection |
-| **knowledge-fts** | 248K+ document BM25 search with smart_search relaxation, 33 synonyms, web_articles, cross-table ranking |
+| **knowledge-fts** | 280K+ document BM25 search with smart_search relaxation, 33 synonyms, web_articles, cross-table ranking |
 | **lightpanda** | Lightweight headless browser (9x less memory, 11x faster): page fetch, markdown, links, JS eval, semantic tree |
 | **browser-use** | AI-driven browser automation: natural language web tasks, data extraction, screenshots |
 | **opendataloader-pdf** | PDF parsing: markdown, JSON with bounding boxes, table extraction, HTML |
@@ -618,7 +618,7 @@ Terminator/
 │       └── checkpoint-validate/ # Agent idle/completion verification
 ├── knowledge/               # Accumulated experience
 │   ├── index.md             #   Master index
-│   ├── knowledge.db         #   FTS5 search DB (248K+ docs, 7 tables, ~259MB)
+│   ├── knowledge.db         #   FTS5 search DB (280K+ docs, 7 tables, ~259MB)
 │   ├── challenges/          #   Per-challenge writeups
 │   ├── techniques/          #   Reusable attack patterns + competitor analysis
 │   └── triage_objections/   #   Triager objection patterns by vuln category (v12 NEW)
