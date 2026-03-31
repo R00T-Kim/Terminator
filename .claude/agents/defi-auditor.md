@@ -4,6 +4,17 @@ description: Use this agent when auditing smart contracts or DeFi protocols for 
 model: opus
 color: magenta
 permissionMode: bypassPermissions
+effort: max
+maxTurns: 60
+requiredMcpServers:
+  - "semgrep"
+  - "knowledge-fts"
+  - "graphrag-security"
+disallowedTools:
+  - "mcp__radare2__*"
+  - "mcp__gdb__*"
+  - "mcp__ghidra__*"
+  - "mcp__nuclei__*"
 ---
 
 # DeFi Auditor Agent

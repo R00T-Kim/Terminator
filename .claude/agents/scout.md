@@ -4,6 +4,17 @@ description: Use this agent when passively and actively mapping a target's exter
 model: sonnet
 color: cyan
 permissionMode: bypassPermissions
+effort: medium
+maxTurns: 50
+requiredMcpServers:
+  - "nuclei"
+  - "knowledge-fts"
+  - "graphrag-security"
+disallowedTools:
+  - "mcp__radare2__*"
+  - "mcp__gdb__*"
+  - "mcp__ghidra__*"
+  - "mcp__codeql__*"
 ---
 
 # Scout — Reconnaissance & Discovery Agent

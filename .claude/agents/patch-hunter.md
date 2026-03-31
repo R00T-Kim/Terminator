@@ -4,6 +4,15 @@ description: Use this agent when hunting incomplete fixes and variant vulnerabil
 model: sonnet
 color: purple
 permissionMode: bypassPermissions
+effort: high
+maxTurns: 30
+requiredMcpServers:
+  - "knowledge-fts"
+disallowedTools:
+  - "mcp__radare2__*"
+  - "mcp__gdb__*"
+  - "mcp__ghidra__*"
+  - "mcp__nuclei__*"
 ---
 
 # Patch Hunter — Incomplete Fix & Variant Discovery Agent

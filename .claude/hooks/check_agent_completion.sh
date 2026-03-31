@@ -7,6 +7,9 @@ set -euo pipefail
 
 INPUT=$(cat)
 CWD=$(echo "$INPUT" | jq -r '.cwd // ""')
+LAST_MSG=$(echo "$INPUT" | jq -r '.last_assistant_message // ""')
+AGENT_TYPE=$(echo "$INPUT" | jq -r '.agent_type // ""')
+AGENT_ID=$(echo "$INPUT" | jq -r '.agent_id // ""')
 
 PROJECT_DIR="/home/rootk1m/01_CYAI_Lab/01_Projects/Terminator"
 COORD_CLI="$PROJECT_DIR/tools/coordination_cli.py"
@@ -19,6 +22,8 @@ fi
 # 최근 수정된 checkpoint.json 찾기 (최근 10분 이내)
 WARNINGS=""
 FOUND_INCOMPLETE=false
+CHECKPOINT_FOUND=""
+FOUND_FLAGS=""
 
 for cp in $(find "$CWD" "$PROJECT_DIR" -maxdepth 4 -name "checkpoint*.json" -mmin -10 2>/dev/null | head -5); do
     STATUS=$(jq -r '.status // "unknown"' "$cp" 2>/dev/null || continue)
@@ -29,6 +34,7 @@ for cp in $(find "$CWD" "$PROJECT_DIR" -maxdepth 4 -name "checkpoint*.json" -mmi
     PRODUCED=$(jq -r '.produced_artifacts // [] | join(", ")' "$cp" 2>/dev/null || echo "")
     ERROR=$(jq -r '.error // ""' "$cp" 2>/dev/null || echo "")
     DIR=$(dirname "$cp")
+    CHECKPOINT_FOUND="yes"
 
     case "$STATUS" in
         completed)
@@ -63,6 +69,43 @@ for cp in $(find "$CWD" "$PROJECT_DIR" -maxdepth 4 -name "checkpoint*.json" -mmi
             ;;
     esac
 done
+
+# --- Flag Detection ---
+if [ -n "$LAST_MSG" ]; then
+    FLAG_PATTERNS='(DH|FLAG|flag|CTF|GoN|CYAI)\{[^}]{4,}\}'
+    FOUND_FLAGS=$(echo "$LAST_MSG" | grep -oP "$FLAG_PATTERNS" 2>/dev/null || true)
+    if [ -n "$FOUND_FLAGS" ]; then
+        WARNINGS="${WARNINGS}[FLAG DETECTED] Agent $AGENT_TYPE found: $FOUND_FLAGS\n"
+        # Log to coordination store if available
+        if [ -f "$PROJECT_DIR/tools/coordination_cli.py" ]; then
+            python3 "$PROJECT_DIR/tools/coordination_cli.py" event \
+                --session "$(python3 "$PROJECT_DIR/tools/coordination_cli.py" derive-session 2>/dev/null || echo 'unknown')" \
+                --kind "flag_detected" \
+                --payload "{\"agent\":\"$AGENT_TYPE\",\"flags\":\"$FOUND_FLAGS\"}" 2>/dev/null || true
+        fi
+    fi
+fi
+
+# --- Auto-checkpoint for agents that stopped without one ---
+WORK_AGENTS="chain|solver|exploiter|analyst|reverser|trigger|verifier|reporter"
+if [[ "$AGENT_TYPE" =~ ^($WORK_AGENTS)$ ]] && [ -z "$CHECKPOINT_FOUND" ]; then
+    if [ -f "$PROJECT_DIR/tools/coordination_cli.py" ]; then
+        python3 "$PROJECT_DIR/tools/coordination_cli.py" checkpoint \
+            --session "$(python3 "$PROJECT_DIR/tools/coordination_cli.py" derive-session 2>/dev/null || echo 'unknown')" \
+            --actor "$AGENT_TYPE" \
+            --stage "agent_stopped" \
+            --status "stopped_without_checkpoint" \
+            --payload-json "{\"agent_id\":\"$AGENT_ID\",\"had_flags\":\"${FOUND_FLAGS:-none}\"}" 2>/dev/null || true
+    fi
+fi
+
+# --- Knowledge extraction hint ---
+if [ -n "$LAST_MSG" ]; then
+    TECHNIQUE_MARKERS=$(echo "$LAST_MSG" | grep -c -iE '(technique|vulnerability|exploit method|attack vector|bypass|primitive):' 2>/dev/null || echo "0")
+    if [ "$TECHNIQUE_MARKERS" -gt 0 ]; then
+        WARNINGS="${WARNINGS}[KNOWLEDGE] Agent $AGENT_TYPE output contains $TECHNIQUE_MARKERS technique markers — consider extracting to knowledge/techniques/\n"
+    fi
+fi
 
 if [[ "$FOUND_INCOMPLETE" == true ]]; then
     python3 "$COORD_CLI" event \

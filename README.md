@@ -21,7 +21,7 @@ Claude Code-native core with Codex/OMX + Gemini coordination — 25 specialized 
 
 | CTF Solved | Bug Bounty Targets | AI Agents | MCP Servers | Pipeline Skills | Knowledge Docs | Security Tools |
 |:----------:|:------------------:|:---------:|:-----------:|:--------------:|:--------------:|:--------------:|
-| **23** | **30+** | **25** | **14** | **8** | **280K+** | **40+** |
+| **23** | **30+** | **25** | **10** | **9** | **280K+** | **40+** |
 
 <br>
 
@@ -49,8 +49,9 @@ You: "Hunt high-critical bugs on Immunefi until you find one"
 
 Terminator:
   -> spawns @target-evaluator  -> scores ROI, returns GO
-  -> spawns @scout + @analyst  -> parallel recon + CVE matching
-  -> spawns @exploiter         -> develops working PoC
+  -> spawns @scout + @analyst + @threat-modeler + @patch-hunter  -> parallel recon
+  -> spawns @workflow-auditor + @web-tester  -> deep exploration
+  -> spawns @exploiter         -> develops working PoC (effort: max)
   -> spawns @critic            -> fact-checks report
   -> spawns @triager-sim       -> attacks report before submission
   -> SUBMIT: CWE-306 ATO chain, CVSS 7.4 High
@@ -67,7 +68,8 @@ Terminator is not a single model prompt. It is a **team of 25 AI agents** coordi
 - **Verification-first** -- every exploit is tested 3x locally before remote execution; every bug bounty report requires a working PoC
 - **Anti-hallucination** -- a dedicated critic agent cross-verifies all addresses, offsets, and constants with independent tool runs (gdb)
 - **Crash recovery** -- checkpoint protocol lets agents resume from exact point of failure after context compaction
-- **Automated quality gates** -- 6 pipeline skills (v6) automatically block OOS findings, weak PoCs, unrealistic threat models, and AI-generated template language before submission
+- **Automated quality gates** -- 9 pipeline skills + 3 runtime hooks automatically block OOS findings, weak PoCs, unrealistic threat models, dangerous payloads, and AI-generated template language before submission
+- **Agent tuning** -- per-agent effort levels (low/medium/high/max), turn limits, required MCP servers, and tool restrictions optimize token usage and enforce role boundaries
 
 ---
 
@@ -131,8 +133,8 @@ Validated on **March 6, 2026** in this repository with real `claude`, `codex`, a
           ┌──────────────────────────────────────────────────────────┐
           │                  Infrastructure Layer                     │
           ├──────────┬──────────┬───────────┬──────────┬─────────────┤
-          │ 14 MCP   │Knowledge │ Dashboard │ 40+      │ Anti-       │
-          │ Servers  │ DB 280K+ │ (Web UI)  │ Tools    │ Hallucinate │
+          │ 10 MCP   │Knowledge │ Dashboard │ 40+      │ Runtime     │
+          │ Servers  │ DB 280K+ │ (Web UI)  │ Tools    │ Hooks (3)   │
           └──────────┴──────────┴───────────┴──────────┴─────────────┘
 ```
 
@@ -282,34 +284,34 @@ Phase 6   TeamDelete            Cleanup
 <details>
 <summary><b>CTF Agents (8)</b></summary>
 
-| Agent | Role | Model | Output |
-|:------|:-----|:-----:|:-------|
-| **reverser** | Binary analysis, protection detection, attack surface mapping | Sonnet | `reversal_map.md` |
-| **trigger** | Crash discovery, input minimization, primitive identification | Sonnet | `trigger_report.md` |
-| **solver** | Reverse computation for reversing/crypto challenges | Opus | `solve.py` |
-| **chain** | Multi-stage exploit: leak -> overwrite -> shell | Opus | `solve.py` |
-| **critic** | Security Council deliberation (5 archetypes) + cross-verification | Opus | `critic_review.md` |
-| **verifier** | Local 3x reproduction -> remote execution | Sonnet | `FLAG_FOUND` |
-| **reporter** | Writeup with failed attempts and techniques | Sonnet | `knowledge/challenges/<name>.md` |
-| **ctf-solver** | Legacy single-agent for trivial challenges | Sonnet | `solve.py` |
+| Agent | Role | Model | Effort | Output |
+|:------|:-----|:-----:|:------:|:-------|
+| **reverser** | Binary analysis, protection detection, attack surface mapping | Sonnet | High | `reversal_map.md` |
+| **trigger** | Crash discovery, input minimization, primitive identification | Sonnet | Medium | `trigger_report.md` |
+| **solver** | Reverse computation for reversing/crypto challenges | Opus | Max | `solve.py` |
+| **chain** | Multi-stage exploit: leak -> overwrite -> shell | Opus | Max | `solve.py` |
+| **critic** | Security Council deliberation (5 archetypes) + cross-verification | Opus | High | `critic_review.md` |
+| **verifier** | Local 3x reproduction -> remote execution | Sonnet | Low | `FLAG_FOUND` |
+| **reporter** | Writeup with failed attempts and techniques | Sonnet | Medium | `knowledge/challenges/<name>.md` |
+| **ctf-solver** | Legacy single-agent for trivial challenges | Sonnet | High | `solve.py` |
 
 </details>
 
 <details>
 <summary><b>Bug Bounty Agents (10)</b></summary>
 
-| Agent | Role | Model | Output |
-|:------|:-----|:-----:|:-------|
-| **target-evaluator** | Program ROI scoring, GO/NO-GO gate | Sonnet | `target_assessment.md` |
-| **scout** | Recon + duplicate pre-screen + automated tool scanning | Sonnet | `recon_report.json` |
-| **analyst** | CVE matching, source->sink tracing, confidence scoring | Sonnet | `vulnerability_candidates.md` |
-| **threat-modeler** | Trust boundary mapping, role matrix, state machine and invariant extraction | Sonnet | `threat_model.md` |
-| **patch-hunter** | Incomplete fix and variant vulnerability hunting from security commits | Sonnet | `patch_analysis.md` |
-| **exploiter** | PoC development, quality tier classification, Evidence Tier (E1-E4) | Opus | PoC scripts + evidence |
-| **workflow-auditor** | Business workflow state transition mapping and anomaly detection | Sonnet | `workflow_audit.md` |
-| **triager-sim** | Adversarial triage -- 3 modes: finding-viability (Gate 1), PoC-destruction (Gate 2), report-review | Sonnet/Opus | SUBMIT / STRENGTHEN / KILL |
-| **source-auditor** | Deep source code audit, cross-file taint analysis | Opus | `audit_findings.md` |
-| **defi-auditor** | Smart contract analysis, DeFi-specific vulnerability patterns | Opus | `defi_audit.md` |
+| Agent | Role | Model | Effort | Output |
+|:------|:-----|:-----:|:------:|:-------|
+| **target-evaluator** | Program ROI scoring, GO/NO-GO gate | Sonnet | Medium | `target_assessment.md` |
+| **scout** | Recon + duplicate pre-screen + automated tool scanning | Sonnet | Medium | `recon_report.json` |
+| **analyst** | CVE matching, source->sink tracing, confidence scoring | Sonnet | High | `vulnerability_candidates.md` |
+| **threat-modeler** | Trust boundary mapping, role matrix, state machine and invariant extraction | Sonnet | Medium | `threat_model.md` |
+| **patch-hunter** | Incomplete fix and variant vulnerability hunting from security commits | Sonnet | High | `patch_analysis.md` |
+| **exploiter** | PoC development, quality tier classification, Evidence Tier (E1-E4) | Opus | Max | PoC scripts + evidence |
+| **workflow-auditor** | Business workflow state transition mapping and anomaly detection | Sonnet | Medium | `workflow_audit.md` |
+| **triager-sim** | Adversarial triage -- 3 modes: finding-viability, PoC-destruction, report-review | Opus | High | SUBMIT / STRENGTHEN / KILL |
+| **source-auditor** | Deep source code audit, cross-file taint analysis | Opus | Max | `audit_findings.md` |
+| **defi-auditor** | Smart contract analysis, DeFi-specific vulnerability patterns | Opus | Max | `defi_audit.md` |
 
 </details>
 
@@ -348,6 +350,21 @@ All work agents implement a checkpoint protocol for crash/compaction recovery:
 
 > [!NOTE]
 > Never assume "artifact exists = work complete." Only `checkpoint.status == "completed"` is trustworthy.
+
+</details>
+
+<details>
+<summary><b>Runtime Hooks -- Automated Safety & Intelligence</b></summary>
+
+3 runtime hooks enforce pipeline rules at the execution level, not just through prompt instructions:
+
+| Hook | Trigger | Purpose |
+|:-----|:--------|:--------|
+| **safe_payload_hook.py** | PreToolUse (Bash) | Blocks dangerous commands (rm -rf, dd, mkfs, fork bombs) before execution |
+| **observation_mask_hook.py** | PostToolUse (Bash/Read) | Auto-saves outputs >500 lines to file, prevents context overflow |
+| **check_agent_completion.sh** | SubagentStop | FLAG pattern detection, knowledge extraction, auto-checkpoint for agents that stop without writing state |
+
+Additional hooks: `knowledge_inject.sh` (PreToolUse: injects relevant knowledge per agent type), `knowledge_db_update.sh` (PostToolUse: auto-reindexes knowledge DB), `session_knowledge.sh` (SessionStart: loads global session context).
 
 </details>
 
@@ -404,29 +421,29 @@ python tools/knowledge_fetcher.py stats                    # Web articles breakd
 
 ### MCP Servers -- AI-Native Tool Integration
 
-14 MCP servers give agents direct programmatic access to security tools.
-Optional user-level MCPs may appear in local `claude`/`omx` startup logs; if `pentest-thinking` is unavailable, core Terminator pipelines still run.
+10 MCP servers give agents direct programmatic access to security tools, with ToolAnnotations enabling parallel execution for read-only tools. Non-essential servers (context7, frida, browser-use, opendataloader-pdf) are available as opt-in via agent-level `requiredMcpServers`.
 
 <details>
-<summary><b>All 14 MCP Servers</b></summary>
+<summary><b>Core MCP Servers (10 active + 4 opt-in)</b></summary>
 
 | Server | Capability |
 |:-------|:-----------|
 | **mcp-gdb** | Breakpoints, memory inspection, stepping, backtrace |
-| **radare2-mcp** | Disassembly, decompilation, xrefs, function analysis |
 | **ghidra-mcp** | Headless decompilation, structures, enums |
-| **frida-mcp** | Dynamic instrumentation, hooking, process spawning |
 | **pentest-mcp** | nmap, gobuster, nikto, john, hashcat |
 | **nuclei-mcp** | 12K+ vulnerability detection templates |
 | **codeql-mcp** | Semantic taint tracking, variant analysis |
 | **semgrep-mcp** | Pattern-based static analysis |
 | **playwright** | Browser automation for web exploitation |
-| **context7** | Up-to-date library documentation lookup |
 | **graphrag-security** | Security knowledge graph: exploit lookup, similar findings, drift detection |
 | **knowledge-fts** | 280K+ document BM25 search with smart_search relaxation, 33 synonyms, web_articles, cross-table ranking |
 | **lightpanda** | Lightweight headless browser (9x less memory, 11x faster): page fetch, markdown, links, JS eval, semantic tree |
-| **browser-use** | AI-driven browser automation: natural language web tasks, data extraction, screenshots |
-| **opendataloader-pdf** | PDF parsing: markdown, JSON with bounding boxes, table extraction, HTML |
+
+> **Denied by policy**: radare2 (use Ghidra instead), everything, sequential-thinking, memory, time
+>
+> **Opt-in** (per-agent `requiredMcpServers`): frida, browser-use, opendataloader-pdf, pentest-thinking
+>
+> All custom MCP servers now include `ToolAnnotations` (readOnlyHint, idempotentHint) enabling concurrent execution of read-only tools.
 
 </details>
 
@@ -604,10 +621,17 @@ Terminator/
 │   │   ├── _reference/      #   Shared reference docs (commands, patterns, tools)
 │   │   │   └── workflow_packs.md # Workflow pack definitions (v12 NEW)
 │   │   └── ...              #   + 16 more specialists
-│   ├── rules/               # Pipeline procedure documents
-│   │   ├── bb_pipeline_v12.md # Bug Bounty v12 Kill Gate + Explore Lane (NEW)
-│   │   └── ctf_pipeline.md  #   CTF pipeline procedure
-│   └── skills/              # 8 pipeline skills (v6 NEW)
+│   ├── rules/               # Pipeline + protocol documents
+│   │   ├── bb_pipeline_v12.md # Bug Bounty v12 Kill Gate + Explore Lane
+│   │   ├── ctf_pipeline.md  #   CTF pipeline procedure
+│   │   ├── agent_models.md  #   Agent model assignments
+│   │   ├── handoff_protocol.md # Structured handoff format
+│   │   └── checkpoint_protocol.md # Checkpoint + idle recovery
+│   ├── hooks/               # 6 runtime hooks (3 safety + 3 knowledge)
+│   │   ├── safe_payload_hook.py   # Dangerous command blocking
+│   │   ├── observation_mask_hook.py # Large output auto-save
+│   │   └── check_agent_completion.sh # FLAG detect + auto-checkpoint
+│   └── skills/              # 9 pipeline skills
 │       ├── bounty/          #   Bug bounty pipeline orchestration
 │       ├── ctf/             #   CTF pipeline orchestration
 │       ├── oos-check/       #   Out-of-Scope pre-screening (12 patterns)
@@ -633,6 +657,7 @@ Terminator/
 │   ├── mitre_mapper.py      #   CVE->CWE->CAPEC->ATT&CK (36 CWEs)
 │   ├── attack_graph/        #   Neo4j + filesystem attack surface graphs
 │   ├── dag_orchestrator/    #   DAG pipeline scheduling + Claude CLI handler
+│   ├── toolspec/            #   ToolSpec registry (10 tools, typed metadata)
 │   ├── sarif_generator.py   #   SARIF 2.1.0 output
 │   └── mcp-servers/         #   nuclei, codeql, semgrep, knowledge-fts, graphrag
 ├── web/                     # FastAPI + D3 dashboard (standalone + Docker)

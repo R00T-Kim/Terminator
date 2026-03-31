@@ -25,6 +25,10 @@ REPORT_DIR="$SCRIPT_DIR/reports/$TIMESTAMP"
 PID_FILE="$SCRIPT_DIR/.terminator.pid"
 LOG_FILE="$SCRIPT_DIR/.terminator.log"
 
+# --- Claude Code Performance Tuning ---
+export CLAUDE_CODE_MAX_TOOL_USE_CONCURRENCY=15
+export CLAUDE_CODE_EFFORT_LEVEL=high
+
 # --- Parse global flags ---
 JSON_OUTPUT=false
 TIMEOUT=0

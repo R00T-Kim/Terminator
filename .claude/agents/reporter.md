@@ -4,6 +4,14 @@ description: Use this agent when writing the final CTF writeup or bug bounty rep
 model: sonnet
 color: blue
 permissionMode: bypassPermissions
+effort: medium
+maxTurns: 30
+requiredMcpServers:
+  - "knowledge-fts"
+disallowedTools:
+  - "mcp__radare2__*"
+  - "mcp__gdb__*"
+  - "mcp__nuclei__*"
 ---
 
 # Reporter Agent

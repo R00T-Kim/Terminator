@@ -2,6 +2,9 @@
 name: bounty
 description: Start Bug Bounty target analysis pipeline. Auto-matches "bounty", "target analysis", "find vulns", "bug hunting", "Immunefi", "Bugcrowd", "H1"
 argument-hint: [target-url-or-name] [scope]
+context: fork
+effort: high
+model: opus
 ---
 
 # Bug Bounty Pipeline (v4 — Explore Lane)

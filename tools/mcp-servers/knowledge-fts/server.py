@@ -19,6 +19,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../
 from knowledge_indexer import KnowledgeIndexer
 
 from mcp.server.fastmcp import FastMCP
+from mcp.types import ToolAnnotations
 
 mcp = FastMCP("knowledge-fts")
 _indexer = KnowledgeIndexer()
@@ -35,7 +36,7 @@ def _fmt_snippet(text: str, max_chars: int = 200) -> str:
     return text[:max_chars]
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True))
 def technique_search(query: str, category: str = "", limit: int = 5) -> str:
     """Search internal + external security technique documents using BM25 FTS5.
 
@@ -111,7 +112,7 @@ def technique_search(query: str, category: str = "", limit: int = 5) -> str:
     return "\n".join(lines)
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True))
 def exploit_search(query: str, platform: str = "", severity: str = "", limit: int = 10) -> str:
     """Search ExploitDB, Nuclei templates, PoC-in-GitHub, and Trickest-CVE for exploits.
 
@@ -267,7 +268,7 @@ def exploit_search(query: str, platform: str = "", severity: str = "", limit: in
     return "\n".join(lines)
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True))
 def challenge_search(query: str, status: str = "", limit: int = 5) -> str:
     """Search CTF challenge writeups in the internal knowledge base.
 
@@ -329,7 +330,7 @@ def challenge_search(query: str, status: str = "", limit: int = 5) -> str:
     return "\n".join(lines)
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True))
 def search_all(query: str, limit: int = 10) -> str:
     """Search ALL 6 knowledge tables simultaneously for the broadest coverage.
 
@@ -440,7 +441,7 @@ def search_all(query: str, limit: int = 10) -> str:
     return "\n".join(lines)
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True))
 def smart_search(query: str, limit: int = 10) -> str:
     """Search all knowledge tables with automatic query relaxation.
 
@@ -538,7 +539,7 @@ def smart_search(query: str, limit: int = 10) -> str:
     return "\n".join(lines)
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True))
 def get_technique_content(file_path: str, max_lines: int = 100) -> str:
     """Read the full content of a specific knowledge file (drill-down after search).
 
@@ -567,7 +568,7 @@ def get_technique_content(file_path: str, max_lines: int = 100) -> str:
     return header + content
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True))
 def knowledge_stats() -> str:
     """Show statistics about the FTS5 knowledge database.
 

@@ -4,6 +4,16 @@ description: Use this agent when reverse engineering a binary or challenge to pr
 model: sonnet
 color: cyan
 permissionMode: bypassPermissions
+effort: high
+maxTurns: 40
+requiredMcpServers:
+  - "ghidra"
+  - "gdb"
+  - "knowledge-fts"
+disallowedTools:
+  - "mcp__radare2__*"
+  - "mcp__nuclei__*"
+  - "mcp__semgrep__*"
 ---
 
 # Reverser Agent

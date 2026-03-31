@@ -4,6 +4,7 @@ import subprocess
 import json
 import os
 from mcp.server.fastmcp import FastMCP
+from mcp.types import ToolAnnotations
 
 mcp = FastMCP("nuclei-mcp")
 
@@ -11,7 +12,7 @@ NUCLEI_BIN = os.path.expanduser("~/gopath/bin/nuclei")
 TEMPLATES_DIR = os.path.expanduser("~/nuclei-templates/")
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=False, openWorldHint=True, idempotentHint=True))
 def scan(target: str, severity: str = "", templates: str = "", timeout: int = 300) -> str:
     """Run nuclei vulnerability scan on target.
 
@@ -64,7 +65,7 @@ def scan(target: str, severity: str = "", templates: str = "", timeout: int = 30
         return f"Error: {str(e)}"
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True))
 def list_templates(category: str = "", severity: str = "") -> str:
     """List available nuclei templates.
 
@@ -97,7 +98,7 @@ def list_templates(category: str = "", severity: str = "") -> str:
     }, indent=2)
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True))
 def template_info(template_id: str) -> str:
     """Get information about a specific nuclei template.
 
@@ -129,7 +130,7 @@ def template_info(template_id: str) -> str:
         return f"Error reading template: {str(e)}"
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=False, openWorldHint=True, idempotentHint=True))
 def scan_multiple(targets: str, severity: str = "critical,high", timeout: int = 600) -> str:
     """Run nuclei scan against multiple targets (newline or comma separated).
 

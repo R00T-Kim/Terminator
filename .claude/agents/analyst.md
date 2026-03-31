@@ -4,6 +4,17 @@ description: Use this agent when triaging recon output into a prioritized vulner
 model: sonnet
 color: blue
 permissionMode: bypassPermissions
+effort: high
+maxTurns: 50
+requiredMcpServers:
+  - "semgrep"
+  - "codeql"
+  - "knowledge-fts"
+  - "graphrag-security"
+disallowedTools:
+  - "mcp__radare2__*"
+  - "mcp__gdb__*"
+  - "mcp__ghidra__*"
 ---
 
 # Analyst — Vulnerability Analysis Agent

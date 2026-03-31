@@ -4,6 +4,17 @@ description: Use this agent when attacking a draft bug bounty report like a skep
 model: opus
 color: magenta
 permissionMode: bypassPermissions
+effort: high
+maxTurns: 25
+requiredMcpServers:
+  - "knowledge-fts"
+disallowedTools:
+  - "mcp__radare2__*"
+  - "mcp__gdb__*"
+  - "mcp__ghidra__*"
+  - "mcp__nuclei__*"
+  - "mcp__codeql__*"
+  - "mcp__semgrep__*"
 ---
 
 # Triager Simulator Agent

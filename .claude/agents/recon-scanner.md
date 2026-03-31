@@ -4,6 +4,17 @@ description: Use this agent when you need broad automated reconnaissance over a 
 model: sonnet
 color: cyan
 permissionMode: bypassPermissions
+effort: low
+maxTurns: 40
+requiredMcpServers:
+  - "nuclei"
+  - "pentest"
+disallowedTools:
+  - "mcp__radare2__*"
+  - "mcp__gdb__*"
+  - "mcp__ghidra__*"
+  - "mcp__codeql__*"
+  - "mcp__semgrep__*"
 ---
 
 # Recon Scanner Agent

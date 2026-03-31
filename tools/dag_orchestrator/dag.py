@@ -30,6 +30,11 @@ class AgentNode:
     handler: Optional[Callable] = None  # actual execution function
     timeout: int = 300                # seconds
     retry_limit: int = 2
+    # Performance tuning (Wave 3 upgrade)
+    effort: str = "default"
+    max_turns: Optional[int] = None
+    allowed_tools: list = field(default_factory=list)
+    disallowed_tools: list = field(default_factory=list)
     # Runtime state
     status: NodeStatus = NodeStatus.PENDING
     output: Any = None

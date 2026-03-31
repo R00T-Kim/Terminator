@@ -4,6 +4,16 @@ description: Use this agent when assembling a full pwn exploit chain from a conf
 model: opus
 color: red
 permissionMode: bypassPermissions
+effort: max
+maxTurns: 60
+requiredMcpServers:
+  - "gdb"
+  - "knowledge-fts"
+disallowedTools:
+  - "mcp__radare2__*"
+  - "mcp__nuclei__*"
+  - "mcp__semgrep__*"
+  - "mcp__codeql__*"
 ---
 
 # Chain Agent

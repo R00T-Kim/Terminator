@@ -4,6 +4,18 @@ description: Use this agent when deciding whether a bug bounty target is worth p
 model: sonnet
 color: yellow
 permissionMode: bypassPermissions
+effort: medium
+maxTurns: 20
+requiredMcpServers:
+  - "knowledge-fts"
+  - "graphrag-security"
+disallowedTools:
+  - "mcp__radare2__*"
+  - "mcp__gdb__*"
+  - "mcp__ghidra__*"
+  - "mcp__nuclei__*"
+  - "mcp__codeql__*"
+  - "mcp__semgrep__*"
 ---
 
 # Target Evaluator Agent

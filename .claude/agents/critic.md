@@ -4,6 +4,14 @@ description: Use this agent when you need adversarial review of reversal maps, e
 model: opus
 color: blue
 permissionMode: bypassPermissions
+effort: high
+maxTurns: 30
+requiredMcpServers:
+  - "gdb"
+  - "ghidra"
+  - "knowledge-fts"
+disallowedTools:
+  - "mcp__radare2__*"
 ---
 
 # Critic Agent

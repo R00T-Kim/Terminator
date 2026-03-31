@@ -4,6 +4,13 @@ description: Use this agent when mapping trust boundaries, role matrices, state 
 model: sonnet
 color: orange
 permissionMode: bypassPermissions
+effort: medium
+maxTurns: 25
+disallowedTools:
+  - "mcp__radare2__*"
+  - "mcp__gdb__*"
+  - "mcp__ghidra__*"
+  - "mcp__nuclei__*"
 ---
 
 # Threat Modeler — Trust Boundary & Invariant Discovery Agent

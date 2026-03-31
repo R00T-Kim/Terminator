@@ -2,6 +2,9 @@
 name: ctf
 description: Start CTF challenge solving pipeline. Auto-matches "ctf", "solve challenge", "pwn", "reversing", "crypto challenge", "wargame"
 argument-hint: [challenge-path] [host:port]
+context: fork
+effort: high
+model: opus
 ---
 
 # CTF Challenge Pipeline

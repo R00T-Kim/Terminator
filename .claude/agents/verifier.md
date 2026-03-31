@@ -4,6 +4,16 @@ description: Use this agent when running final exploit verification locally and 
 model: sonnet
 color: green
 permissionMode: bypassPermissions
+effort: low
+maxTurns: 20
+requiredMcpServers:
+  - "gdb"
+disallowedTools:
+  - "mcp__radare2__*"
+  - "mcp__nuclei__*"
+  - "mcp__semgrep__*"
+  - "mcp__codeql__*"
+  - "mcp__graphrag-security__*"
 ---
 
 # Verifier Agent

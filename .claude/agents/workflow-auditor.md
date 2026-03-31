@@ -4,6 +4,14 @@ description: Use this agent when mapping business workflow state transitions and
 model: sonnet
 color: green
 permissionMode: bypassPermissions
+effort: medium
+maxTurns: 25
+disallowedTools:
+  - "mcp__radare2__*"
+  - "mcp__gdb__*"
+  - "mcp__ghidra__*"
+  - "mcp__nuclei__*"
+  - "mcp__codeql__*"
 ---
 
 # Workflow Auditor — Business Logic State Transition Agent

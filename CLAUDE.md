@@ -52,47 +52,15 @@ Firmware Pipeline:
   fw-profiler → fw-inventory → fw-surface → fw-validator
 ```
 
-### Agent Model Assignment (MANDATORY — no spawn without model)
+### Agent Model Assignment
 
-Unspecified model = inherits parent (opus) = 3-5x token waste. Pipeline violation.
+See `.claude/rules/agent_models.md` for model assignments per agent.
 
-| Agent | Model | Reason |
-|-------|-------|--------|
-| reverser | sonnet | Structure analysis, pattern matching |
-| trigger | sonnet | Crash search, execution-based |
-| solver | opus | Complex inverse computation |
-| chain | opus | Multi-stage exploit design |
-| critic | opus | Cross-verification, logic error detection |
-| verifier | sonnet | Execution + verification, simple judgment |
-| reporter | sonnet | Documentation |
-| scout | sonnet | Recon, tool execution |
-| analyst | sonnet | CVE matching, pattern search |
-| exploiter | opus | PoC development, complex exploits |
-| target-evaluator | sonnet | Target ROI, GO/NO-GO |
-| triager-sim | sonnet/opus | Gate 1=sonnet, Gate 2+report-review=opus |
-| threat-modeler | sonnet | Trust boundary modeling, state machine extraction |
-| workflow-auditor | sonnet | Workflow state transition mapping, anomaly detection |
-| patch-hunter | sonnet | Security commit diff analysis, variant search |
 
 ### Structured Handoff Protocol
 
-```
-[HANDOFF from @<agent> to @<next_agent>]
-- Finding/Artifact: <filename>
-- Confidence: <1-10> (BB) or <PASS/PARTIAL/FAIL> (CTF)
-- Key Result: <1-2 sentence core result>
-- Next Action: <specific task for next agent>
-- Blockers: <if any, else "None">
-```
+See `.claude/rules/handoff_protocol.md` for handoff format and context positioning.
 
-### Context Positioning (Lost-in-Middle Prevention)
-
-```
-[Lines 1-2] Critical Facts — key addresses, offsets, vuln type, FLAG conditions
-[Lines 3-5] Program Rules — auth format, exclusion list (BB only, inject-rules output)
-[Middle]    Agent definition (auto-loaded)
-[End]       HANDOFF detail (full context, previous failure history)
-```
 
 ### Knowledge Pre-Search Protocol
 
@@ -131,27 +99,10 @@ Agents: use `ToolSearch("knowledge-fts")` to load MCP tools. Never `cat knowledg
 ```
 Runs with `bypassPermissions`. Output: `reports/<timestamp>/`. Model: `TERMINATOR_MODEL` env (default sonnet).
 
-## Agent Checkpoint Protocol (MANDATORY)
+## Agent Checkpoint Protocol
 
-All work agents (chain, solver, exploiter, analyst, reverser, trigger) must:
-- **On start**: write `{"status":"in_progress", "phase":1, ...}`
-- **On phase complete**: update (add to completed array, increment phase)
-- **On full complete**: `"status":"completed"` + verify produced_artifacts
-- **On error**: `"status":"error"` + error message
+See `.claude/rules/checkpoint_protocol.md` for checkpoint format and idle recovery.
 
-Required fields: `agent, status, phase, phase_name, completed, in_progress, critical_facts, expected_artifacts, produced_artifacts, timestamp`
-
-Location: CTF=`<challenge_dir>/checkpoint.json`, BB=`targets/<target>/checkpoint.json`
-
-### Orchestrator Idle Recovery
-```
-1. Read checkpoint.json
-2. status=="completed" → verify artifacts exist → proceed
-3. status=="in_progress" → FAKE IDLE. Send resume message once → still idle → respawn with checkpoint
-4. status=="error" → fix environment → respawn
-5. No checkpoint → agent never started → respawn immediately
-```
-**NEVER assume "artifact file exists = completed".** Only trust `status=="completed"`.
 
 ## Protocols (All Agents)
 

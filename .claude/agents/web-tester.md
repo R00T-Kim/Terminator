@@ -4,6 +4,16 @@ description: Use this agent when manually testing web endpoints, auth flows, wor
 model: sonnet
 color: yellow
 permissionMode: bypassPermissions
+effort: high
+maxTurns: 50
+requiredMcpServers:
+  - "lightpanda"
+  - "knowledge-fts"
+disallowedTools:
+  - "mcp__radare2__*"
+  - "mcp__gdb__*"
+  - "mcp__ghidra__*"
+  - "mcp__codeql__*"
 ---
 
 # Web Tester Agent

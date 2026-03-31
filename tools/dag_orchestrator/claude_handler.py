@@ -88,6 +88,16 @@ Working directory: {self.work_dir}
 - When done, output a summary of your findings.
 - Follow all rules from your agent definition (.claude/agents/{role}.md)
 """
+
+        # Include performance constraints in handoff
+        constraints = []
+        if hasattr(node, 'effort') and node.effort != "default":
+            constraints.append(f"effort: {node.effort}")
+        if hasattr(node, 'max_turns') and node.max_turns:
+            constraints.append(f"max_turns: {node.max_turns}")
+        if constraints:
+            prompt += f"\n[CONSTRAINTS] {', '.join(constraints)}\n"
+
         return prompt
 
     def _execute_agent(self, node: AgentNode, role: str, context: dict) -> dict:
@@ -113,6 +123,14 @@ Working directory: {self.work_dir}
             "--model", model,
             "--output-format", "json",
         ]
+
+        # Propagate effort level
+        if hasattr(node, 'effort') and node.effort and node.effort != "default":
+            cmd.extend(["--effort", node.effort])
+
+        # Propagate maxTurns
+        if hasattr(node, 'max_turns') and node.max_turns:
+            cmd.extend(["--max-turns", str(node.max_turns)])
 
         try:
             result = subprocess.run(
