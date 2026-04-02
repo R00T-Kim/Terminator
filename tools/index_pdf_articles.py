@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-index_pdf_articles.py - Download and index security conference PDFs into knowledge.db web_articles table.
+index_pdf_articles.py - Download and index document URLs into knowledge.db web_articles.
 
 Usage:
     python3 tools/index_pdf_articles.py [--input /tmp/priority_pdfs.txt] [--max 100] [--dry-run]
@@ -8,12 +8,12 @@ Usage:
 
 import argparse
 import datetime
+import importlib
 import os
 import re
 import socket
 import sqlite3
 import sys
-import tempfile
 import time
 import urllib.error
 import urllib.parse
@@ -24,11 +24,46 @@ from pathlib import Path
 socket.setdefaulttimeout(15)
 
 DB_PATH = Path(__file__).parent.parent / "knowledge" / "knowledge.db"
-CACHE_DIR = Path("/tmp/pdf_cache")
+CACHE_DIR = Path("/tmp/document_cache")
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 TIMEOUT = 20  # seconds per download
-MAX_PDF_SIZE = 50 * 1024 * 1024  # 50 MB limit
+MAX_DOWNLOAD_SIZE = 50 * 1024 * 1024  # 50 MB limit
+
+SUPPORTED_DOCUMENT_EXTENSIONS = {
+    ".pdf",
+    ".docx",
+    ".pptx",
+    ".xlsx",
+    ".xls",
+    ".html",
+    ".htm",
+    ".csv",
+    ".json",
+    ".xml",
+    ".txt",
+    ".epub",
+    ".zip",
+}
+
+CONTENT_TYPE_EXTENSIONS = {
+    "application/pdf": ".pdf",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation": ".pptx",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": ".xlsx",
+    "application/vnd.ms-excel": ".xls",
+    "text/html": ".html",
+    "application/xhtml+xml": ".html",
+    "text/csv": ".csv",
+    "application/json": ".json",
+    "text/json": ".json",
+    "application/xml": ".xml",
+    "text/xml": ".xml",
+    "text/plain": ".txt",
+    "application/epub+zip": ".epub",
+    "application/zip": ".zip",
+    "application/x-zip-compressed": ".zip",
+}
 
 HEADERS = {
     "User-Agent": (
@@ -39,7 +74,7 @@ HEADERS = {
 
 
 def classify_domain(url: str) -> tuple[str, str]:
-    """Return (domain, category) for a PDF URL."""
+    """Return (domain, category) for a document URL."""
     u = url.lower()
     parsed = urllib.parse.urlparse(url)
     domain = parsed.netloc.lstrip("www.")
@@ -171,7 +206,12 @@ def title_from_url(url: str) -> str:
     path = urllib.parse.urlparse(url).path
     name = os.path.basename(path)
     # Remove extension
-    name = re.sub(r"\.pdf$", "", name, flags=re.IGNORECASE)
+    name = re.sub(
+        r"\.(pdf|docx|pptx|xlsx|xls|html|htm|csv|json|xml|txt|epub|zip)$",
+        "",
+        name,
+        flags=re.IGNORECASE,
+    )
     # URL decode
     name = urllib.parse.unquote(name)
     # Replace separators
@@ -182,31 +222,44 @@ def title_from_url(url: str) -> str:
     return name if name else url
 
 
-def download_pdf(url: str) -> Path | None:
-    """Download PDF to cache dir. Returns local path or None on failure."""
-    url_hash = abs(hash(url)) % (10**10)
-    cache_path = CACHE_DIR / f"{url_hash}.pdf"
-    if cache_path.exists() and cache_path.stat().st_size > 100:
-        return cache_path
+def _normalize_content_type(raw_content_type: str) -> str:
+    """Return the MIME type without charset or extra parameters."""
+    return raw_content_type.split(";", 1)[0].strip().lower()
 
+
+def detect_document_extension(url: str, content_type: str = "") -> str:
+    """Infer a supported file extension from URL path or HTTP content-type."""
+    path_suffix = Path(urllib.parse.urlparse(url).path).suffix.lower()
+    if path_suffix in SUPPORTED_DOCUMENT_EXTENSIONS:
+        return path_suffix
+
+    normalized_type = _normalize_content_type(content_type)
+    return CONTENT_TYPE_EXTENSIONS.get(normalized_type, "")
+
+
+def download_document(url: str) -> Path | None:
+    """Download a supported document to cache dir. Returns local path or None."""
+    url_hash = abs(hash(url)) % (10**10)
     try:
         req = urllib.request.Request(url, headers=HEADERS)
         with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
             content_type = resp.headers.get("Content-Type", "")
-            if "pdf" not in content_type.lower() and not url.lower().endswith(".pdf"):
-                # Check first bytes
-                first = resp.read(8)
-                if not first.startswith(b"%PDF"):
-                    return None
-                data = first + resp.read(MAX_PDF_SIZE - 8)
-            else:
-                data = resp.read(MAX_PDF_SIZE)
+            data = resp.read(MAX_DOWNLOAD_SIZE)
 
+        extension = detect_document_extension(url, content_type)
+        if not extension and data.startswith(b"%PDF"):
+            extension = ".pdf"
+        if extension not in SUPPORTED_DOCUMENT_EXTENSIONS:
+            return None
         if len(data) < 100:
             return None
+
+        cache_path = CACHE_DIR / f"{url_hash}{extension}"
+        if cache_path.exists() and cache_path.stat().st_size > 100:
+            return cache_path
         cache_path.write_bytes(data)
         return cache_path
-    except Exception as e:
+    except Exception:
         return None
 
 
@@ -228,6 +281,50 @@ def extract_text_pypdf(pdf_path: Path) -> str:
     except Exception:
         pass
     return "\n".join(text_parts)
+
+
+def extract_text_markitdown(document_path: Path) -> str:
+    """Extract Markdown using MarkItDown when the optional dependency is installed."""
+    try:
+        module = importlib.import_module("markitdown")
+    except ImportError:
+        return ""
+
+    converter_cls = getattr(module, "MarkItDown", None)
+    if converter_cls is None:
+        return ""
+
+    try:
+        result = converter_cls().convert(str(document_path))
+    except Exception:
+        return ""
+
+    for attr in ("text_content", "markdown", "content"):
+        value = getattr(result, attr, None)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+
+    if isinstance(result, str) and result.strip():
+        return result.strip()
+
+    return ""
+
+
+def extract_document_text(document_path: Path) -> tuple[str, str]:
+    """Extract document content, preferring Markdown-preserving backends when available."""
+    content = extract_text_markitdown(document_path)
+    if content:
+        return content, "markitdown"
+
+    if document_path.suffix.lower() == ".pdf":
+        return extract_text_pypdf(document_path), "pypdf"
+
+    return "", "none"
+
+
+def extract_pdf_text(pdf_path: Path) -> tuple[str, str]:
+    """Compatibility wrapper for the legacy PDF-only helper name."""
+    return extract_document_text(pdf_path)
 
 
 def already_indexed(db: sqlite3.Connection, url: str) -> bool:
@@ -254,7 +351,7 @@ def insert_article(
 
 
 def process_url(db: sqlite3.Connection, url: str, verbose: bool = True) -> str:
-    """Process a single PDF URL. Returns status string."""
+    """Process a single document URL. Returns status string."""
     url = url.strip()
     if not url:
         return "skip:empty"
@@ -266,14 +363,14 @@ def process_url(db: sqlite3.Connection, url: str, verbose: bool = True) -> str:
     raw_title = title_from_url(url)
     tags = extract_tags(url, raw_title)
 
-    pdf_path = download_pdf(url)
-    if pdf_path is None:
+    document_path = download_document(url)
+    if document_path is None:
         return "fail:download"
 
-    content = extract_text_pypdf(pdf_path)
+    content, backend = extract_document_text(document_path)
     if not content or len(content) < 50:
         # Still index with minimal content (title + URL) so we know it was attempted
-        content = f"[PDF content extraction failed] {raw_title}\nSource: {url}"
+        content = f"[Document content extraction failed] {raw_title}\nSource: {url}"
 
     # Use first meaningful line as title if content is good
     title = raw_title
@@ -287,13 +384,13 @@ def process_url(db: sqlite3.Connection, url: str, verbose: bool = True) -> str:
 
     insert_article(db, title, content, category, tags, source_url=url, domain=domain)
     char_count = len(content)
-    return f"ok:{char_count}chars"
+    return f"ok:{backend}:{char_count}chars"
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Index security conference PDFs into knowledge.db")
-    parser.add_argument("--input", default="/tmp/priority_pdfs.txt", help="File with PDF URLs, one per line")
-    parser.add_argument("--max", type=int, default=100, help="Max PDFs to process")
+    parser = argparse.ArgumentParser(description="Index supported document URLs into knowledge.db")
+    parser.add_argument("--input", default="/tmp/priority_pdfs.txt", help="File with document URLs, one per line")
+    parser.add_argument("--max", type=int, default=100, help="Max documents to process")
     parser.add_argument("--dry-run", action="store_true", help="Don't write to DB")
     parser.add_argument("--verbose", action="store_true", default=True)
     parser.add_argument("--skip-existing", action="store_true", default=True)
@@ -307,7 +404,7 @@ def main():
 
     urls = [line.strip() for line in input_path.read_text().splitlines() if line.strip()]
     print(f"Loaded {len(urls)} URLs from {input_path}")
-    print(f"Processing up to {args.max} PDFs...")
+    print(f"Processing up to {args.max} documents...")
     print(f"DB: {DB_PATH}")
 
     db = None

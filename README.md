@@ -443,6 +443,8 @@ python tools/knowledge_fetcher.py stats                    # Web articles breakd
 >
 > **Opt-in** (per-agent `requiredMcpServers`): frida, browser-use, opendataloader-pdf, pentest-thinking
 >
+> Local repo implementation: `tools/mcp-servers/markitdown-mcp/` exposes local-file document to Markdown conversion via MarkItDown, but is not wired as an active default server.
+>
 > All custom MCP servers now include `ToolAnnotations` (readOnlyHint, idempotentHint) enabling concurrent execution of read-only tools.
 
 </details>
@@ -659,7 +661,7 @@ Terminator/
 │   ├── dag_orchestrator/    #   DAG pipeline scheduling + Claude CLI handler
 │   ├── toolspec/            #   ToolSpec registry (10 tools, typed metadata)
 │   ├── sarif_generator.py   #   SARIF 2.1.0 output
-│   └── mcp-servers/         #   nuclei, codeql, semgrep, knowledge-fts, graphrag
+│   └── mcp-servers/         #   nuclei, codeql, semgrep, knowledge-fts, graphrag, markitdown
 ├── web/                     # FastAPI + D3 dashboard (standalone + Docker)
 │   ├── app.py               #   REST API + WebSocket backend
 │   └── static/index.html    #   Single-page dashboard (5 tabs)
