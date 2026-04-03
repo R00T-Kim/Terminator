@@ -158,7 +158,19 @@ Full inventory: `memory/installed_tools_full.md`
 - **PDF**: opendataloader-pdf(MCP, AI-safe PDF→MD/JSON/HTML)
 - **Security**: parry-guard(prompt injection scanner, `~/.local/bin/parry-guard`)
 - **BB Gate**: `tools/bb_preflight.py` (init/rules-check/coverage-check/inject-rules/exclusion-filter/kill-gate-1/kill-gate-2/workflow-check/fresh-surface-check/evidence-tier-check/duplicate-graph-check)
+- **Cross-Model**: Codex(GPT-5.4, plugin `codex@openai-codex`) — `/codex:review`, `/codex:adversarial-review`, `/codex:rescue` | Wrapper: `tools/codex_cross_review.sh`
 - **MCP (14)**: gdb, pentest, pentest-thinking, context7, frida, ghidra, knowledge-fts, nuclei, codeql, semgrep, graphrag-security, lightpanda, browser-use, opendataloader-pdf
+
+### Codex Cross-Model Review (v12.1)
+
+GPT-5.4 via Codex plugin for cross-model verification at pipeline checkpoints:
+- **CTF**: critic APPROVED → `/codex:adversarial-review` on solve.py (optional, recommended)
+- **CTF dual-approach**: chain 2x fail → `codex:rescue` as GPT-5.4 alternative solver
+- **BB Phase 4**: `/codex:adversarial-review` after critic+architect (design challenge)
+- **BB Phase 4.5**: `/codex:review` for AI slop cross-check
+- **BB Phase 5**: `/codex:review --base main` pre-submit sanity check
+- **Auto-trigger**: SubagentStop hook detects critic APPROVED → recommends Codex review
+- **Script**: `tools/codex_cross_review.sh {review|adversarial|rescue|status|result}`
 
 ## Flag Formats
 

@@ -99,6 +99,26 @@ if [[ "$AGENT_TYPE" =~ ^($WORK_AGENTS)$ ]] && [ -z "$CHECKPOINT_FOUND" ]; then
     fi
 fi
 
+# --- Codex Cross-Review Auto-Trigger (critic APPROVED) ---
+CODEX_SCRIPT="$PROJECT_DIR/tools/codex_cross_review.sh"
+if [[ "$AGENT_TYPE" == "critic" ]] && [[ -f "$CODEX_SCRIPT" ]]; then
+    APPROVED=$(echo "$LAST_MSG" | grep -ci "APPROVED" 2>/dev/null || echo "0")
+    if [[ "$APPROVED" -gt 0 ]]; then
+        # Check if codex CLI is available
+        if command -v codex &>/dev/null; then
+            WARNINGS="${WARNINGS}[CODEX] critic APPROVED detected — cross-model review recommended.\n"
+            WARNINGS="${WARNINGS}[CODEX] Run: /codex:adversarial-review --wait  OR  tools/codex_cross_review.sh adversarial .\n"
+            # Log the trigger event
+            if [[ -f "$COORD_CLI" ]]; then
+                python3 "$COORD_CLI" event \
+                    --session "$SESSION_ID" \
+                    --kind "codex_cross_review_trigger" \
+                    --payload "{\"agent\":\"critic\",\"verdict\":\"APPROVED\",\"action\":\"codex_adversarial_review_recommended\"}" 2>/dev/null || true
+            fi
+        fi
+    fi
+fi
+
 # --- Knowledge extraction hint ---
 if [ -n "$LAST_MSG" ]; then
     TECHNIQUE_MARKERS=$(echo "$LAST_MSG" | grep -c -iE '(technique|vulnerability|exploit method|attack vector|bypass|primitive):' 2>/dev/null || echo "0")

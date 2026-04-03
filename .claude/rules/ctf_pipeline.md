@@ -66,8 +66,16 @@ TeamCreate("ctf-<challenge_name>")
 **@ critic** (subagent_type="critic", model=opus, mode=bypassPermissions):
 - Cross-verify solve.py + reversal_map.md + chain_report.md
 - Independent verification of addresses/offsets/constants via GDB/Ghidra MCP
-- APPROVED → verifier | REJECTED → specific fixes back to chain/solver
+- APPROVED → **codex cross-review** → verifier | REJECTED → specific fixes back to chain/solver
 - Artifact: `critic_review.md`
+
+**@ codex cross-review** (Orchestrator runs directly, after critic APPROVED) [OPTIONAL but RECOMMENDED]:
+- `/codex:adversarial-review --wait` on solve.py + chain_report.md
+- Cross-model verification: GPT-5.4 independently reviews Claude's exploit
+- Focus: offset correctness, gadget validity, assumption challenges
+- PASS (no critical issues) → verifier | CRITICAL ISSUE → back to chain/solver with Codex feedback
+- **Skip conditions**: trivial challenges, ctf-solver 1-agent pipeline, time pressure
+- Artifact: Codex review output appended to `critic_review.md`
 
 **@ verifier** (subagent_type="verifier", model=sonnet, mode=bypassPermissions):
 - After critic APPROVED: local 3x reproduction (PASS/RETRY/FAIL)
@@ -98,9 +106,11 @@ Early Critic scope: fact-check reversal_map.md addresses/offsets/constants only 
 When chain/solver fails 2x consecutively on same challenge:
 ```
 Orchestrator spawns 2 agents simultaneously:
-  chain-A (approach A: different strategy) + chain-B (approach B: entirely different technique)
+  chain-A (approach A: different strategy, Claude opus)
+  + codex:rescue (approach B: GPT-5.4 independent attempt, --write --background)
   First success adopted, other terminated.
 ```
+Cross-model dual-approach eliminates single-model blind spots.
 After 4 failures: mandatory external writeup search (WebSearch).
 
 ## Fake Flag vs Real Flag (CRITICAL)

@@ -503,6 +503,22 @@ python tools/knowledge_fetcher.py stats                    # Web articles breakd
 
 </details>
 
+<details>
+<summary><b>Cross-Model Review (Codex / GPT-5.4)</b></summary>
+
+OpenAI Codex plugin (`codex@openai-codex`) enables cross-model verification at pipeline checkpoints:
+
+| Command | Purpose | Pipeline Stage |
+|:--------|:--------|:---------------|
+| `/codex:review` | Standard code review | BB Phase 4.5, Phase 5 |
+| `/codex:adversarial-review` | Design challenge review | CTF post-critic, BB Phase 4 |
+| `/codex:rescue` | Delegate task to GPT-5.4 | CTF dual-approach fallback |
+| `/codex:status` | Monitor running jobs | Any |
+
+Wrapper script: `tools/codex_cross_review.sh` — auto-triggered by SubagentStop hook on critic APPROVED.
+
+</details>
+
 ---
 
 ## Track Record

@@ -189,13 +189,19 @@ Verdict: GO | STRENGTHEN (max 2x, 3rd = auto KILL) | KILL
    - Documented Feature Check + Driver/Library Match Check
    - Phase 4 fundamental KILL = Gate 2 failure → Gate 2 prompt retrospective
 2. `architect` → consistency (report-PoC-evidence alignment)
-3. Optional: user external review
+3. **`codex:adversarial-review` (v12.1 NEW)** → cross-model design challenge
+   - `/codex:adversarial-review --wait` on submission/ directory
+   - GPT-5.4 independently challenges: threat model realism, CVSS justification, evidence gaps
+   - CRITICAL ISSUE → reporter fix before Phase 4.5 | PASS → proceed
+   - **AI Slop cross-check**: different model's writing patterns neutralize Claude-specific slop
+4. Optional: user external review
 
 ### Phase 4.5: Triager Simulation
 
 `triager-sim` (mode=report-review):
 - SUBMIT → Phase 5 | STRENGTHEN → reporter fix → re-run | KILL → delete finding
 - AI Slop Score check (≤2 PASS, 3-5 STRENGTHEN, >5 KILL)
+- **Codex Slop cross-check (v12.1)**: `/codex:review --wait` on final report → Claude-blind patterns detected
 - Evidence-Target Alignment Check
 - File Path Verification
 - Gate Feedback Loop: KILL here = Gate 2 bug → update Gate 2 prompt
@@ -205,6 +211,7 @@ Verdict: GO | STRENGTHEN (max 2x, 3rd = auto KILL) | KILL
 `reporter` → unify language, reframing, ZIP packaging
 - Cluster submission (same codebase = same day)
 - **VRT + Bugcrowd Form final verification checklist**
+- **Pre-submit Codex review (v12.1)**: `/codex:review --wait --base main` on submission/ → final cross-model sanity check
 
 ### Phase 6: Cleanup
 
