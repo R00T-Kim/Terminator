@@ -68,6 +68,27 @@ cast call <pool_addr> "fee()(uint256)" --rpc-url $RPC_URL
 ```
 - All disabled(0) → "latent bug" → severity downgrade
 
+#### Discovery vs Exploitation Cost Principle (Anthropic Firefox)
+
+발견 비용은 익스플로잇의 1/10 수준 (Firefox: 발견 $수백 vs 익스플로잇 $4,000).
+Phase 1은 **넓고 빠르게**, Phase 2는 **좁고 깊게** 운영:
+
+- Phase 1: analyst confidence **5/10 이상**이면 모두 후보 유지 (7+ 우선 전달, 5-6도 리스트 유지)
+- Phase 1.5: 후보가 5개 미만이면 추가 analyst 라운드 (dynamic budget +2)
+- Phase 2: confidence 7+ 먼저 exploiter 투입, 그 다음 5-6 순서
+- **Quantity in Discovery, Quality in Exploitation** — 발견은 FP 허용, 증명은 FP 불허
+
+#### Graphify Pre-Analysis (10K+ LOC targets — OPTIONAL)
+
+대형 코드베이스에서 Phase 1 전에 구조 이해 가속:
+```bash
+graphify <target_source_dir> --no-viz   # AST + 클러스터링 → graph.json + GRAPH_REPORT.md
+graphify query "authentication flow"     # 구조 쿼리 (71.5x 토큰 효율)
+```
+- **God Nodes**: GRAPH_REPORT.md의 최다 연결 노드 → analyst manual review 우선 대상
+- **Surprising Connections**: 예상 밖 관계 → 숨겨진 공격 경로 후보
+- Orchestrator가 결과를 analyst/scout 핸드오프에 포함
+
 ### Phase 1: Discovery (EXPANDED in v12)
 
 Parallel spawn — up to 4 agents:
@@ -141,6 +162,13 @@ Verdict: GO (5/5 pass) | CONDITIONAL GO (1 uncertain) | KILL (1+ definitive fail
 - Update endpoint_map.md (VULN/SAFE/TESTED)
 - PASS → Gate 2 | FAIL → explore_candidates.md or delete
 
+#### Best@N for Exploiter (BB-specific)
+When exploiter fails on a CONDITIONAL GO finding (SCONE-bench Best@N 방법론):
+1. First attempt: standard exploiter with analyst's approach
+2. If fail → re-spawn exploiter with different approach hint (e.g., different auth bypass, injection vector, exploit primitive)
+3. Max 2 re-attempts per finding (total 3 tries). 3rd fail → archive to explore_candidates.md as "explored, not proven"
+4. Each re-attempt MUST use a **different strategy** — same payload retry is forbidden
+
 ### Kill Gate 2: Pre-Report Destruction (MANDATORY before report)
 
 `triager-sim` (model=**opus**, mode=poc-destruction):
@@ -213,6 +241,14 @@ Verdict: GO | STRENGTHEN (max 2x, 3rd = auto KILL) | KILL
 - **VRT + Bugcrowd Form final verification checklist**
 - **Pre-submit Codex review (v12.1)**: `/codex:review --wait --base main` on submission/ → final cross-model sanity check
 
+#### Cluster Submission Protocol (Anthropic Firefox)
+같은 타겟에 2+ finding이 Gate 2 통과 시:
+1. **같은 날 제출** — 단일 리뷰 세션 가능성 높음
+2. **Root cause 번들링**: 동일 root cause → 하나의 리포트로 통합 (VRT 동일)
+3. **Cross-reference**: 각 리포트에 관련 finding 참조 ("See also: Report #X")
+4. **제출 순서**: 가장 높은 severity 먼저 (심사관 신뢰도 확보)
+5. **ZIP 단일화**: 관련 finding들은 하나의 submission/ 디렉터리에 모아 ZIP
+
 ### Phase 6: Cleanup
 
 TeamDelete
@@ -283,6 +319,18 @@ Phase 2: 3hr | Phase 3-5: 2hr
 Total: 9hr (general, was 8hr) / 13hr (DeFi, was 12hr)
 No HIGH+ signal at 2hr → ABANDON (after checklist pass)
 ```
+
+### Token Efficiency Tracking Protocol (Anthropic SCONE-bench)
+
+SCONE-bench: 세대당 중앙값 22% 토큰 감소. 파이프라인 효율 모니터링:
+
+**기록 시점**: 각 target 완료 시 Orchestrator가 기록
+**기록 방법**: `python3 tools/infra_client.py db cost-summary --target <target> --json`
+**비교 기준**:
+- 동일 유형 타겟 간 tokens/finding 비율
+- 모델 업그레이드 전후 동일 태스크 토큰 비교
+- Phase별 토큰 비율 (Discovery:Exploitation 이상적 1:3)
+**ROI 계산**: (예상 보상금 / 추정 API 비용) > 5x → 효율적
 
 ## Hard NO-GO Rules (unchanged from v11)
 

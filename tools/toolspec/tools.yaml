@@ -3,9 +3,10 @@ tools:
     name: Knowledge FTS Smart Search
     kind: query
     entrypoint: "mcp:knowledge-fts:smart_search"
-    description: "Progressive query relaxation search across 280K+ knowledge docs"
+    description: "Progressive query relaxation search across 280K+ knowledge docs. Auto-relaxes AND→OR→top-terms when exact match fails. PREFERRED default — use this first for any knowledge lookup. 2-3 keywords max."
     read_only: true
     timeout: 30
+    parallel_class: independent
     tags: [knowledge, search, fts, bm25]
     agent_roles: [all]
 
@@ -13,9 +14,10 @@ tools:
     name: Technique Search
     kind: query
     entrypoint: "mcp:knowledge-fts:technique_search"
-    description: "Search attack techniques, CTF writeups, exploitation primitives"
+    description: "Search attack techniques, CTF writeups, exploitation primitives. Auto-expands abbreviations (UAF, IDOR, RCE, SSRF, TOCTOU, XXE, SSTI). Use for vulnerability-type-specific technique lookup."
     read_only: true
     timeout: 30
+    parallel_class: independent
     tags: [knowledge, technique, attack]
     agent_roles: [reverser, chain, solver, analyst, exploiter]
 
@@ -23,9 +25,10 @@ tools:
     name: Exploit Search
     kind: query
     entrypoint: "mcp:knowledge-fts:exploit_search"
-    description: "Search ExploitDB + Nuclei + PoC-in-GitHub + Trickest-CVE"
+    description: "Search ExploitDB 47K + Nuclei 12K + PoC-in-GitHub 8K + Trickest-CVE 155K + web_articles 3.4K. Use CVE number or service name. Check existing PoC existence before writing from scratch."
     read_only: true
     timeout: 30
+    parallel_class: independent
     tags: [exploit, cve, poc]
     agent_roles: [analyst, exploiter, scout, patch-hunter]
 
@@ -63,9 +66,10 @@ tools:
     name: BB Rules Check
     kind: analysis
     entrypoint: "python3 tools/bb_preflight.py rules-check"
-    description: "Validate program rules summary completeness"
+    description: "Validate program_rules_summary.md has all 5 required sections. MANDATORY before agent spawn — FAIL blocks all Phase 1+ agents. Run after bb_preflight init."
     read_only: true
     timeout: 30
+    parallel_class: independent
     tags: [bounty, preflight, validation]
     agent_roles: [scout, analyst, target-evaluator]
 
@@ -73,9 +77,10 @@ tools:
     name: BB Coverage Check
     kind: analysis
     entrypoint: "python3 tools/bb_preflight.py coverage-check"
-    description: "Calculate endpoint coverage percentage"
+    description: "Calculate risk-weighted endpoint coverage (HIGH endpoints count 2x). Threshold: 80%. MANDATORY at Phase 1→2 gate. FAIL triggers additional analyst rounds."
     read_only: true
     timeout: 30
+    parallel_class: independent
     tags: [bounty, coverage, gate]
     agent_roles: [scout, analyst]
 
@@ -83,9 +88,10 @@ tools:
     name: Kill Gate 1
     kind: analysis
     entrypoint: "python3 tools/bb_preflight.py kill-gate-1"
-    description: "Pre-validate finding viability before PoC"
+    description: "5-question destruction test before exploiter spawn. KILL = finding discarded, no exploiter. MANDATORY — no exploiter spawn without Gate 1 pass."
     read_only: true
     timeout: 30
+    parallel_class: independent
     tags: [bounty, gate, triage]
     agent_roles: [triager-sim]
 

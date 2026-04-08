@@ -70,6 +70,7 @@ Terminator is not a single model prompt. It is a **team of 25 AI agents** coordi
 - **Crash recovery** -- checkpoint protocol lets agents resume from exact point of failure after context compaction
 - **Automated quality gates** -- 9 pipeline skills + 3 runtime hooks automatically block OOS findings, weak PoCs, unrealistic threat models, dangerous payloads, and AI-generated template language before submission
 - **Agent tuning** -- per-agent effort levels (low/medium/high/max), turn limits, required MCP servers, and tool restrictions optimize token usage and enforce role boundaries
+- **Research-backed agent patterns** -- 15 techniques from Anthropic's Frontier Red Team research integrated into agent definitions: Mythos exploit framework, GhostScript variant hunting, FP reflection loops, adaptive technique bypass, property-based PoC validation, Best@N parallel retry, and more
 
 ---
 
@@ -289,9 +290,9 @@ Phase 6   TeamDelete            Cleanup
 | **reverser** | Binary analysis, protection detection, attack surface mapping | Sonnet | High | `reversal_map.md` |
 | **trigger** | Crash discovery, input minimization, primitive identification | Sonnet | Medium | `trigger_report.md` |
 | **solver** | Reverse computation for reversing/crypto challenges | Opus | Max | `solve.py` |
-| **chain** | Multi-stage exploit: leak -> overwrite -> shell | Opus | Max | `solve.py` |
+| **chain** | Multi-stage exploit: leak -> overwrite -> shell. JIT/browser Mythos framework, adaptive technique bypass | Opus | Max | `solve.py` |
 | **critic** | Security Council deliberation (5 archetypes) + cross-verification | Opus | High | `critic_review.md` |
-| **verifier** | Local 3x reproduction -> remote execution | Sonnet | Low | `FLAG_FOUND` |
+| **verifier** | Local 3x reproduction -> remote execution. BB mode: positive/negative test verification | Sonnet | Low | `FLAG_FOUND` |
 | **reporter** | Writeup with failed attempts and techniques | Sonnet | Medium | `knowledge/challenges/<name>.md` |
 | **ctf-solver** | Legacy single-agent for trivial challenges | Sonnet | High | `solve.py` |
 
@@ -304,10 +305,10 @@ Phase 6   TeamDelete            Cleanup
 |:------|:-----|:-----:|:------:|:-------|
 | **target-evaluator** | Program ROI scoring, GO/NO-GO gate | Sonnet | Medium | `target_assessment.md` |
 | **scout** | Recon + duplicate pre-screen + automated tool scanning | Sonnet | Medium | `recon_report.json` |
-| **analyst** | CVE matching, source->sink tracing, confidence scoring | Sonnet | High | `vulnerability_candidates.md` |
+| **analyst** | CVE matching, source->sink tracing, confidence scoring, LLM-advantage reasoning for fuzzer-unreachable bugs | Sonnet | High | `vulnerability_candidates.md` |
 | **threat-modeler** | Trust boundary mapping, role matrix, state machine and invariant extraction | Sonnet | Medium | `threat_model.md` |
-| **patch-hunter** | Incomplete fix and variant vulnerability hunting from security commits | Sonnet | High | `patch_analysis.md` |
-| **exploiter** | PoC development, quality tier classification, Evidence Tier (E1-E4) | Opus | Max | PoC scripts + evidence |
+| **patch-hunter** | Incomplete fix and variant vulnerability hunting from security commits (GhostScript 3-step pattern) | Sonnet | High | `patch_analysis.md` |
+| **exploiter** | PoC development, quality tier classification, Evidence Tier (E1-E4), FP reflection loop, property-based validation, adaptive bypass | Opus | Max | PoC scripts + evidence |
 | **workflow-auditor** | Business workflow state transition mapping and anomaly detection | Sonnet | Medium | `workflow_audit.md` |
 | **triager-sim** | Adversarial triage -- 3 modes: finding-viability, PoC-destruction, report-review | Opus | High | SUBMIT / STRENGTHEN / KILL |
 | **source-auditor** | Deep source code audit, cross-file taint analysis | Opus | Max | `audit_findings.md` |
@@ -361,7 +362,7 @@ All work agents implement a checkpoint protocol for crash/compaction recovery:
 | Hook | Trigger | Purpose |
 |:-----|:--------|:--------|
 | **safe_payload_hook.py** | PreToolUse (Bash) | Blocks dangerous commands (rm -rf, dd, mkfs, fork bombs) before execution |
-| **observation_mask_hook.py** | PostToolUse (Bash/Read) | Auto-saves outputs >500 lines to file, prevents context overflow |
+| **observation_mask_hook.py** | PostToolUse (Bash/Read) | Auto-saves outputs >500 lines to file + detects ASCII art and repetitive text patterns at 100+ lines, prevents context overflow |
 | **check_agent_completion.sh** | SubagentStop | FLAG pattern detection, knowledge extraction, auto-checkpoint for agents that stop without writing state |
 
 Additional hooks: `knowledge_inject.sh` (PreToolUse: injects relevant knowledge per agent type), `knowledge_db_update.sh` (PostToolUse: auto-reindexes knowledge DB), `session_knowledge.sh` (SessionStart: loads global session context).
@@ -588,6 +589,28 @@ Agent definitions also incorporate patterns from 10+ LLM security frameworks:
 | Exploit Chain Rules | NeuroSploit | exploiter (web targets) |
 | Security Council (5-archetype deliberation) | Consciousness Council (K-Dense) | critic |
 
+**Anthropic Frontier Red Team Patterns (2026)** -- 15 techniques from [red.anthropic.com](https://red.anthropic.com) research integrated into agent definitions:
+
+| Pattern | Source Article | Applied To |
+|:--------|:------|:-----------|
+| Mythos 4-Phase Exploit Framework (Type Confusion → Leak → Forgery → R/W) | CVE-2026-2796 Reverse Engineering | chain |
+| GhostScript 3-Step Variant Hunt (Diff → Grep → Verify) | LLM-discovered 0-days | patch-hunter |
+| False Positive Reflection Loop (5 questions) | Property-based Testing | exploiter |
+| LLM-Advantage Analysis (5 fuzzer-unreachable bug classes) | LLM-discovered 0-days | analyst |
+| Task Verifier (Positive + Negative Test) | Firefox Partnership | verifier |
+| Best@N Parallel Retry (cross-model + same-model 3-way) | Smart Contract SCONE-bench | ctf_pipeline, bb_pipeline |
+| Adaptive Technique Bypass (knowledge-fts auto-search) | Critical Infrastructure Defense | chain, exploiter |
+| Property-Based PoC Validation (5 security invariants) | Property-based Testing | exploiter |
+| Discovery vs Exploitation Cost Principle (1:10 ratio) | Firefox Partnership | bb_pipeline |
+| Cluster Submission Protocol (same-day bundle) | Firefox Partnership | bb_pipeline |
+| Token Efficiency Tracking (per-target ROI) | Smart Contract SCONE-bench | bb_pipeline |
+| ASCII Art / Repetitive Text Pattern Detection | Cyber Competitions (CCDC) | observation_mask_hook |
+| Per-Target Cost Tracking (cost_tracking.json) | Smart Contract SCONE-bench | bb_preflight, infra_client |
+| ToolSpec Precision Enhancement (parallel_class, descriptions) | Cyber Toolkits (Incalmo) | tools.yaml |
+| Glasswing Strategic Reference (Mythos Preview 90x) | Mythos Preview Assessment | memory |
+
+---
+
 **Anti-Hallucination System** -- The `critic` agent runs a **Security Council** deliberation with 5 adversarial archetypes before any verdict:
 
 | Archetype | Role |
@@ -647,7 +670,7 @@ Terminator/
 │   │   └── checkpoint_protocol.md # Checkpoint + idle recovery
 │   ├── hooks/               # 6 runtime hooks (3 safety + 3 knowledge)
 │   │   ├── safe_payload_hook.py   # Dangerous command blocking
-│   │   ├── observation_mask_hook.py # Large output auto-save
+│   │   ├── observation_mask_hook.py # Large output auto-save + ASCII art/repetitive text detection
 │   │   └── check_agent_completion.sh # FLAG detect + auto-checkpoint
 │   └── skills/              # 9 pipeline skills
 │       ├── bounty/          #   Bug bounty pipeline orchestration
@@ -666,7 +689,7 @@ Terminator/
 │   └── triage_objections/   #   Triager objection patterns by vuln category (v12 NEW)
 ├── research/                # LLM security framework analysis (14 docs)
 ├── tools/                   # Pipeline tooling
-│   ├── bb_preflight.py      #   Pipeline gate validator (rules, coverage, workflow-check, fresh-surface-check, evidence-tier-check, duplicate-graph-check, --json)
+│   ├── bb_preflight.py      #   Pipeline gate validator (rules, coverage, workflow-check, fresh-surface-check, evidence-tier-check, duplicate-graph-check, cost-tracking, --json)
 │   ├── knowledge_indexer.py #   FTS5 DB builder (7 tables, smart_search, zero dependencies)
 │   ├── knowledge_fetcher.py #   Web content fetcher (jina.ai → web_articles table)
 │   ├── web_chain_engine.py  #   Web exploit chain engine (10 rules)

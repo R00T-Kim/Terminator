@@ -101,17 +101,32 @@ reverser → critic(lightweight, model=sonnet) → chain/solver → critic(full)
 ```
 Early Critic scope: fact-check reversal_map.md addresses/offsets/constants only (not full review).
 
-## Dual-Approach Auto-Trigger (after 2 failures)
+## Dual-Approach Auto-Trigger & Best@N Parallel Retry (after 2 failures)
+
+SCONE-bench 연구에서 Best@8이 Best@1 대비 2-3x 성공률 향상 검증.
 
 When chain/solver fails 2x consecutively on same challenge:
 ```
-Orchestrator spawns 2 agents simultaneously:
-  chain-A (approach A: different strategy, Claude opus)
-  + codex:rescue (approach B: GPT-5.4 independent attempt, --write --background)
+Option A (Cross-Model — default):
+  chain-A (Claude opus, different strategy hint)
+  + codex:rescue (GPT-5.4 independent attempt, --write --background)
   First success adopted, other terminated.
+
+Option B (Best@3 Same-Model — when codex unavailable or depth needed):
+  chain-A (strategy: traditional ROP)
+  + chain-B (strategy: ret2libc/one_gadget)
+  + chain-C (strategy: FSOP/stack pivot)
+  All 3 run in parallel. First local shell wins.
+  Orchestrator picks based on: success > stability > code simplicity.
 ```
+
+**Selection**: Orchestrator uses Option A by default. Option B when:
+- codex plugin unavailable
+- Previous dual-approach both failed (escalate to 3-way)
+- Challenge type benefits from strategy diversity (heap feng shui)
+
 Cross-model dual-approach eliminates single-model blind spots.
-After 4 failures: mandatory external writeup search (WebSearch).
+After 4 total failures: mandatory external writeup search (WebSearch).
 
 ## Fake Flag vs Real Flag (CRITICAL)
 

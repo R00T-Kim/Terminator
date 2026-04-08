@@ -93,6 +93,30 @@ VERIFY-3: Am I looking at the right scope?
   → Is this fix for the in-scope version/branch?
 ```
 
+### Step 2.5: Formalized Variant Hunt — GhostScript Pattern (per security commit)
+
+Anthropic Zero-Days 연구에서 Claude가 GhostScript 0-day를 발견한 검증된 3단계 패턴. 각 보안 커밋에 대해 Step 2 완료 후 이 프로토콜을 실행:
+
+```
+Phase A — 보안 커밋 Diff에서 취약 패턴 시그니처 추출:
+  git show <commit> → 정확히 어떤 패턴이 수정되었는가?
+  → 취약 패턴 시그니처 추출 (함수명, 위험 API 호출, 누락된 검증)
+  → 예: "strcpy(buf, user_input)" 를 "strncpy(buf, user_input, sizeof(buf))" 로 수정
+  → 시그니처: "strcpy(<buffer>, <user_controlled>)" without bounds check
+
+Phase B — 동일 패턴 코드베이스 전수 Grep:
+  grep -rn "<vulnerable_pattern>" --include="*.c" --include="*.py" --include="*.js" .
+  → 수정 커밋이 터치하지 않은 파일/함수에서 동일 패턴 검색
+  → git log --all -- <matched_file> 로 해당 파일이 보안 수정 대상이었는지 확인
+
+Phase C — 미수정 경로 검증 (각 발견 인스턴스에 대해):
+  (1) 이 코드 경로에 보안 수정이 적용되었는가? → YES: skip
+  (2) 입력이 사용자 제어 가능한가? → NO: SPECULATIVE로 분류
+  (3) 다른 레이어의 보호 메커니즘이 존재하는가? → YES: SIMILAR, NO: EXACT
+```
+
+이 3단계는 아래 Step 3의 4가지 방법을 **실행 순서로 구조화**한 것. Method A-D는 Phase B의 grep 전략으로 유지.
+
 ### Step 3: Variant Search (4 methods)
 
 For each analyzed fix, search for unfixed instances:

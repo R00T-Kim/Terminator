@@ -28,8 +28,10 @@ Updated: 2026-03-14 (v12 — workflow-check, fresh-surface-check, evidence-tier-
 import sys
 import os
 import re
+import json
 import shutil
 from pathlib import Path
+from datetime import datetime
 
 RULES_FILE = "program_rules_summary.md"
 ENDPOINT_MAP = "endpoint_map.md"
@@ -69,6 +71,26 @@ def init(target_dir: str) -> int:
             else:
                 dst.write_text(_inline_map_template(target_dir))
         created.append(name)
+
+    # Cost tracking template (SCONE-bench inspired — $1.22/contract benchmark)
+    cost_file = tdir / "cost_tracking.json"
+    if not cost_file.exists():
+        cost_template = {
+            "target": os.path.basename(target_dir.rstrip("/")),
+            "created": datetime.now().isoformat(),
+            "phases": {
+                "phase_0": {"tokens": 0, "duration_sec": 0, "api_cost_est": 0.0},
+                "phase_1": {"tokens": 0, "duration_sec": 0, "api_cost_est": 0.0},
+                "phase_2": {"tokens": 0, "duration_sec": 0, "api_cost_est": 0.0},
+                "phase_3_5": {"tokens": 0, "duration_sec": 0, "api_cost_est": 0.0},
+            },
+            "agents": {},
+            "total_tokens": 0,
+            "total_cost_est": 0.0,
+            "roi": None,
+        }
+        cost_file.write_text(json.dumps(cost_template, indent=2))
+        created.append("cost_tracking.json")
 
     if created:
         print(f"CREATED: {', '.join(created)} in {target_dir}")

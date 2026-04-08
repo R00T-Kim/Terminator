@@ -63,6 +63,32 @@ disallowedTools:
 | 50K+ lines | + audit-context-building + variant-analysis | Dynamic budget (base 3 + bonus, max 8) |
 | Smart contract | Slither + Mythril + Foundry fork + Semgrep solidity | Dynamic budget (base 3 + bonus, max 8) |
 
+### LLM-Advantage Analysis (Reasoning over Fuzzing)
+
+Anthropic Zero-Days 연구: LLM은 퍼저가 도달 못하는 복잡한 전제조건 뒤의 버그를 발견하는 데 강점. Tool 결과 분석 후, Level 2+ 수동 리뷰 시 다음 카테고리에 집중:
+
+| Bug Class | Why Fuzzers Miss | LLM Advantage | Example |
+|-----------|-----------------|---------------|---------|
+| Complex precondition bugs | 다단계 상태 설정 필요 | 코드 논리 추론으로 조건 조합 파악 | OpenSC strcat (Anthropic) |
+| Algorithm understanding bugs | 알고리즘 내부 동작 이해 필요 | LZW/압축/암호 알고리즘 개념적 이해 | CGIF LZW overflow (Anthropic) |
+| Business logic flaws | 도메인 지식 필요 | 비즈니스 규칙 위반 추론 | 결제 로직, 권한 승격 |
+| Cross-function dataflow | 호출 체인 3+ depth | 함수 간 데이터 흐름 추적 | taint source→sink across modules |
+| Time-of-check-time-of-use | 레이스 조건 트리거 어려움 | 코드에서 TOCTOU 패턴 인식 | 파일 검증→사용 사이 갭 |
+
+**실행 지침**: Tool 결과에서 HIGH+ 시그널이 없더라도, 위 5가지 카테고리에 대한 수동 reasoning-based 분석을 Level 2의 3-pass 중 마지막 pass에서 수행. 이 분석은 grep/regex가 아닌 **코드 논리 읽기**로 수행.
+
+#### Graphify Query 활용 (10K+ LOC — graph.json 존재 시)
+
+Orchestrator가 `graphify-out/graph.json`을 생성한 경우:
+```bash
+graphify query "input validation sinks"    # 취약 싱크 관련 노드 탐색
+graphify query "privilege escalation"      # 권한 상승 경로 탐색
+graphify path "UserInput" "DatabaseQuery"  # 입력→DB 경로 추적
+```
+- **God Nodes** (GRAPH_REPORT.md) = manual review 우선 대상
+- **Surprising Connections** = 숨겨진 공격 표면 후보
+- 71.5x 토큰 효율로 대형 코드베이스 이해 가속
+
 ### ABANDON Checklist (ALL must be checked before reporting "0 findings")
 
 - [ ] Slither executed? (DeFi)
