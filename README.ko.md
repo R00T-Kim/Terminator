@@ -242,11 +242,13 @@ Phase 2   @exploiter            PoC 개발 + poc-tier skill (Tier 1-2만 통과)
           threat-model-check    공격 전제조건 현실성 검증
 ★ Gate 2  @triager-sim (opus)   PoC 파괴 테스트: 증거 품질 + 트리아저 반론 (KILL/GO)
                                 + duplicate-graph-check
-Phase 3   @reporter             보고서 초안 + CVSS 계산
+Phase 3   @reporter             보고서 초안 + CVSS 계산 (context/report-templates/ 플랫폼 스타일 참조)
+Phase 3.5 report_scorer.py      5차원 품질 게이트 (증거/임팩트/재현성/가독성/슬롭, >=75)
+          report_scrubber.py    AI 시그니처 제거 (Unicode 워터마크, em-dash, 슬롭 패턴)
 Phase 4   @critic               팩트체크 (경량화, Gate 2가 viability 처리)
 Phase 4.5 @triager-sim          최종 정합성 검증 (여기서 KILL = Gate 버그 → feedback loop)
           slop-check skill      AI 슬롭 점수 (<=2 PASS, 3-5 STRENGTHEN, >5 KILL)
-Phase 5   @reporter             최종 보고서 + ZIP 패키징
+Phase 5   @reporter             최종 보고서 + ZIP 패키징 + evidence_manifest.json
 Phase 6   TeamDelete            정리
 ```
 
@@ -694,6 +696,9 @@ Terminator/
 │   ├── attack_graph/        #   Neo4j + 파일시스템 공격 표면 그래프
 │   ├── dag_orchestrator/    #   DAG 파이프라인 스케줄링 + Claude CLI 핸들러
 │   ├── sarif_generator.py   #   SARIF 2.1.0 출력
+│   ├── report_scorer.py     #   5차원 보고서 품질 스코어러 (증거/임팩트/재현성/가독성/슬롭)
+│   ├── report_scrubber.py   #   AI 시그니처 제거 (Unicode 워터마크, em-dash, 슬롭 플래그)
+│   ├── evidence_manifest.py #   통합 증거 매니페스트 생성 (SHA256, 체크포인트, 트리아저 상태)
 │   ├── toolspec/            #   에이전트별 도구 제한 명세
 │   └── mcp-servers/         #   nuclei, codeql, semgrep, knowledge-fts, graphrag, markitdown
 ├── targets/                 # 버그바운티 작업공간 (30+ 미션)

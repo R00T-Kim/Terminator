@@ -210,6 +210,17 @@ Verdict: GO | STRENGTHEN (max 2x, 3rd = auto KILL) | KILL
 - **Conservative CVSS**: no unproven metrics (A:H without benchmark → A:L)
 - **"What This Report Does NOT Claim" section (MANDATORY)**
 - **File Path Verification**: all `file:line` refs verified via glob/find
+- **Platform Style**: reporter reads `context/report-templates/platform-style/<platform>.md` BEFORE writing
+- **Writing Style**: reporter follows `context/report-templates/writing-style.md` (First 3 Sentences Rule)
+
+#### Phase 3.5: Report Quality Loop (NEW)
+
+After reporter saves draft, automated quality gate:
+1. `python3 tools/report_scorer.py <report> --poc-dir <evidence/> --json`
+2. Composite >= 75 → proceed | < 75 → reporter auto-fixes top priority_fixes → re-score (max 2x)
+3. `python3 tools/report_scrubber.py <report>` — remove AI signatures (Unicode watermarks, em-dash overuse)
+4. Score < 75 after 2 iterations → QUALITY_GATE_FAIL → Orchestrator decides: critic escalation or KILL
+**IRON RULE: No Phase 4 without quality score >= 75.**
 
 ### Phase 4: Review Cycle
 
@@ -240,6 +251,10 @@ Verdict: GO | STRENGTHEN (max 2x, 3rd = auto KILL) | KILL
 - Cluster submission (same codebase = same day)
 - **VRT + Bugcrowd Form final verification checklist**
 - **Pre-submit Codex review (v12.1)**: `/codex:review --wait --base main` on submission/ → final cross-model sanity check
+- **Evidence Manifest (NEW)**: `python3 tools/evidence_manifest.py <target_dir>` → `evidence_manifest.json`
+  - Collects all artifacts with SHA256 hashes, checkpoint state, triager-sim results, report score
+  - Validates critical artifacts present (exit 1 if missing)
+  - Include in submission ZIP as audit trail
 
 #### Cluster Submission Protocol (Anthropic Firefox)
 같은 타겟에 2+ finding이 Gate 2 통과 시:

@@ -244,11 +244,13 @@ Phase 2   @exploiter            PoC development + poc-tier skill (Tier 1-2 only)
           evidence-tier-check   Evidence quality classification (E1-E4) (v12 NEW)
 ★ Gate 2  @triager-sim (opus)   PoC destruction: evidence quality + triager objections + duplicate-graph-check (KILL/GO)
           duplicate-graph-check Semantic duplicate detection via knowledge graph (v12 NEW)
-Phase 3   @reporter             Report draft + CVSS
+Phase 3   @reporter             Report draft + CVSS (platform style from context/report-templates/)
+Phase 3.5 report_scorer.py      5-dim quality gate (evidence/impact/repro/readability/slop, >=75)
+          report_scrubber.py    AI signature removal (Unicode watermarks, em-dash, slop flags)
 Phase 4   @critic               Fact-check (streamlined, Gate 2 handles viability)
 Phase 4.5 @triager-sim          Final consistency check (KILL here = Gate bug → feedback loop)
           slop-check skill      AI slop score (<=2 PASS, 3-5 STRENGTHEN, >5 KILL)
-Phase 5   @reporter             Final report + ZIP packaging
+Phase 5   @reporter             Final report + ZIP packaging + evidence_manifest.json
 Phase 6   TeamDelete            Cleanup
 ```
 
@@ -700,6 +702,9 @@ Terminator/
 │   ├── dag_orchestrator/    #   DAG pipeline scheduling + Claude CLI handler
 │   ├── toolspec/            #   ToolSpec registry (10 tools, typed metadata)
 │   ├── sarif_generator.py   #   SARIF 2.1.0 output
+│   ├── report_scorer.py     #   5-dim report quality scorer (evidence/impact/repro/readability/slop)
+│   ├── report_scrubber.py   #   AI signature remover (Unicode watermarks, em-dash, slop flags)
+│   ├── evidence_manifest.py #   Unified evidence manifest generator (SHA256, checkpoint, triager state)
 │   └── mcp-servers/         #   nuclei, codeql, semgrep, knowledge-fts, graphrag, markitdown
 ├── web/                     # FastAPI + D3 dashboard (standalone + Docker)
 │   ├── app.py               #   REST API + WebSocket backend

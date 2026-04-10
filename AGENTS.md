@@ -2,7 +2,7 @@
 
 ## 프로젝트 구조 및 모듈 구성
 - `agent/`는 오케스트레이션 런타임 코드, `.claude/agents/`는 역할별 프롬프트/파이프라인 정의를 포함합니다.
-- `tools/`는 재사용 가능한 보안 도구 모음입니다 (`knowledge_indexer.py`, `knowledge_fetcher.py`, `mitre_mapper.py`, `bb_preflight.py`, `web_chain_engine.py`).
+- `tools/`는 재사용 가능한 보안 도구 모음입니다 (`knowledge_indexer.py`, `knowledge_fetcher.py`, `mitre_mapper.py`, `bb_preflight.py`, `web_chain_engine.py`, `report_scorer.py`, `report_scrubber.py`, `evidence_manifest.py`).
 - `web/`는 대시보드(FastAPI) 영역입니다 (`app.py`, `routes/`, `services/`, `static/index.html`).
 - `bridge/`는 정책 검증 보조 코드이며 테스트는 `bridge/tests/`에 둡니다.
 - `tests/benchmarks/`는 파이프라인 성능/정확도 벤치마크, `tests/wargames/`는 챌린지 픽스처를 관리합니다.
@@ -20,6 +20,9 @@
 - `python3 tools/knowledge_fetcher.py fetch <url>` — 웹 기사를 `web_articles` 테이블에 추가.
 - `python3 tools/knowledge_fetcher.py bulk knowledge/sources/blogs.md` — URL 목록 일괄 수집.
 - `python3 tools/toolspec/registry.py` 또는 `from tools.toolspec import ToolRegistry` — ToolSpec 레지스트리 (10개 도구 메타데이터).
+- `python3 tools/report_scorer.py <report.md> [--poc-dir evidence/] [--json]` — 5차원 보고서 품질 스코어링 (>=75 통과).
+- `python3 tools/report_scrubber.py <report.md> [--dry-run]` — AI 시그니처 제거 (Unicode 워터마크, em-dash).
+- `python3 tools/evidence_manifest.py <target_dir> [--validate]` — 통합 증거 매니페스트 JSON 생성.
 
 ## 코딩 스타일 및 네이밍 규칙
 - 주 언어는 Python/Bash입니다. Python은 공백 4칸 들여쓰기, 신규 셸 스크립트는 `set -euo pipefail`을 사용하세요.

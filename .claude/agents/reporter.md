@@ -261,6 +261,97 @@ When triager_sim returns STRENGTHEN:
 3. Request triager_sim re-run via SendMessage to Orchestrator
 4. Max 3 iterations — after 3 without SUBMIT, report KILL to Orchestrator
 
+## Platform Style Adaptation (NEW — SEO Machine Pattern)
+
+Before writing ANY report, load the platform-specific style guide:
+
+1. **Read platform style**: `context/report-templates/platform-style/<platform>.md`
+   - Detect platform from `program_rules_summary.md` Platform field
+   - Fallback to `vendor-direct.md` if platform unknown
+2. **Read writing style**: `context/report-templates/writing-style.md`
+   - First 3 Sentences Rule, Observational Language, Specificity Rules
+3. **Check rejection patterns**: `context/report-templates/rejection-patterns.md`
+   - Pre-submit checklist, common rejection categories
+4. **CVSS calibration**: `context/report-templates/cvss-calibration.md`
+   - Conservative by default, conditional table mandatory
+5. **Reference successful reports**: Scan `context/report-templates/successful-reports/`
+   - Match by platform + vuln_type if available
+   - Adopt tone and structure from accepted reports
+
+## Report Quality Loop (NEW — Automated Quality Gate)
+
+After saving the initial report draft, automatically run the quality scorer:
+
+### Step 1: Score
+```bash
+python3 tools/report_scorer.py <report_path> --poc-dir <evidence_dir> --json
+```
+
+### Step 2: Evaluate
+5-dimension scoring (composite must be >= 75):
+
+| Dimension | Weight | Target |
+|-----------|--------|--------|
+| Evidence Completeness | 30% | PoC present, output captured, file:line refs |
+| Impact Clarity | 25% | CVSS vector, CWE, conditional table, exec conclusion |
+| Reproducibility | 20% | Numbered steps, commands, environment, prerequisites |
+| Triage Readability | 15% | H2 structure, short paragraphs, scannability |
+| AI Slop Score | 10% | No slop phrases, observational language, low passive voice |
+
+### Step 3: Auto-Fix if Needed
+If composite < 75:
+1. Read `priority_fixes` from scorer JSON output
+2. Apply top 3-5 fixes (highest severity first)
+3. Re-run scorer
+4. Repeat ONCE more if still below threshold
+
+### Step 4: Route
+- **Score >= 75**: Proceed to AI Signature Scrubbing, then Phase 4 (critic)
+- **Score < 75 after 2 iterations**: Flag to Orchestrator as QUALITY_GATE_FAIL with scorer output
+
+### Integration with triager-sim
+- Quality Loop runs BEFORE triager-sim (Phase 4.5)
+- Quality Loop catches structural/formatting issues
+- triager-sim catches logical/factual/framing issues
+- Both must pass for submission
+
+## AI Signature Scrubbing (NEW — Submission Hygiene)
+
+After quality loop passes, scrub the report for AI signatures:
+
+```bash
+python3 tools/report_scrubber.py <report_path>
+```
+
+This removes:
+- Invisible Unicode watermarks (zero-width spaces, BOMs, format-control chars)
+- Em-dash overuse (contextual replacement with commas/semicolons/periods)
+- Whitespace artifacts
+
+The scrubber also FLAGS (but does not auto-replace) AI slop patterns.
+If slop warnings are emitted, manually rewrite those sentences with
+target-specific technical detail before proceeding.
+
+**Scrubbing is idempotent** — safe to run multiple times.
+
+## Evidence Manifest Generation (NEW — Phase 5)
+
+At Phase 5 finalization, generate unified evidence manifest:
+
+```bash
+python3 tools/evidence_manifest.py <target_dir>
+```
+
+This produces `evidence_manifest.json` containing:
+- All pipeline artifacts with SHA256 hashes
+- Checkpoint and triager-sim state
+- Evidence file inventory
+- Report scorer results
+- Cost tracking data
+- Missing artifact alerts
+
+Include `evidence_manifest.json` in the submission ZIP.
+
 ## Output Generation Tools
 
 After writing the markdown report, generate additional formats as needed:
