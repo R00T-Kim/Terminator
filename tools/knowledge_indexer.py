@@ -166,6 +166,11 @@ SYNONYMS = {
     "open-redirect": '"open" "redirect"',
     "path-traversal": '"path" "traversal" OR "directory" "traversal"',
     "cmdinjection": '"command" "injection"',
+    "aeg": '"automated" "exploit" "generation"',
+    "pov": '"proof" "of" "vulnerability"',
+    "poc": '"proof" "of" "concept"',
+    "bfla": '"broken" "function" "level" "authorization"',
+    "business-logic": '"business" "logic"',
     "smm": '"system" "management" "mode"',
     "dma": '"direct" "memory" "access"',
 }

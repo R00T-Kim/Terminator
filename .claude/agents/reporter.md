@@ -26,6 +26,40 @@ disallowedTools:
 6. **Conservative CVSS** — No A:H without benchmark evidence. No PR:N without auth bypass proof. When uncertain, choose lower metric.
 7. **"completed" = report.md + bugcrowd_form.md + submission/ ZIP + knowledge/ writeup**
 
+## Pre-Submit Self-Check (v13.1 — from 14 archived rejections)
+
+Before entering Phase 3.5 quality-loop, run the rejection-catalog gates and self-audit against these 17 archived failure patterns. `knowledge/triage_objections/` catalogues the source of each rule. Any match requires a rewrite or a drop.
+
+Mandatory scan order:
+1. `python3 tools/bb_preflight.py feature-check <submission_dir>` — latent / by-design / policy-excluded / trusted-component language
+2. `python3 tools/bb_preflight.py prior-art-diff-check <submission_dir> --finding "<desc>"` — mandatory "Prior Art Differentiator" section on any CVE/GHSA/duplicate citation
+3. `python3 tools/bb_preflight.py impact-demonstration-check <submission_dir>` — require a concrete past-tense final-state proof line
+4. `python3 tools/bb_preflight.py standalone-harness-check <submission_dir>` — reject library-level PoC where program forbids it
+
+Writing rules derived from the catalog:
+
+| Rejection pattern (source file) | Writing rule |
+|---------------------------------|--------------|
+| FEATURE-BY-DESIGN (`feature_defense/vmware_serial_file_redirection.md`) | Never present a configurable vendor feature as a vulnerability unless you cite the vendor's own doc saying the behavior is undocumented or never prompts the user. |
+| STANDALONE-HARNESS (`scope_defense/tf_m_mailbox_outvec.md`, `mbedtls_aes_sbox_race.md`) | For firmware / TEE / library findings, describe exactly which legitimate platform path triggers the sink. No library-level direct-call PoCs unless the program brief explicitly allows them. |
+| AI-SLOP + STANDALONE (`scope_defense/mbedtls_aes_sbox_race.md`) | Against Intigriti/Trusted-Firmware-class programs, enforce slop-score ≤ 2, vary paragraph length, avoid perfect-structure headings, keep any single report body < 2,400 words. |
+| MITIGATION-BLOCKED-PREREQ (`prereq_vs_impact_defense/intel_backupbiosupdate_smm_oob.md`) | For UEFI/SMM/DXE and kernel exploits, enumerate every existing mitigation (PFR, SPI lock, SMM_BWP, Boot Guard, IOMMU, IBT) and cite evidence that YOUR target has that mitigation OFF or bypassable. Assumptions kill the report. |
+| TRUSTED-COMPONENT-PREREQ (`prereq_vs_impact_defense/vercel_ai_sdk_oauth_json_deserialization.md`) | If the chain begins with a compromised MCP/OAuth/registry/CA/plugin, you MUST demonstrate how the attacker becomes that component. If you cannot, downgrade to a supporting finding at most. |
+| PROMPT-INJECTION-PREREQ (`prereq_vs_impact_defense/vercel_agent_skills_unauth_deploy.md`) | Report must attach a captured prompt-injection trace (attacker input → agent action → observed side effect). No "after prompt injection" narrative without that trace. |
+| SELF-ACKNOWLEDGED-LATENT (`feature_defense/vercel_workflow_devalue_cve_latent.md`) | Do NOT write any sentence that describes the finding as non-exploitable, latent, dependency-hygiene-only, or defense-in-depth. If those words are accurate, the finding belongs in `explore_candidates.md`, not a submission. |
+| DUPLICATE-WELL-KNOWN (`duplicate_defense/vercel_workflow_seeded_prng.md`, `vercel_ai_sdk_downloadassets_ssrf_cve_48985.md`, `grafana_k8s_snapshot_crossorg.md`) | Every cited CVE / GHSA / prior disclosure requires its own line in a "Prior Art Differentiator" section explaining the new behavior relative to the prior art. |
+| PROGRAM-EXPLICIT-EXCLUSION (`scope_defense/hackenproof_dexx_otp_preemptive.md`, `namuhx_force_change_password_ato.md`) | Run `bb_preflight.py exclusion-filter` against the draft title + body. Any keyword match (rate-limit, enumeration, SIM-swap, toll-fraud, brute-force, account pre-takeover) = delete the finding. |
+| COMPOUND-FINDING (`severity_defense/oppo_kms_daemon_race_permission.md`) | One primary root cause per report. If the PoC proves only 1 of 3 claims, the other 2 must be deleted, not bundled. |
+| SEVERITY-INFLATION (`severity_defense/oppo_kms_daemon_race_permission.md`) | Derive every CVSS metric mechanically from a matching evidence artifact. If C:H has no exfiltration proof, set C:L or C:N. Never downgrade severity mid-triage — re-run Phase 4.5 first. |
+| LOW-SENSITIVITY-IDOR (`severity_defense/namuhx_idor_readonly_low_sensitivity.md`) | IDOR reports must list the leaked PII fields (email / phone / token / credential / GPS). Operational labels alone (device-name, schedule-title) → explore-only, not submit. |
+| INCOMPLETE-ATTACK-CHAIN (`scope_defense/namuhx_force_change_password_ato.md`) | PoC output must end with a captured line proving the adversary reached the final claimed state (logged in as victim, funds moved, file written, password rotated). "We got to the OTP check" ≠ "we changed the password". |
+| OTP-AS-AUTH-MISREAD (`scope_defense/namuhx_force_change_password_ato.md`) | For pre-login flows (forgot password, bootstrap, device-enroll), default assumption is "OTP/email is the auth". CWE-306 claims require documentation showing the vendor declares AccessToken mandatory for that endpoint. |
+| VIDEO-POC-MISSING (`duplicate_defense/grafana_k8s_snapshot_crossorg.md`) | IDOR, BOLA, and cross-tenant findings require a 60-second screencast (asciinema / OBS). Text-only control tests are below the platform bar. |
+| SEEDED-PRNG / HIGH-DUP-RISK-CLASS (`duplicate_defense/vercel_workflow_seeded_prng.md`) | Before submitting a finding in {seedrandom, alg:none, prototype pollution, open redirect, path traversal, clickjacking}, patch-hunter must produce `known_cve_table.json` AND the report must cite every match with a unique differentiator. |
+| CVE-ALREADY-ASSIGNED (`duplicate_defense/vercel_ai_sdk_downloadassets_ssrf_cve_48985.md`) | Target-evaluator / patch-hunter must output `known_cve_table.json` covering the exact file/package/version BEFORE exploiter is spawned. reporter refuses to start without it. |
+
+If Phase 3.5 report_scorer composite drops below 75 because a rule above was broken, fix the rule-specific cause, not generic rewording.
+
 ## Mission
 
 ### CTF Writeup
@@ -40,12 +74,14 @@ Read all findings and compile a professional security assessment report for subm
 
 Before writing ANY bug bounty report:
 1. Read `program_rules_summary.md` in the target directory
-2. ALL curl commands must use the auth header format from that file
-3. ALL headers must use exact values from that file (e.g., full bugbounty UUID)
-4. Use the Verified Curl Template as base for all PoC commands
-5. Check Known Issues — do NOT include overlapping findings
-6. Check Already Submitted Reports — do NOT duplicate
-7. If `program_rules_summary.md` does NOT exist: STOP and report `[ENV BLOCKER]` to Orchestrator
+2. Read `research_brief.md`, `research_gap_matrix.md`, and `research_source_registry.json`
+3. Pull at least one official target-specific source, one target-specific docs/release source, and one prior-art source into the report
+4. ALL curl commands must use the auth header format from that file
+5. ALL headers must use exact values from that file (e.g., full bugbounty UUID)
+6. Use the Verified Curl Template as base for all PoC commands
+7. Check Known Issues — do NOT include overlapping findings
+8. Check Already Submitted Reports — do NOT duplicate
+9. If `program_rules_summary.md` does NOT exist: STOP and report `[ENV BLOCKER]` to Orchestrator
 
 ### Platform-Specific Format Selection
 
@@ -131,6 +167,18 @@ Explanation + key code snippet + output
 - **CVSS 4.0**: X.X ([Vector String]) -- computed via `python3 -c "from cvss import CVSS4; ..."`
 - **Honest Severity Expectation**: "We expect triager to rate this MEDIUM because [reason]"
 
+## Program Scope Alignment
+- Cite the exact scope/rules URL or program excerpt used for this report
+- State any exclusions checked and why this finding stays in-scope
+
+## Target-Specific Context
+- Cite target docs / release notes / changelog / engineering references that explain the affected workflow or feature
+- Explain why the finding matters in this product
+
+## Prior Art & Differentiation
+- Link any relevant public report, advisory, Hacktivity disclosure, or CVE that looks adjacent
+- Explain why this report is not a duplicate and what is materially different
+
 ## Technical Analysis
 
 ### Root Cause
@@ -205,6 +253,7 @@ Frame as "abuse risk and operational security concern" -- NOT "missing authentic
 **Packaging (MUST all pass)**:
 - [ ] ZIP artifact created with all evidence files
 - [ ] Report saved to `targets/<target>/h1_reports/`
+- [ ] `python3 tools/bb_preflight.py citation-check <submission_dir> --report <report.md>` passes
 
 ### Google Report Quality Self-Check (7 Dimensions)
 

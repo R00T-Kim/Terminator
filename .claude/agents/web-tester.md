@@ -69,15 +69,20 @@ After EACH successful PoC:
 # 1. Program rules (auth format, mandatory headers, exclusions)
 cat program_rules_summary.md
 
-# 2. Scout's endpoint map (focus UNTESTED first)
+# 2. Research packet (docs/release notes/prior art/hypotheses)
+cat research_brief.md 2>/dev/null || true
+cat research_hypotheses.md 2>/dev/null || true
+
+# 3. Scout's endpoint map (focus UNTESTED first)
 cat endpoint_map.md
 
-# 3. Recon notes for context
+# 4. Recon notes for context
 cat recon_notes.md 2>/dev/null || cat recon_report.json 2>/dev/null
 ```
 
 - Read `workflow_map.md` if available (v12 — from @scout/@workflow-auditor: multi-step workflow state transitions and anomaly flags)
 - Read `invariants.md` if available (v12 — from @threat-modeler: testable security assertions that become test cases)
+- If research_hypotheses.md mentions GraphQL, prioritize a GraphQL lane before generic fuzzing
 
 ### Step 1: Authentication Setup
 

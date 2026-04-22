@@ -79,6 +79,7 @@
 | OSS Static Analysis BB (VRT selection, judge sim, Spring Boot patterns) | [techniques/oss_static_analysis_bb.md](techniques/oss_static_analysis_bb.md) |
 | ENKI RedTeam scenario quick checklist | [techniques/enki_redteam_scenario_checklist.md](techniques/enki_redteam_scenario_checklist.md) |
 | Web CTF cheatsheet for ENKI RedTeam CTF 2026 | [techniques/web_ctf_cheatsheet.md](techniques/web_ctf_cheatsheet.md) |
+| bizlogic_attack_scenarios | Business Logic Attack Templates (Xint-inspired) | [bizlogic_attack_scenarios.md](techniques/bizlogic_attack_scenarios.md) |
 
 ## Bug Bounty Programs
 
@@ -95,6 +96,7 @@
 | OPPO | HackerOne | Mobile | Informative (closed) | - |
 | MCP SDK/OAuth | HackerOne | SDK | 2 Informative (closed) | - |
 | Asphere Web | HackenProof | Web / OAuth / CMS / public-rpc brand surface | **CONDITIONAL GO (42/60, 2026-03-25)** — Hidden Gem. 81 hackers / 128 submissions / rewards private. High-signal hosts: `oauth-proxy.asphere.xyz`, `auth.asphere.xyz`, `strapi.asphere.xyz`, `*.public-rpc.com`. Phase 0.2 PASS, coverage PASS, workflow-map PASS. Focus on OAuth state/binding, auth boundary confusion, Strapi adjacent route exposure. | `targets/asphere/target_assessment.md` |
+| CoinW Web & Mobile | HackenProof | Web + REST API + Futures API + Android + iOS | **CONDITIONAL GO (39/60, 2026-04-12)** — Trusted Payer ($145K paid, 256 submissions, 124 hackers, $569 avg). Critical cap $2K (low). Fresh surface: copy trading, grid bots, P2P, Earn/DCA. Focus: copy trading IDOR, P2P state machine race, Futures margin switch race. Android APK primary recon (dev portal geo-blocked). Abandon at 90min if no HIGH+ signal. | `targets/coinw/target_assessment.md` |
 | Symbiotic | Immunefi | Smart Contract | ABANDONED (0 Critical) | `knowledge/bugbounty/` |
 | Superform | Immunefi | Smart Contract | ABANDONED (1 Medium, not Critical) | `knowledge/bugbounty/` |
 | YieldNest | Immunefi | Smart Contract | ABANDONED (mitigated on-chain) | - |

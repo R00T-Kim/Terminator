@@ -6,6 +6,8 @@ color: orange
 permissionMode: bypassPermissions
 effort: medium
 maxTurns: 25
+requiredMcpServers:
+  - "knowledge-fts"
 disallowedTools:
   - "mcp__radare2__*"
   - "mcp__gdb__*"
@@ -39,6 +41,8 @@ Build the application's security model from scout's recon artifacts BEFORE analy
 ### Step 0: Ingest Recon Artifacts (MANDATORY)
 
 Read scout's outputs first:
+- `research_brief.md` — target-specific docs/releases/auth/workflow clues
+- `research_hypotheses.md` — current workflow/auth/graphql queue
 - `endpoint_map.md` — all discovered endpoints with auth requirements
 - `recon_notes.md` — architecture observations, tech stack
 - `program_context.md` — scope, exclusions, auth mechanism

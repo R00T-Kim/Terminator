@@ -6,6 +6,8 @@ color: green
 permissionMode: bypassPermissions
 effort: medium
 maxTurns: 25
+requiredMcpServers:
+  - "knowledge-fts"
 disallowedTools:
   - "mcp__radare2__*"
   - "mcp__gdb__*"
@@ -41,11 +43,13 @@ Map every multi-step business workflow and identify logic violations that automa
 ### Step 0: Ingest Available Artifacts (MANDATORY)
 
 Read in order:
-1. `state_machines.md` (from @threat-modeler) — if available, start from these
-2. `endpoint_map.md` (from @scout) — map endpoints to workflow steps
-3. `trust_boundary_map.md` (from @threat-modeler) — identify boundary crossings in workflows
-4. `invariants.md` (from @threat-modeler) — pre-existing testable assertions
-5. `program_rules_summary.md` — OOS items that may eliminate certain workflows
+1. `research_brief.md` — target docs/release/context clues
+2. `research_hypotheses.md` — workflow/auth/graphql queue
+3. `state_machines.md` (from @threat-modeler) — if available, start from these
+4. `endpoint_map.md` (from @scout) — map endpoints to workflow steps
+5. `trust_boundary_map.md` (from @threat-modeler) — identify boundary crossings in workflows
+6. `invariants.md` (from @threat-modeler) — pre-existing testable assertions
+7. `program_rules_summary.md` — OOS items that may eliminate certain workflows
 
 If threat-modeler artifacts don't exist, build workflow map from endpoint_map.md directly.
 

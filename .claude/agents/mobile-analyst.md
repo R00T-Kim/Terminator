@@ -9,6 +9,7 @@ maxTurns: 40
 requiredMcpServers:
   - "knowledge-fts"
   - "semgrep"
+  - "frida"
 disallowedTools:
   - "mcp__radare2__*"
   - "mcp__nuclei__*"

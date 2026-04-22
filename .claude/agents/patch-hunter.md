@@ -42,9 +42,11 @@ Your outputs feed into:
 ### Step 0: Ingest Context (MANDATORY)
 
 Read:
-1. `program_rules_summary.md` — OOS list, known issues (some fixes may be for known issues = low value)
-2. `endpoint_map.md` — understand which code areas are in-scope
-3. `recon_notes.md` — tech stack, framework versions
+1. `research_hypotheses.md` — current variant queue and why-now rationale
+2. `research_gap_matrix.md` — which classes are underexplored
+3. `program_rules_summary.md` — OOS list, known issues (some fixes may be for known issues = low value)
+4. `endpoint_map.md` — understand which code areas are in-scope
+5. `recon_notes.md` — tech stack, framework versions
 
 ### Step 1: Security Commit Extraction
 

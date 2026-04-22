@@ -1,0 +1,282 @@
+[
+  {
+    "id": "project-naptime",
+    "title": "Project Naptime: Evaluating Offensive Security Capabilities of Large Language Models",
+    "url": "https://projectzero.google/2024/06/project-naptime.html",
+    "authority": "official",
+    "applicability": "design",
+    "published_at": "2024-06-20",
+    "bug_classes": ["agentic", "validation", "variant"],
+    "tags": ["research", "agentic", "project-zero"]
+  },
+  {
+    "id": "big-sleep",
+    "title": "From Naptime to Big Sleep: Using Large Language Models To Catch Vulnerabilities In Real-World Code",
+    "url": "https://projectzero.google/2024/10/from-naptime-to-big-sleep.html",
+    "authority": "official",
+    "applicability": "design",
+    "published_at": "2024-11-01",
+    "bug_classes": ["agentic", "validation"],
+    "tags": ["research", "agentic", "sqlite"]
+  },
+  {
+    "id": "sean-heelan-o3-ksmbd",
+    "title": "How I used o3 to find CVE-2025-37899",
+    "url": "https://sean.heelan.io/2025/05/22/how-i-used-o3-to-find-cve-2025-37899-a-remote-zeroday-vulnerability-in-the-linux-kernels-smb-implementation/",
+    "authority": "practitioner",
+    "applicability": "design",
+    "published_at": "2025-05-22",
+    "bug_classes": ["variant", "validation"],
+    "tags": ["heelan", "o3", "kernel"]
+  },
+  {
+    "id": "sean-heelan-industrialisation",
+    "title": "On the Coming Industrialisation of Exploit Generation with LLMs",
+    "url": "https://sean.heelan.io/2026/01/18/on-the-coming-industrialisation-of-exploit-generation-with-llms/",
+    "authority": "practitioner",
+    "applicability": "design",
+    "published_at": "2026-01-18",
+    "bug_classes": ["agentic", "validation"],
+    "tags": ["heelan", "aeg", "agentic"]
+  },
+  {
+    "id": "anamnesis-release",
+    "title": "Sean Heelan anamnesis-release",
+    "url": "https://github.com/SeanHeelan/anamnesis-release",
+    "authority": "benchmark",
+    "applicability": "design",
+    "published_at": "2026-01-18",
+    "bug_classes": ["agentic", "validation"],
+    "tags": ["github", "aeg", "benchmark"]
+  },
+  {
+    "id": "aardvark",
+    "title": "Introducing Aardvark",
+    "url": "https://openai.com/index/introducing-aardvark/",
+    "authority": "official",
+    "applicability": "design",
+    "published_at": "2025-10-30",
+    "bug_classes": ["agentic", "validation", "workflow", "variant"],
+    "tags": ["openai", "agentic", "security"]
+  },
+  {
+    "id": "xbow-top1",
+    "title": "The road to Top 1: How XBOW did it",
+    "url": "https://xbow.com/blog/top-1-how-xbow-did-it",
+    "authority": "official",
+    "applicability": "design",
+    "published_at": "2025-06-24",
+    "bug_classes": ["agentic", "validation", "workflow"],
+    "tags": ["xbow", "bugbounty", "benchmark"]
+  },
+  {
+    "id": "xbow-alloy",
+    "title": "Agents Built From Alloys",
+    "url": "https://xbow.com/blog/alloy-agents",
+    "authority": "official",
+    "applicability": "design",
+    "published_at": "2025-07-10",
+    "bug_classes": ["agentic", "validation"],
+    "tags": ["xbow", "alloy", "agentic"]
+  },
+  {
+    "id": "darpa-aixcc-results",
+    "title": "AI Cyber Challenge marks pivotal inflection point for cyber defense",
+    "url": "https://www.darpa.mil/news/2025/aixcc-results",
+    "authority": "official",
+    "applicability": "design",
+    "published_at": "2025-08-08",
+    "bug_classes": ["agentic", "validation"],
+    "tags": ["darpa", "aixcc", "benchmark"]
+  },
+  {
+    "id": "buttercup",
+    "title": "Trail of Bits Buttercup",
+    "url": "https://www.trailofbits.com/buttercup/",
+    "authority": "official",
+    "applicability": "design",
+    "published_at": "2025-08-09",
+    "bug_classes": ["agentic", "validation"],
+    "tags": ["trailofbits", "aixcc", "open-source"]
+  },
+  {
+    "id": "roboduck",
+    "title": "AI Cyber Challenge and Theori's RoboDuck",
+    "url": "https://theori.io/blog/aixcc-and-roboduck-63447",
+    "authority": "official",
+    "applicability": "design",
+    "published_at": "2025-08-08",
+    "bug_classes": ["agentic", "validation"],
+    "tags": ["theori", "aixcc", "pov"]
+  },
+  {
+    "id": "xint-code",
+    "title": "Announcing Xint Code",
+    "url": "https://theori.io/blog/announcing-xint-code",
+    "authority": "official",
+    "applicability": "design",
+    "published_at": "2025-12-16",
+    "bug_classes": ["workflow", "access-control"],
+    "tags": ["theori", "business-logic", "code-analysis"]
+  },
+  {
+    "id": "mapta",
+    "title": "Multi-Agent Penetration Testing AI for the Web",
+    "url": "https://arxiv.org/abs/2508.20816",
+    "authority": "paper",
+    "applicability": "design",
+    "published_at": "2025-08-28",
+    "bug_classes": ["agentic", "validation", "workflow", "access-control"],
+    "tags": ["paper", "web", "pentest"]
+  },
+  {
+    "id": "firmagent",
+    "title": "FirmAgent",
+    "url": "https://www.ndss-symposium.org/ndss-paper/firmagent-leveraging-fuzzing-to-assist-llm-agents-with-iot-firmware-vulnerability-discovery/",
+    "authority": "paper",
+    "applicability": "design",
+    "published_at": "2026-02-23",
+    "bug_classes": ["agentic", "validation"],
+    "tags": ["paper", "firmware", "llm"]
+  },
+  {
+    "id": "cve-genie",
+    "title": "From CVE Entries to Verifiable Exploits",
+    "url": "https://arxiv.org/abs/2509.01835",
+    "authority": "paper",
+    "applicability": "design",
+    "published_at": "2025-09-01",
+    "bug_classes": ["variant", "validation", "agentic"],
+    "tags": ["paper", "cve", "reproduction"]
+  },
+  {
+    "id": "faultline",
+    "title": "FaultLine",
+    "url": "https://arxiv.org/abs/2507.15241",
+    "authority": "paper",
+    "applicability": "design",
+    "published_at": "2025-07-21",
+    "bug_classes": ["validation", "agentic"],
+    "tags": ["paper", "pov", "validation"]
+  },
+  {
+    "id": "pocgen",
+    "title": "PoCGen",
+    "url": "https://arxiv.org/abs/2506.04962",
+    "authority": "paper",
+    "applicability": "design",
+    "published_at": "2025-06-05",
+    "bug_classes": ["validation", "agentic"],
+    "tags": ["paper", "poc", "npm"]
+  },
+  {
+    "id": "web-poc-study",
+    "title": "Systematic Study on Generating Web Vulnerability PoCs",
+    "url": "https://arxiv.org/abs/2510.10148",
+    "authority": "paper",
+    "applicability": "tactic",
+    "published_at": "2025-10-11",
+    "bug_classes": ["validation", "workflow"],
+    "tags": ["paper", "web", "poc"]
+  },
+  {
+    "id": "pwngpt",
+    "title": "PwnGPT",
+    "url": "https://aclanthology.org/2025.acl-long.562/",
+    "authority": "paper",
+    "applicability": "design",
+    "published_at": "2025-07-27",
+    "bug_classes": ["agentic", "validation"],
+    "tags": ["paper", "pwn", "aeg"]
+  },
+  {
+    "id": "vulnsage",
+    "title": "VulnSage",
+    "url": "https://arxiv.org/abs/2604.05130",
+    "authority": "paper",
+    "applicability": "design",
+    "published_at": "2026-04-06",
+    "bug_classes": ["agentic", "validation"],
+    "tags": ["paper", "aeg", "reflection"]
+  },
+  {
+    "id": "semgrep-variant-analysis",
+    "title": "Finding More Zero Days Through Variant Analysis",
+    "url": "https://semgrep.dev/blog/2025/finding-more-zero-days-through-variant-analysis/",
+    "authority": "practitioner",
+    "applicability": "tactic",
+    "published_at": "2025-07-10",
+    "bug_classes": ["variant"],
+    "tags": ["variant-analysis", "semgrep", "practice"]
+  },
+  {
+    "id": "intigriti-effective-reports",
+    "title": "8 Tips for writing effective bug bounty reports",
+    "url": "https://www.intigriti.com/researchers/blog/hacking-tools/writing-effective-bug-bounty-reports",
+    "authority": "platform",
+    "applicability": "tactic",
+    "published_at": "2024-11-01",
+    "bug_classes": ["validation"],
+    "tags": ["reporting", "bugbounty", "platform"]
+  },
+  {
+    "id": "intigriti-graphql",
+    "title": "Five easy ways to hack GraphQL targets",
+    "url": "https://www.intigriti.com/researchers/blog/hacking-tools/five-easy-ways-to-hack-graphql-targets",
+    "authority": "platform",
+    "applicability": "tactic",
+    "published_at": "2024-08-20",
+    "bug_classes": ["graphql", "workflow"],
+    "tags": ["graphql", "bugbounty", "platform"]
+  },
+  {
+    "id": "intigriti-ai-future",
+    "title": "A(I) future of Bug Bounty",
+    "url": "https://www.intigriti.com/blog/business-insights/ai-future-of-bug-bounty",
+    "authority": "platform",
+    "applicability": "tactic",
+    "published_at": "2026-04-15",
+    "bug_classes": ["validation", "workflow"],
+    "tags": ["bugbounty", "ai", "triage"]
+  },
+  {
+    "id": "hackerone-hpsr-2025",
+    "title": "HackerOne Report Finds 210% Spike in AI Vulnerability Reports Amid Rise of AI Autonomy",
+    "url": "https://www.hackerone.com/press-release/hackerone-report-finds-210-spike-ai-vulnerability-reports-amid-rise-ai-autonomy",
+    "authority": "platform",
+    "applicability": "tactic",
+    "published_at": "2025-10-01",
+    "bug_classes": ["validation", "workflow"],
+    "tags": ["hackerone", "report", "ai"]
+  },
+  {
+    "id": "hackerone-researcher-signals",
+    "title": "The Top Researcher Signals From HackerOne’s 2025 HPSR",
+    "url": "https://www.hackerone.com/blog/2025-hpsr-researcher-signals",
+    "authority": "platform",
+    "applicability": "tactic",
+    "published_at": "2026-01-06",
+    "bug_classes": ["workflow", "access-control", "validation"],
+    "tags": ["hackerone", "api", "logic"]
+  },
+  {
+    "id": "hackerone-private-public",
+    "title": "Private vs. Public Programs",
+    "url": "https://docs.hackerone.com/en/articles/8365270-private-vs-public-programs",
+    "authority": "platform",
+    "applicability": "tactic",
+    "published_at": "2024-01-01",
+    "bug_classes": ["workflow"],
+    "tags": ["hackerone", "programs", "triage"]
+  },
+  {
+    "id": "bugcrowd-curl-slop",
+    "title": "How lazy hacking killed cURL's bug bounty",
+    "url": "https://www.bugcrowd.com/blog/hacker-opinion-piece-how-lazy-hacking-killed-curls-bug-bounty/",
+    "authority": "platform",
+    "applicability": "tactic",
+    "published_at": "2026-02-05",
+    "bug_classes": ["validation"],
+    "tags": ["bugcrowd", "slop", "triage"]
+  }
+]

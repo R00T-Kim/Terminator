@@ -60,6 +60,18 @@ DOMAIN_CATEGORIES = {
     "labs.watchtowr.com": "web",
     "blog.wiz.io": "cloud",
     "rhinosecuritylabs.com": "cloud",
+    "projectzero.google": "research",
+    "openai.com": "research",
+    "xbow.com": "bugbounty",
+    "theori.io": "research",
+    "trailofbits.com": "research",
+    "www.trailofbits.com": "research",
+    "ndss-symposium.org": "research",
+    "aclanthology.org": "research",
+    "usenix.org": "research",
+    "darpa.mil": "research",
+    "semgrep.dev": "web",
+    "intigriti.com": "bugbounty",
 }
 
 # Auto-tag keywords
@@ -102,6 +114,18 @@ TAG_KEYWORDS = {
     "smart contract": "smart-contract",
     "solidity": "solidity",
     "flash loan": "flash-loan",
+    "variant analysis": "variant-analysis",
+    "business logic": "business-logic",
+    "proof of vulnerability": "pov",
+    "proof-of-vulnerability": "pov",
+    "proof of concept": "poc",
+    "proof-of-concept": "poc",
+    "exploit generation": "aeg",
+    "automated exploit generation": "aeg",
+    "agentic": "agentic",
+    "multi-agent": "multi-agent",
+    "validator": "validation",
+    "validation": "validation",
 }
 
 

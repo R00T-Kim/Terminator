@@ -223,6 +223,7 @@ docker compose up -d
 <summary><b>Kill Gate Pipeline Details (v12)</b></summary>
 
 ```
+Phase R   research-sync         Curated web/paper/platform/practitioner research sync + hypothesis packet
 Phase 0   @target-evaluator     GO / NO-GO assessment + Hard NO-GO rules
           oos-check skill       OOS pattern pre-screening (12 patterns)
           --- GO gate --------------------------------------------------------

@@ -11,13 +11,15 @@ v12 splits the pipeline into two lanes:
 ```
 EXPLORE LANE                                              PROVE LANE
 ┌─────────────────────────────────────────┐   ┌──────────────────────────────────────┐
-│ Phase 0:   target-evaluator (+ novelty) │   │ ★ Gate 1: triager-sim (finding)      │
-│ Phase 0.2: bb_preflight rules           │   │ Phase 2:  exploiter (E1-E4 tiers)    │
-│ Phase 0.5: automated tool scan          │   │ ★ Gate 2: triager-sim (PoC)          │
-│ Phase 1:   scout + analyst + threat-    │   │ Phase 3:  reporter                   │
+│ Phase R:   research-sync + research-gate │   │ ★ Gate 1: triager-sim (finding)      │
+│ Phase 0:   target-evaluator (+ novelty) │   │ Phase 2:  exploiter (E1-E4 tiers)    │
+│ Phase 0.2: bb_preflight rules           │   │ ★ Gate 2: triager-sim (PoC)          │
+│ Phase 0.5: automated tool scan          │   │ Phase 3:  reporter                   │
+│ Phase 1:   scout + analyst + threat-    │   │ Phase 4:  critic + architect         │
 │            modeler + patch-hunter       │   │ Phase 4:  critic + architect          │
-│ Phase 1.5: workflow-auditor + web-tester│   │ Phase 4.5:triager-sim (report)       │
-│ ★ Gate 1→2: coverage + workflow check   │   │ Phase 5:  reporter (finalize)        │
+│ Phase 1.5: workflow-auditor + web-tester│   │ Phase 5:  reporter (finalize)        │
+│ ★ Gate 1→2: research + coverage +       │   │ Phase 6:  TeamDelete                 │
+│            workflow check               │   │                                      │
 └─────────────────────────────────────────┘   │ Phase 6:  TeamDelete                 │
                                                └──────────────────────────────────────┘
 ```
@@ -26,10 +28,22 @@ EXPLORE LANE                                              PROVE LANE
 
 ## EXPLORE LANE
 
+### Phase R: Research Sync (MANDATORY)
+
+Before GO/NO-GO scoring, orchestrator builds a research packet:
+```bash
+python3 tools/bb_research_sync.py global-sync
+python3 tools/bb_research_sync.py target-sync targets/<target>/ --url <target_url> [--source-url <program/docs/hacktivity URL>] [--repo <local_repo>]
+python3 tools/bb_preflight.py research-check targets/<target>/
+```
+- Required outputs: `research_source_registry.json`, `research_brief.md`, `research_gap_matrix.md`, `research_hypotheses.md`
+- Source mix must include official + paper + platform + practitioner references
+- Research packet must create at least one hypothesis each for variant / workflow-auth-graphql / validation
+
 ### Phase 0: Target Intelligence
 
 1. `TeamCreate("mission-<target>")`
-2. `target-evaluator` (model=sonnet) → program analysis, competition, tech stack match, **Research Novelty Score (v12)** → `target_assessment.md`
+2. `target-evaluator` (model=sonnet) → reads `research_brief.md` + `research_gap_matrix.md` + target web signals, then scores program analysis, competition, tech stack match, **Research Novelty Score (v12)** → `target_assessment.md`
    - **GO** (48-60): full pipeline
    - **CONDITIONAL GO** (30-47): limited scope + token budget
    - **NO-GO** (<30 or Hard NO-GO): stop immediately
@@ -95,7 +109,7 @@ Parallel spawn — up to 4 agents:
 - `scout` (model=sonnet) → `endpoint_map.md` (risk-weighted) + `workflow_map.md` (v12) + `program_context.md`
 - `analyst` (model=sonnet) → reads program_rules_summary.md + tool results → `vulnerability_candidates.md` (dynamic review budget v12)
 - `threat-modeler` (model=sonnet, **v12 NEW**) → `trust_boundary_map.md`, `role_matrix.md`, `state_machines.md`, `invariants.md`
-- `patch-hunter` (model=sonnet, **v12 NEW**) → `patch_analysis.md` (variant candidates from security commits)
+- `patch-hunter` (model=sonnet, **v12 NEW**) → `patch_analysis.md` (variant candidates from security commits + recent advisories/release notes)
 
 - **Inject program rules**: `python3 tools/bb_preflight.py inject-rules targets/<target>/` output in prompt top 3 lines
 - **Inject exclusion filter**: `python3 tools/bb_preflight.py exclusion-filter targets/<target>/`
@@ -103,13 +117,17 @@ Parallel spawn — up to 4 agents:
 ### Phase 1.5: Deep Exploration (v12 NEW)
 
 After Phase 1 artifacts are produced:
-- `workflow-auditor` (model=sonnet, **v12 NEW**) → reads state_machines.md + endpoint_map.md → `workflow_map.md` (refined with anomaly flags)
-- `web-tester` (model=sonnet) → request-level testing + **workflow pack testing (v12)** using workflow_map.md and invariants.md
+- `workflow-auditor` (model=sonnet, **v12 NEW**) → reads `research_brief.md` + state_machines.md + endpoint_map.md → `workflow_map.md` (refined with anomaly flags)
+- `web-tester` (model=sonnet) → request-level testing + **workflow pack testing (v12)** using research_hypotheses.md, workflow_map.md, and invariants.md
 - `analyst` parallel hunting (optional, 10K+ LOC only) — now with dynamic budget and explore lane artifacts
 
 ### Phase 1→2 Gate: Coverage + Workflow Check (EXPANDED in v12)
 
 ```bash
+# Research hypothesis check (v13)
+python3 tools/bb_preflight.py hypothesis-check targets/<target>/
+# PASS (variant/workflow/validation queues populated) → continue | FAIL → research-sync supplement
+
 # Coverage check (risk-weighted in v12: HIGH endpoints count 2x)
 python3 tools/bb_preflight.py coverage-check targets/<target>/
 # PASS (≥80% risk-weighted) → proceed | FAIL → additional rounds
@@ -214,6 +232,13 @@ Verdict: GO | STRENGTHEN (max 2x, 3rd = auto KILL) | KILL
 - **Writing Style**: reporter follows `context/report-templates/writing-style.md` (First 3 Sentences Rule)
 
 #### Phase 3.5: Report Quality Loop (NEW)
+
+Before final submission packaging:
+```bash
+python3 tools/bb_preflight.py citation-check targets/<target>/submission/<name>/ --report targets/<target>/submission/<name>/report.md
+```
+- PASS → continue | FAIL → reporter strengthens target-specific citations and prior-art differentiation
+
 
 After reporter saves draft, automated quality gate:
 1. `python3 tools/report_scorer.py <report> --poc-dir <evidence/> --json`

@@ -62,6 +62,50 @@ tools:
     tags: [flag, ctf, detection]
     agent_roles: [verifier, ctf-solver]
 
+
+  - tool_id: bb-research-sync
+    name: BB Research Sync
+    kind: analysis
+    entrypoint: "python3 tools/bb_research_sync.py"
+    description: "Collect curated AEG/bug bounty research plus target-specific web intelligence into research_source_registry.json, research_brief.md, research_gap_matrix.md, and research_hypotheses.md. Run before target-evaluator on serious hunts."
+    read_only: false
+    side_effects: [writes_target_artifacts, writes_knowledge_index]
+    timeout: 120
+    tags: [bounty, research, osint, intel]
+    agent_roles: [target-evaluator, scout, analyst]
+
+  - tool_id: bb-preflight-research-check
+    name: BB Research Check
+    kind: analysis
+    entrypoint: "python3 tools/bb_preflight.py research-check"
+    description: "Validate research artifact completeness and authority mix before discovery. FAIL blocks Phase 1+."
+    read_only: true
+    timeout: 30
+    parallel_class: independent
+    tags: [bounty, research, gate]
+    agent_roles: [target-evaluator, scout, analyst]
+
+  - tool_id: bb-preflight-hypothesis-check
+    name: BB Hypothesis Check
+    kind: analysis
+    entrypoint: "python3 tools/bb_preflight.py hypothesis-check"
+    description: "Validate that variant/workflow/validation research queues all have at least one populated hypothesis before exploitation starts."
+    read_only: true
+    timeout: 30
+    parallel_class: independent
+    tags: [bounty, research, hypothesis]
+    agent_roles: [scout, analyst, patch-hunter, threat-modeler]
+
+  - tool_id: bb-preflight-citation-check
+    name: BB Citation Check
+    kind: analysis
+    entrypoint: "python3 tools/bb_preflight.py citation-check"
+    description: "Validate that a report cites target-specific scope/docs/prior-art evidence before submission."
+    read_only: true
+    timeout: 30
+    parallel_class: independent
+    tags: [bounty, report, gate]
+    agent_roles: [reporter, triager-sim]
   - tool_id: bb-preflight-rules-check
     name: BB Rules Check
     kind: analysis

@@ -28,9 +28,15 @@ Existing findings check:
 **MUST use Agent Teams.** Orchestrator directly reading and analyzing code is FORBIDDEN.
 Subagent spawn uses `Task` or `Agent` tool depending on Claude build, but `subagent_type` is always canonical hyphen-case (`target-evaluator`, `triager-sim`).
 
+### Phase R: Research Sync (MANDATORY)
+1. `python3 tools/bb_research_sync.py global-sync`
+2. `python3 tools/bb_research_sync.py target-sync targets/<target>/ --url <target_url> [--source-url <program/docs/hacktivity URL>] [--repo <local_repo>]`
+3. `python3 tools/bb_preflight.py research-check targets/<target>/`
+4. `python3 tools/bb_preflight.py hypothesis-check targets/<target>/`
+
 ### Phase 0: Target Intelligence
 1. `TeamCreate("mission-<target>")`
-2. `target-evaluator` (model=sonnet) → GO/NO-GO verdict
+2. `target-evaluator` (model=sonnet) → reads research packet then GO/NO-GO verdict
    - **Hard NO-GO (v6)**: 3+ audits, 2+ reputable audits, 100+ reports, 3yr+, source inaccessible
    - NO-GO → stop immediately, evaluate another target
 3. **Run `oos-check` skill** — full program OOS scan
@@ -51,14 +57,14 @@ python3 tools/bb_preflight.py rules-check targets/<target>/
 ### Phase 1: Discovery (v12 — Explore Lane)
 - scout (model=sonnet) + analyst (model=sonnet) parallel spawn
 - **threat-modeler (model=sonnet, v12 NEW)** → trust boundaries, role matrix, state machines, invariants
-- **patch-hunter (model=sonnet, v12 NEW)** → variant candidates from security commits
+- **patch-hunter (model=sonnet, v12 NEW)** → variant candidates from security commits + advisories/release notes
 - inject-rules output in prompt lines 3-5 (lines 1-2 = Critical Facts)
 - On each finding: `oos-check` pattern match (OOS BLOCK → auto-exclude)
 
 ### Phase 1.5: Deep Exploration (v12 NEW)
 - **workflow-auditor (model=sonnet)** → workflow state transitions, anomaly flags
 - web-tester (model=sonnet) → request-level + workflow pack testing
-- Reads: workflow_map.md, invariants.md, trust_boundary_map.md
+- Reads: research_hypotheses.md, workflow_map.md, invariants.md, trust_boundary_map.md
 
 ### Phase 1→2 Gate: Coverage + Workflow Check (v12)
 - **Run `coverage-gate` skill** (risk-weighted in v12: HIGH endpoints count 2x):
@@ -70,6 +76,11 @@ python3 tools/bb_preflight.py coverage-check targets/<target>/ --json
 ```bash
 python3 tools/bb_preflight.py workflow-check targets/<target>/
 # PASS → Phase 2 / FAIL → workflow-auditor supplement
+```
+- **Research hypothesis check (v13 NEW)**:
+```bash
+python3 tools/bb_preflight.py hypothesis-check targets/<target>/
+# PASS → Phase 2 / FAIL → research-sync supplement
 ```
 - **Fresh-surface check (v12 NEW, for CONDITIONAL GO targets)**:
 ```bash
@@ -93,6 +104,7 @@ python3 tools/bb_preflight.py duplicate-graph-check targets/<target>/ --finding 
 
 ### Phase 3-5: Report → Review → Finalize
 - reporter → critic + architect → triager-sim → reporter (final)
+- `python3 tools/bb_preflight.py citation-check targets/<target>/submission/<name>/ --report targets/<target>/submission/<name>/report.md` before packaging
 - **`slop-check` skill for AI slop score** (≤2 PASS, 3-5 STRENGTHEN, >5 KILL)
 - triager-sim outputs `triager_sim_result.json` → reporter auto-feedback loop (max 3 rounds)
 - No submission without triager-sim SUBMIT
@@ -107,3 +119,10 @@ python3 tools/bb_preflight.py duplicate-graph-check targets/<target>/ --finding 
 - No HIGH+ signal at 2hr mark → ABANDON (after checklist pass)
 
 > **REMINDER**: No PoC = No Submission. Quality over Quantity. Orchestrator delegates, never analyzes directly. Evidence Tier E1/E2 required for submission. Triage feedback checked before every Gate.
+
+## Gotchas
+- E3/E4 evidence submissions accumulate NA verdicts → account suspension risk (Bugcrowd 30-day suspension lesson)
+- Auth format mismatch (Bearer vs IdToken) causes silent 401s that look like "no vuln" — always verify from actual traffic
+- triager-sim STRENGTHEN verdict max 2x — 3rd attempt = auto KILL, don't waste tokens
+- Gate 2 without live PoC = guaranteed KILL — never submit report-only findings
+- AI Slop Score >5 = KILL at Phase 4.5 — use report_scrubber.py before triager-sim

@@ -36,11 +36,21 @@ Evaluate a bug bounty target BEFORE any scanning or analysis begins. Produce a G
 
 ## Strategy
 
+### Step 0: Research Packet Ingestion (MANDATORY)
+Read first:
+- `research_brief.md`
+- `research_gap_matrix.md`
+- `research_hypotheses.md`
+- `research_source_registry.json`
+
+Do not score a target from intuition alone when these files are missing or thin.
+
 ### Step 1: Program Intelligence
 ```bash
 # Fetch program page (WebFetch with r.jina.ai prefix, or gh CLI)
 # Capture: bounty range, response time, reports resolved count, program start date, scope, CVSS version
 # Check Hacktivity: disclosure volume, rewarded vuln types, rejected types, top reporters
+# Cross-check the above against research_brief.md and research_gap_matrix.md
 ```
 
 ### Step 2: Target Hardening Assessment
@@ -290,6 +300,7 @@ Cold-blooded ROI calculator. Numbers over intuition. Would rather kill a target 
 ## Completion Criteria
 
 - `target_assessment.md` saved with full structured scoring
+- Research packet consumed and novelty backed by concrete sources
 - Immediately report to Orchestrator: GO/NO-GO decision, score, top reasoning, recommended approach (if GO)
 - **If NO-GO**: Orchestrator MUST respect the decision. No overriding without new information.
 - Update knowledge for future reference regardless of decision

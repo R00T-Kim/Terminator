@@ -1,6 +1,6 @@
 ---
 name: scout
-description: Run SCOUT firmware analysis engine on firmware binaries. Auto-matches "scout", "firmware analyze", "firmware scan", "firmware evidence", "펌웨어 분석", "펌웨어 스캔"
+description: Use when firmware binary analysis, attack surface mapping, or endpoint discovery is needed for a target
 argument-hint: <firmware-path> [--rootfs <extracted-rootfs>] [--profile exploit] [--stages stage1,stage2]
 ---
 
@@ -180,3 +180,8 @@ python3 /home/rootk1m/SCOUT/scripts/verify_run_dir_evidence_only.py --run-dir <r
 4. **Stages fail open, governance fails closed** — partial results over crashes, but promotion gates reject incomplete evidence
 5. **`confirmed` status requires dynamic evidence** — no exceptions
 6. **Exploit profile requires 3 extra flags**: `--exploit-flag lab --exploit-attestation authorized --exploit-scope lab-only`
+
+## Gotchas
+- Missing `--ack-authorization` flag causes immediate failure on authorized targets
+- Without `--no-llm`, LLM API timeout on air-gapped environments blocks the entire pipeline
+- Large firmware (>500MB) may exhaust /tmp — check disk space before extraction

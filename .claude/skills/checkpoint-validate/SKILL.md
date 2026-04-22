@@ -67,3 +67,8 @@ done
 | NOT STARTED | Spawn new agent immediately |
 
 > **REMINDER**: Never trust "artifact exists = done". Only checkpoint.status == "completed" is truth.
+
+## Gotchas
+- A 0-byte checkpoint.json that exists is still a fake completion — always verify `status` field value
+- "artifact file exists" does NOT mean completed — only trust `status=="completed"` in checkpoint
+- Agents may write checkpoint with `in_progress` then crash — check timestamp staleness (>10min = likely dead)

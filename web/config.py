@@ -39,6 +39,7 @@ RAG_API_BASE = os.environ.get(
 
 # ── Pipeline Phase Definitions ──
 PIPELINE_PHASES = [
+    ("Phase R: Research Sync",     ["research_brief.md", "research_hypotheses.md", "research_source_registry.json"]),
     ("Phase 0: Target Assessment", ["target_assessment.md"]),
     ("Phase 1: Reconnaissance",    ["recon_notes.md", "recon_report.json", "recon_report.md"]),
     ("Phase 1: Vuln Candidates",   ["vulnerability_candidates.md"]),

@@ -24,6 +24,12 @@ from pathlib import Path
 # Artifact registry — what we expect from each pipeline phase
 # ---------------------------------------------------------------------------
 ARTIFACT_REGISTRY = {
+    "research_lane": {
+        "research_source_registry.json": {"phase": "R", "agent": "orchestrator", "critical": False},
+        "research_brief.md": {"phase": "R", "agent": "orchestrator", "critical": False},
+        "research_gap_matrix.md": {"phase": "R", "agent": "orchestrator", "critical": False},
+        "research_hypotheses.md": {"phase": "R", "agent": "orchestrator", "critical": False},
+    },
     "explore_lane": {
         "target_assessment.md": {"phase": "0", "agent": "target-evaluator", "critical": False},
         "program_rules_summary.md": {"phase": "0.2", "agent": "orchestrator", "critical": True},

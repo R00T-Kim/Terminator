@@ -1,7 +1,7 @@
 ---
 name: recon-scanner
 description: Use this agent when you need broad automated reconnaissance over a target's hosts, ports, endpoints, JavaScript, and surface map.
-model: sonnet
+model: haiku
 color: cyan
 permissionMode: bypassPermissions
 effort: low

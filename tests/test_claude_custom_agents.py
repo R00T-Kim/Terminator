@@ -26,6 +26,9 @@ CANONICAL_NAMES = {
     "solver.md": "solver",
     "source-auditor.md": "source-auditor",
     "target_evaluator.md": "target-evaluator",
+    "threat-modeler.md": "threat-modeler",
+    "patch-hunter.md": "patch-hunter",
+    "workflow-auditor.md": "workflow-auditor",
     "triager_sim.md": "triager-sim",
     "trigger.md": "trigger",
     "verifier.md": "verifier",
@@ -60,7 +63,7 @@ def test_all_custom_agents_have_required_frontmatter() -> None:
 
         assert re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{1,48}[a-z0-9])?", frontmatter["name"]), path
         assert frontmatter["model"] in {"haiku", "sonnet", "opus", "inherit"}
-        assert frontmatter["color"] in {"blue", "cyan", "green", "yellow", "magenta", "red"}
+        assert frontmatter["color"] in {"blue", "cyan", "green", "yellow", "magenta", "red", "orange", "purple"}
         assert frontmatter["permissionMode"] == "bypassPermissions"
         assert frontmatter["name"] == CANONICAL_NAMES[path.name]
         assert frontmatter["description"].startswith("Use this agent when "), path
